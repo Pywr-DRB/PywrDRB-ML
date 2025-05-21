@@ -6,6 +6,15 @@ __pycache__/
 # C extensions
 *.so
 
+# CL
+outputs/
+logs/
+MOEAFramework-5.0/
+data/pywrdrb/*.hdf5
+
+# Too large for git
+data/raw/dwallin_stream_preds.csv 
+
 # Distribution / packaging
 .Python
 build/
