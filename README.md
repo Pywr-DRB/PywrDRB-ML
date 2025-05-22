@@ -1,4 +1,4 @@
-# PywrDRB-LSTMs
+# PywrDRB-ML
 LSTM plugin for water temperature and salt front prediction.
 
 # Data availability (Designed to run until 2023 as the reconstruction data end at 2023)
