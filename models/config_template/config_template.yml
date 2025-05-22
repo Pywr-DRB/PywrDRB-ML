@@ -1,0 +1,99 @@
+# model configuration file
+verbose: True
+
+# -- data inputs and run directories ----------------------------
+root_dir: None
+# Change the model ID to something meaningful when training a new model
+#   currently naming the models with "date_[x_vars]_[dropout_rate]"
+model_id: "XXX"
+data_file: "models/XXX/data_XXX.npz"
+train_dir: "models/XXX/"
+
+# data file paths
+input_data_file: "data/database/XXX.csv"
+
+# -- data preparations arguments -------------------------------
+spatial_idx_name: 'seg_id_nat'
+time_idx_name: 'date'
+seq_len: 365  # LSTM memory length
+offset: 1.0  # offset for the LSTM input data
+
+# --- training variables ----------------------------------------
+# Should use simulated cannonsville_storage_pct, but the simulated values are weired.
+x_vars: ["tmmn", "tmmx", "pr", "srad", "bc_cannonsville_storage_pct", "QbcTavg_Q_C", "QbcTavg_T_C", "doy"]
+
+# 'tmmx_water' is the only available target variable
+y_vars: ["QbcTavg_T_C"]
+y_vars_src: ["tavg_water_src"] # combine lordville and cannonsville 
+
+# use additional LSTM layer to predict reservoir influence on water temperature? T/F
+delta_temp_layer: False
+delta_temp_vars: []
+
+# how many days to do autoregressive
+lag_days: 1 # suggest keeping this at 1
+
+# ----- training dates ------------------------------------------
+min_date: "2006-08-01" # minimum date (since we are using lag-1, the actual min date is + 1 day)
+max_date: "2023-12-31" # maximum date
+
+start_date_train: "2008-01-01"
+end_date_train: "2021-12-31"
+
+start_date_val: "2017-01-01"
+end_date_val: "2017-12-31"
+
+start_date_test: "2017-01-01"
+end_date_test: "2017-12-31"
+
+# -- training options --------------------------------------------
+pre_train: True # T/F if to pre-train with PRMS-SNTemp output
+fine_tune: True # T/F if to do fine-tune training on observations, occurs after
+learn_rate_pre: 0.05
+learn_rate_fine: 0.05
+n_epochs_pre: 50 # number of epochs for pretraining
+n_epochs_fine: 350 # number of epochs for finetuning
+early_stopping_patience: 50 # number of epochs allowed for when it's not getting any better at training
+hidden_units: 16 # number of hidden units
+head_hidden_units: 16 # number of hidden units in head layer, if not regression
+head_n_distr: 1 # number of distributions to use if mixture density approach/not regression
+
+weight_loss: True # Indicates whether to apply weighting to the observations in the loss function (True) or not (False).
+weight_threshold: 20    # Temperature threshold above which observations will be given higher weight in the loss function. Observations below this threshold will be weighted less.
+weight_value: 2           # Specifies the weighting factor for observations exceeding the threshold. A value of 2 means these observations will contribute twice as much to the loss as those below the threshold.
+
+mc_dropout: True # T/F to include monte carlo dropout estimates
+recurrent_dropout_rate: 0.3
+dropout_rate: 0.1
+
+# We are not changing the following config
+model_type: "lstm" # What type of model to run; options are global_rgcn, global_lstm, and single_lstm
+n_en_gridmet: 1 # number of driver ensembles / segment when using gridMET
+gpu: False # whether or not to use gpu, our small model doesn't benefit atm from GPU
+head: "GMM" # what type of nn layer to use on top of the primary model for producing output/UQ
+umal_extend_batch: False # if UMAL, indicate Whether the batches should be extended n_taus times,
+#  to account for a specific approximation density already during the training
+umal_tau_min: 0.25 # if UMAL, lower limit on tau/asymmetry sampling. Bound = 0
+umal_tau_max: 0.75 # if UMAL, upper limit on tau/asymmetry sampling. Bound = 1
+
+# -- forecasting options ------------------------------------------
+f_horizon: 8 # forecast horizon in days (how many days into the future to make predictions)
+
+store_raw_states: True # T/F store the LSTM states without data assimilation
+store_forecasts: True # T/F store predictions that are in the future
+force_pos: False # T/F force estimates to be positive; seems like forcing positive is detrimental to accuracy
+update_h: False # T/F update the hidden state with DA
+update_c: True # T/F update the cell state with DA
+da_localization: False # T/F for adding localization mask during DA routine
+
+temp_obs_sd: .5 # standard deviation of temperature observations
+h_sd: 0.02 # initial standard deviation of hidden states
+c_sd: 0.06 # initial standard deviation of cell states
+produce_ensembles: False # T/F if the model should produce ensembles (samples from the distribution) in addition to the parameters of the distribution
+n_samples: 100 # how many samples to draw from the learned distribution
+#sample_reduction: 'mean' # how to reduce the samples to a point estimate (mode or mean)
+n_segs: 1 # TODO: this should be dynamic based on the model but making a configuration for now
+
+# -- other config ------------------------------------------------
+seed: 4
+

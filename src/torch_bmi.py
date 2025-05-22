@@ -420,6 +420,7 @@ class bmi_lstm(Bmi):
             self.cfg_bmi = self._parse_config(cfg)
         else:
             raise ValueError("Error: No configuration provided, nothing to do...")
+        self.config_file = config_file
         # ---------- Set torch random seed -----------------
         seed = None
         if torch_seed is not None:

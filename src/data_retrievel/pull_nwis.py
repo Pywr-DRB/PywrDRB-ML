@@ -1,6 +1,9 @@
 import pandas as pd
 import pathnavigator
-root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+if pathnavigator.os_name == 'Windows':  
+    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+else:
+    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-LSTMs")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 

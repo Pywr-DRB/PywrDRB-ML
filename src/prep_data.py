@@ -119,6 +119,11 @@ def data_prep(model_cfg_file, root_dir=None):
         data_df[args['y_vars_src']] = np.where(data_df[args['y_vars_src']] == 'obs', 1, 0)
         
     x_dataset = data_df.loc[:, args['x_vars']]
+    has_nan = x_dataset.isna().any().any()
+    if has_nan:
+        print("Error: x_dataset contains NaN values. This may affect model training.")
+        return x_dataset
+    
     obs_dataset = data_df.loc[:, args['y_vars'] + ['y_src']]
     pretrain_dataset = data_df.loc[:, args['y_vars']]
     # setting water temperature to NA if it isn't an observation

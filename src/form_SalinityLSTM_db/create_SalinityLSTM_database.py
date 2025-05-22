@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
 import pathnavigator
-root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+if pathnavigator.os_name == 'Windows':  
+    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+else:
+    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-LSTMs")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 pn.data.mkdir("database")
@@ -25,6 +28,9 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
         np.where(df_all.index.is_leap_year, 366, 365)  # Fix: use np.where instead of apply
     )
     df_all['doy'] = df_all.index.dayofyear
+    
+    # Required by Jake's LSTM prep
+    df_all["seg_id_nat"] = 1573
     
     df_all.replace("obv", "obs", inplace=True) # in case of "obv" in the data
     df_all.to_csv(pn.data.database.get() / filename)

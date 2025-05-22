@@ -1,7 +1,10 @@
 import pandas as pd
 import pathnavigator
 import clt
-root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+if pathnavigator.os_name == 'Windows':  
+    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+else:
+    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-LSTMs")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 pn.data.mkdir("decomposed_Ti_Qi")
@@ -59,7 +62,8 @@ def update_to_rm_thermal_release_effect(df_sim, df_obv, df_res):
     df_obv["Q_Lnotr"] = df_obv["Q_L"] - df_res["thermal_release"]
     df_obv["T_Lnotr"] = (df_obv["T_C"]*df_obv["Q_Cnotr"] + df_obv["T_i"]*df_obv["Q_i"])/df_obv["Q_Lnotr"]
     
-    df_sim["T_L"] = df_obv.loc[df_sim.index, "T_Lnotr"]
+    mask = df_res[df_res["thermal_release"] > 0].index
+    df_sim.loc[mask, "T_L"] = df_obv.loc[mask, "T_Lnotr"]
     df_sim["T_i"] = (df_sim["T_L"]*df_sim["Q_L"] - df_sim["T_C"]*df_sim["Q_C"])/df_sim["Q_i"]
     return df_sim, df_obv
 
@@ -69,7 +73,7 @@ df_QbcTmax = infer_Qi_Ti(df_bc_Q, df_Tmax)
 df_QbcTmax, df_QobsTmax = update_to_rm_thermal_release_effect(df_QbcTmax, df_QobsTmax, df_res)
 df_QobsTmax.to_csv(pn.data.decomposed_Ti_Qi.get() / "df_QobsTmax.csv")
 df_QbcTmax.to_csv(pn.data.decomposed_Ti_Qi.get() / "df_QbcTmax.csv")
-
+#%%
 # Tavg
 df_QobsTavg = infer_Qi_Ti(df_Qobs, df_Tavg)
 df_QbcTavg = infer_Qi_Ti(df_bc_Q, df_Tavg)

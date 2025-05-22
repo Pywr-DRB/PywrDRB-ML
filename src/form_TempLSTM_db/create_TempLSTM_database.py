@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
 import pathnavigator
-root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+if pathnavigator.os_name == 'Windows':  
+    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+else:
+    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-LSTMs")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 pn.data.mkdir("database")
@@ -60,6 +63,9 @@ def create_TempLSTM_database(pn, start="1979-01-01", end="2024-12-31", filename=
     # Load thermal release
     df_res = pd.read_excel(pn.data.get("reservoir_release_sep_thermal_ctrl_mgd_manually_picked.xlsx"), parse_dates=True, index_col="date")[start:end]
     df_all["rel_thermal"] = df_res["thermal_release"]
+    
+    # Required by Jake's LSTM prep
+    df_all["seg_id_nat"] = 1573
     
     df_all.replace("obv", "obs", inplace=True) # in case of "obv" in the data
     df_all.to_csv(pn.data.database.get() / filename)
