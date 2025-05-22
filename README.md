@@ -85,5 +85,10 @@ https://www.sciencebase.gov/catalog/item/535eda80e4b08e65d60fc834
 - `src/sampling_utils.py`: Provides sampling functions for uncertainty quantification in LSTM model outputs, such as sampling from Gaussian Mixture Models (GMM).
 - `src/training_utils.py`: Contains training utilities for LSTM models, including custom loss functions (e.g., MaskedGMMLoss, MaskedCMALLoss, MaskedUMALLoss), evaluation metrics (such as rmse_masked), and model fitting routines (e.g., fit_torch_model).
 
+# Model training
+- `lstm_train_TempLSTM.py`
+    - Create model, train model, basic analysis
+- `lstm_train_SalinityLSTM.py`
+    - Create model, train model, basic analysis
 
 
