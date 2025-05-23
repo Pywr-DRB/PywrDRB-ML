@@ -195,7 +195,6 @@ def return_sim_obs_pair(lstms, period="all", only_months=None, mode="TempLSTM", 
 
     return pairs
 
-
 def get_rf_model():
     try:
         rf_model = clt.io.read_joblib(pn.models.get("rf_model.gz"))
@@ -214,27 +213,45 @@ def get_rf_model():
     return rf_model
     
 def return_T_C(lstm1, lstm2, map_to_Tmax=True):
-    T_C = lstm1.simple_run()["mu_ft"]
-    T_i = lstm2.simple_run()["mu_ft"]
+    T_C = lstm1.simple_run()["mu_ft"].to_frame("T_C")
+    T_i = lstm2.simple_run()["mu_ft"].to_frame("T_i")
     
     global db_TempLSTM
     database = db_TempLSTM.copy()
     
-    prefix = lstm1.cfg_bmi["y_vars"][0]
-    Q_C = database.loc[T_C.index, prefix + "_Q_C"]
-    Q_i = database.loc[T_i.index, prefix + "_Q_i"]
-    Q_L = database.loc[T_C.index, prefix + "_Q_L"]
+    prefix = lstm1.cfg_bmi["y_vars"][0].split("_")[0]
+    Q_C = database.loc[T_C.index, prefix + "_Q_C"].to_frame("Q_C")
+    Q_i = database.loc[T_i.index, prefix + "_Q_i"].to_frame("Q_i")
+    Q_L = database.loc[T_C.index, prefix + "_Q_L"].to_frame("Q_L")
     
-    Tavg = (T_C*Q_C + T_i*Q_i)/Q_L
+    Tavg = (T_C["T_C"]*Q_C["Q_C"] + T_i["T_i"]*Q_i["Q_i"])/Q_L["Q_L"]
+    Tavg = Tavg.to_frame("Tavg")
     
     if map_to_Tmax:
         rf_model = get_rf_model()
         Tmax = rf_model.predict(Tavg.values.reshape(-1, 1))
-        df = pd.concat([T_C, T_i, Tavg, Tmax], axis=1, columns=["T_C", "T_i", "Tavg", "T_L"])
-    else:
-        df = pd.concat([T_C, T_i, Tavg], axis=1, columns=["T_C", "T_i", "Tavg"])
+        Tavg["T_L"] = Tmax
+        Tavg.loc[pd.isna(Tavg["Tavg"]), "T_L"] = np.nan
+    df = pd.concat([T_C, T_i, Tavg], axis=1)
     return df
 
+def return_sim_obs_pair_for_T_C(lstm1, lstm2):
+    global db_TempLSTM
+    database = db_TempLSTM.copy()
+    
+    df_sim = return_T_C(lstm1, lstm2, map_to_Tmax=True)
+    prefix = lstm1.cfg_bmi["y_vars"][0].split("_")[0]
+    
+    database = database.loc[df_sim.index, :]
+    df_obs = [
+        database[prefix + "_T_C"].to_frame("T_C"),
+        database[prefix + "_T_i"].to_frame("T_i"),
+        database[prefix + "_T_L"].to_frame("Tavg"),
+        database[prefix.replace("avg", "max") + "_T_L"].to_frame("T_L"),
+        ]
+    df_obs = pd.concat(df_obs, axis=1)
+    return df_obs, df_sim
+    
 def eval_TempLSTM(lstm1, lstm2, period="all", only_months=None, disable=False):
     """
     
@@ -259,35 +276,38 @@ def eval_TempLSTM(lstm1, lstm2, period="all", only_months=None, disable=False):
     database = db_TempLSTM.copy()
     
     df_sim = return_T_C(lstm1, lstm2, map_to_Tmax=True)
-    prefix = lstm1.cfg_bmi["y_vars"][0]
+    prefix = lstm1.cfg_bmi["y_vars"][0].split("_")[0]
     
+    database = database.loc[df_sim.index, :]
     df_obs = [
-        database.loc[df_sim.index, prefix + "_T_C"],
-        database.loc[df_sim.index, prefix + "_T_i"],
-        database.loc[df_sim.index, prefix + "_T_L"],
-        database.loc[df_sim.index, prefix.replace("avg", "max") + "_T_L"],
+        database[prefix + "_T_C"].to_frame("T_C"),
+        database[prefix + "_T_i"].to_frame("T_i"),
+        database[prefix + "_T_L"].to_frame("Tavg"),
+        database[prefix.replace("avg", "max") + "_T_L"].to_frame("T_L"),
         ]
+    df_obs = pd.concat(df_obs, axis=1)
     
     model_config1 = lstm1.cfg_bmi
     model_config2 = lstm2.cfg_bmi
         
     df_metric = []
-    for i in range(len(df_sim)):
-        if "T_C" in df_sim.columns[i]:
+    for col in df_sim:
+        if col == "T_C":
             model_config = model_config1
         else:
             model_config = model_config2
         
-        obs = df_obs.iloc[:, i]
-        sim = df_sim.iloc[:, i]
-        sim, obs = clt.dropna_any(sim, obs)
-    
+        obs = df_obs[col]
+        sim = df_sim[col]
+        target = model_config["y_vars"][0]
+        target_src = model_config["y_vars_src"][0]
+            
         if isinstance(period, tuple):
             obs = obs[period[0]:period[1]]
             sim = sim[period[0]:period[1]]
         elif period == "all":
             obs = obs
-            sim = sim
+            sim = sim            
         elif period == "train":
             obs = obs[model_config['start_date_train']:model_config['end_date_train']]
             sim = sim[model_config['start_date_train']:model_config['end_date_train']]
@@ -298,11 +318,11 @@ def eval_TempLSTM(lstm1, lstm2, period="all", only_months=None, disable=False):
             obs = obs[model_config['start_date_test']:model_config['end_date_test']]
             sim = sim[model_config['start_date_test']:model_config['end_date_test']]
         
-        target = model_config["y_vars"][0]
-        target_src = model_config["y_vars_src"][0]
+        obs.loc[database[target_src] != "obs"] = np.nan
         
-        database.loc[database[target_src] != "obs", target] = np.nan
-        obs = database.loc[sim.index, target]
+        if only_months is not None:
+            obs = obs[obs.index.month.isin(only_months)]
+            sim = sim[sim.index.month.isin(only_months)]
         
         sim, obs = clt.dropna_any(sim, obs)
         df_metric.append(clt.metrics.error_metrics(sim=sim, obs=obs))

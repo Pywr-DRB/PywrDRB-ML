@@ -8,7 +8,7 @@ else:
     
 pn = pathnavigator.create(root_dir)
 pn.chdir()
-from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models
+from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, eval_TempLSTM, return_sim_obs_pair_for_T_C
 
 # from src.model_builder import config_template
 
@@ -101,12 +101,35 @@ lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=F
 #%%
 df_metric_train = loop_to_eval_lstm_models(lstms, period="train", only_months=None, mode="TempLSTM", disable=False)
 
+#%%
+df_metric = eval_TempLSTM(
+    lstm1=lstms["LSTM1"], 
+    lstm2=lstms["LSTM2"],
+    period="all", only_months=None, disable=False
+    )
 
 
+df_metric_summer = eval_TempLSTM(
+    lstm1=lstms["LSTM1"], 
+    lstm2=lstms["LSTM2"],
+    period="all", only_months=[6,7,8], disable=False
+    )
 
+#%%
+import clt
+df_obs, df_sim = return_sim_obs_pair_for_T_C(lstm1=lstms["LSTM1"], lstm2=lstms["LSTM2"])
 
-
-
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(4, 4))
+x = df_obs["T_L"]
+y = df_sim["T_L"]
+x, y = clt.utils.dropna_any(x, y)
+clt.plots.scatter(ax, x=x, y=y, s=2)
+ax.set_xlabel("Observed Tmax at Lordville")
+ax.set_ylabel("Predicted Tmax at Lordville")
+ax.legend()
+plt.tight_layout()
+plt.show()
 
 
 
