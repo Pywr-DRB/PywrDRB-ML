@@ -2,9 +2,9 @@ import pathnavigator
 from copy import deepcopy
 
 if pathnavigator.os_name == 'Windows':  
-    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
 else:
-    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-LSTMs")
+    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
     
 pn = pathnavigator.create(root_dir)
 pn.chdir()

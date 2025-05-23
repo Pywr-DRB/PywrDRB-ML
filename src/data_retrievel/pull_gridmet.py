@@ -91,7 +91,7 @@ merged_df['pr'] = merged_df['pr'] * mm_to_m     # Convert pr from mm to m
 merged_df['rmax'] = merged_df['rmax'] * percent_to_frac  # Convert rmax from % to fraction
 merged_df['rmin'] = merged_df['rmin'] * percent_to_frac  # Convert rmin from % to fraction
 
-merged_df.to_csv(r"C:\Users\CL\Documents\GitHub\PywrDRB-LSTMs\data\raw\gridmet_lordville.csv", index=False)
+merged_df.to_csv(r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\data\raw\gridmet_lordville.csv", index=False)
 
 ### output folder
 #output_path = '2_data_prep/out/'

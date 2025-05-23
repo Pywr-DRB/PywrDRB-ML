@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 
 if pathnavigator.os_name == 'Windows':  
-    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-LSTMs"
+    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
 else:
-    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-LSTMs")
+    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 
 pn = pathnavigator.create(root_dir)
 pn.chdir()
@@ -194,3 +194,118 @@ def return_sim_obs_pair(lstms, period="all", only_months=None, mode="TempLSTM", 
         pairs[model_id] = (sim, obs)
 
     return pairs
+
+
+def get_rf_model():
+    try:
+        rf_model = clt.io.read_joblib(pn.models.get("rf_model.gz"))
+    except:
+        from sklearn.ensemble import RandomForestRegressor
+        global db_TempLSTM
+        database = db_TempLSTM.copy()
+        df = database[["QobsTavg_T_L", 'QobsTmax_T_L']].dropna()
+        X = df["QobsTavg_T_L"].values
+        y = df['QobsTmax_T_L'].values
+        X, y = clt.dropna_any(X, y)
+        X = X.reshape(-1, 1)
+        rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+        rf_model.fit(X, y)
+        clt.io.to_joblib(rf_model, pn.models.get()/"rf_model.gz")
+    return rf_model
+    
+def return_T_C(lstm1, lstm2, map_to_Tmax=True):
+    T_C = lstm1.simple_run()["mu_ft"]
+    T_i = lstm2.simple_run()["mu_ft"]
+    
+    global db_TempLSTM
+    database = db_TempLSTM.copy()
+    
+    prefix = lstm1.cfg_bmi["y_vars"][0]
+    Q_C = database.loc[T_C.index, prefix + "_Q_C"]
+    Q_i = database.loc[T_i.index, prefix + "_Q_i"]
+    Q_L = database.loc[T_C.index, prefix + "_Q_L"]
+    
+    Tavg = (T_C*Q_C + T_i*Q_i)/Q_L
+    
+    if map_to_Tmax:
+        rf_model = get_rf_model()
+        Tmax = rf_model.predict(Tavg.values.reshape(-1, 1))
+        df = pd.concat([T_C, T_i, Tavg, Tmax], axis=1, columns=["T_C", "T_i", "Tavg", "T_L"])
+    else:
+        df = pd.concat([T_C, T_i, Tavg], axis=1, columns=["T_C", "T_i", "Tavg"])
+    return df
+
+def eval_TempLSTM(lstm1, lstm2, period="all", only_months=None, disable=False):
+    """
+    
+    Parameters
+    ----------
+    lstms : dict
+        Dictionary of lstm models.
+    period : str, optional
+        The default is "all".
+        Period to evaluate the model on. Can be "train", "val", "test" or "all". If a tuple is provided, it is used as the start and end date.
+    only_months : list, optional
+        The default is None.
+        List of months to evaluate the model on. If None, all months are used.
+    mode : str, optional
+        The default is "TempLSTM".
+        Mode to evaluate the model on. Can be "TempLSTM" or "SalinityLSTM".
+    disable : bool, optional
+        The default is False.
+        If True, disable the progress bar.
+    """
+    global db_TempLSTM
+    database = db_TempLSTM.copy()
+    
+    df_sim = return_T_C(lstm1, lstm2, map_to_Tmax=True)
+    prefix = lstm1.cfg_bmi["y_vars"][0]
+    
+    df_obs = [
+        database.loc[df_sim.index, prefix + "_T_C"],
+        database.loc[df_sim.index, prefix + "_T_i"],
+        database.loc[df_sim.index, prefix + "_T_L"],
+        database.loc[df_sim.index, prefix.replace("avg", "max") + "_T_L"],
+        ]
+    
+    model_config1 = lstm1.cfg_bmi
+    model_config2 = lstm2.cfg_bmi
+        
+    df_metric = []
+    for i in range(len(df_sim)):
+        if "T_C" in df_sim.columns[i]:
+            model_config = model_config1
+        else:
+            model_config = model_config2
+        
+        obs = df_obs.iloc[:, i]
+        sim = df_sim.iloc[:, i]
+        sim, obs = clt.dropna_any(sim, obs)
+    
+        if isinstance(period, tuple):
+            obs = obs[period[0]:period[1]]
+            sim = sim[period[0]:period[1]]
+        elif period == "all":
+            obs = obs
+            sim = sim
+        elif period == "train":
+            obs = obs[model_config['start_date_train']:model_config['end_date_train']]
+            sim = sim[model_config['start_date_train']:model_config['end_date_train']]
+        elif period == "val":
+            obs = obs[model_config['start_date_val']:model_config['end_date_val']]
+            sim = sim[model_config['start_date_val']:model_config['end_date_val']]
+        elif period == "test":
+            obs = obs[model_config['start_date_test']:model_config['end_date_test']]
+            sim = sim[model_config['start_date_test']:model_config['end_date_test']]
+        
+        target = model_config["y_vars"][0]
+        target_src = model_config["y_vars_src"][0]
+        
+        database.loc[database[target_src] != "obs", target] = np.nan
+        obs = database.loc[sim.index, target]
+        
+        sim, obs = clt.dropna_any(sim, obs)
+        df_metric.append(clt.metrics.error_metrics(sim=sim, obs=obs))
+        
+    df_metric = pd.DataFrame(df_metric, index=df_sim.columns)
+    return df_metric
