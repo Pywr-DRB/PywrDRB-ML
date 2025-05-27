@@ -5,10 +5,10 @@ LSTM plugin for water temperature and salt front prediction.
 | Data            | From        | Note |
 |-----------------|-------------|------|
 | **GridMET**     | **1/1/1979**|      |
-| T_C             | 10/1/1975   | Filled by reservoir_io_sntemp.csv (pretrain)
+| T_C             | 10/1/1975   | Filled by reservoir_io_sntemp.csv (pretrain) or LSTM outputs |
 | Tmax_C          | 10/1/1963   |      |
 | Q_C             | 10/1/1963   |      |
-| T_L             | 10/1/1992   | Filled by dwallin_stream_preds.csv (pretrain)
+| T_L             | 10/1/1992   | Filled by dwallin_stream_preds.csv (pretrain) or LSTM outputs |
 | Tmax_L          | 10/1/1992   |      |
 | Q_L             | 7/28/2006   |      |
 | dwallin_temp_c  | 4/1/1982    |      |
@@ -42,15 +42,15 @@ LSTM plugin for water temperature and salt front prediction.
 - `data\raw\dwallin_stream_preds.csv`
     - https://www.sciencebase.gov/catalog/item/5f6a28a782ce38aaa2449137
     - Used to filled in T_L
+    - It is Tavg
 - `data\raw\reservoir_io_sntemp.csv`
     - https://www.sciencebase.gov/catalog/item/5f6a28a782ce38aaa2449137
     - Used to filled in T_C
-
-Need to figure this out
-seg_id_nat
-- 1566
-- 1444
-https://www.sciencebase.gov/catalog/item/535eda80e4b08e65d60fc834
+    - It is Tavg
+    - seg_id_nat
+        - 1566 => Canonsville outflow
+        - 1444 => Pepecton outflow
+        - GIS: https://www.sciencebase.gov/catalog/item/535eda80e4b08e65d60fc834
 
 - `data\raw\sf_data.xlsx (.csv)` 
     - https://drbc.net/Sky/hydro/saltfront.html#header2
