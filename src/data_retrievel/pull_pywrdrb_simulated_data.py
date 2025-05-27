@@ -40,28 +40,50 @@ recorder = pywrdrb.OutputRecorder(
 )
 stats = model.run()
 
+#%%
 data = pywrdrb.Data()
-results_sets = ['major_flow', 'res_storage', 'res_release', 'inflow']
+results_sets = ['major_flow', 'res_storage', 'res_release', 'inflow', 'max_flow_catchmentConsumption']
 data.load_output(output_filenames=[output_filename], results_sets=results_sets)
 
 df_res_release = data.res_release[inflow_type][0]
 df_major_flow = data.major_flow[inflow_type][0]
 df_res_storage = data.res_storage[inflow_type][0]
+df_inflow = data.inflow[inflow_type][0]
+df_consumption = data.max_flow_catchmentConsumption[inflow_type][0]
 
 #%%
 df = pd.DataFrame()
-df["rel_cannonsville"] = df_res_release["cannonsville"]
-df["01425000"] = df_major_flow["01425000"]
+# Q_C
+df["flow_01425000"] = df_major_flow["01425000"] 
+# Q_i
+df["flow_01417000"] = df_major_flow["01417000"] 
+df["inflow_delLordville"] = df_inflow["delLordville"]
+df["consumption_delLordville"] = df_consumption["delLordville"]
+# Q_L
 df["flow_lordville"] = df_major_flow["delLordville"]
-df["01463500"] = df_major_flow["delTrenton"]
-df["01474500"] = df_major_flow["outletSchuylkill"]
+# Salinity
+df["flow_delTrenton"] = df_major_flow["delTrenton"]
+df["flow_outletSchuylkill"] = df_major_flow["outletSchuylkill"]
 
-df["cannonsville_storage_pct"] = df_res_storage["cannonsville"] / 95700 * 100
-df["pepacton_storage_pct"] = df_res_storage["pepacton"] / 140200 * 100
+# Storage
 df["cannonsville_storage"] = df_res_storage["cannonsville"] 
 df["pepacton_storage"] = df_res_storage["pepacton"] 
+df["cannonsville_storage_pct"] = df_res_storage["cannonsville"] / 95700 * 100
+df["pepacton_storage_pct"] = df_res_storage["pepacton"] / 140200 * 100
+
 df.index.name = "date"
 df.to_csv(pn.data.raw.get() / f"pywrdrb_{inflow_type}_flow_and_storage.csv") # mgd / mg
+
+#%% Check water balance that Q_L = Q_C + Q_i
+dff = pd.DataFrame()
+dff["Q_C"] = df["flow_01425000"]
+dff["Q_i"] = df["flow_01417000"] + df["inflow_delLordville"] - df["consumption_delLordville"]
+dff["Q_L"] = df["flow_lordville"]
+dff["Q_C + Q_i"] = dff["Q_C"] + dff["Q_i"]
+dff["Diff"] = dff["Q_C + Q_i"] - dff["Q_L"]
+
+assert all(dff["Diff"].abs() < 0.2), "Water inbalance"
+
 
 #%%
 r"""

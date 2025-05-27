@@ -48,16 +48,16 @@ config_template = {
     }
 
 lstm_settings = {
-    "x_vars": ["01463500_bc", "01474500_bc", "doy"],
+    "x_vars": ["Q_Trenton_bc", "Q_Schuylkill_bc", "doy"],
     "y_vars": ["saltfront"],
     "y_vars_src": ["saltfront_src"],
     }
 
-lstm_lag1_settings = {
-    "x_vars": ["01463500_bc", "01474500_bc", "saltfront", "doy"],
-    "y_vars": ["saltfront"],
-    "y_vars_src": ["saltfront_src"],
-    }
+# lstm_lag1_settings = {
+#     "x_vars": ["01463500_bc", "01474500_bc", "saltfront", "doy"],
+#     "y_vars": ["saltfront"],
+#     "y_vars_src": ["saltfront_src"],
+#     }
 
 #%%
 subfolder = None # "SalinityLSTM"
@@ -69,20 +69,22 @@ lstm_config_file = make_lstm_model(model_id="SalinityLSTM", subfolder=subfolder,
 # lstm_config = deepcopy(config_template)
 # lstm_config.update(lstm_lag1_settings)
 # lstm_lag1_config_file = make_lstm_model(model_id="LSTM_bc_lag1", subfolder=subfolder, **lstm_config)
+
 #%%
-r"""
 from src.prep_data import data_prep
 df = data_prep(lstm_config_file, root_dir)
-df = data_prep(lstm_lag1_config_file, root_dir)
-"""
+#df = data_prep(lstm_lag1_config_file, root_dir)
+
 #%%
 subfolder = None #"SalinityLSTM"
 model_ids = ["SalinityLSTM"]
 loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
+
 #%%
-subfolder = "SalinityLSTM"
-model_ids = ["LSTM_bc", "LSTM_bc_lag1"]
+subfolder = None #"SalinityLSTM"
+model_ids = ["SalinityLSTM"] #, "LSTM_bc_lag1"]
 lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
+
 #%%
 df_metric_train = loop_to_eval_lstm_models(lstms, period="train", only_months=None, mode="SalinityLSTM", disable=False)
 
@@ -92,7 +94,7 @@ import clt
 pairs = return_sim_obs_pair(lstms, period="train", only_months=None, mode="SalinityLSTM", disable=False)
 
 #%%
-sim, obs = pairs['LSTM_bc']
+sim, obs = pairs['SalinityLSTM']
 sim, obs = clt.dropna_any(sim, obs)
 fig, ax = plt.subplots()
 clt.plots.scatter(ax, x=obs, y=sim, s=1, alpha=0.5,)
@@ -106,7 +108,7 @@ plt.tight_layout()
 plt.show()
 
 #%%
-sim, obs = pairs['LSTM_bc']
+sim, obs = pairs['SalinityLSTM']
 for y in range(1964, 2024):
     fig, ax = plt.subplots()
     ax.plot(obs[f"{y}":f"{y}"], c="k", alpha=0.8, label="Observed")

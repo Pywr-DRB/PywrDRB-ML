@@ -14,8 +14,8 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
     # Load saltfront and flow
     # 01463500 = delTrenton
     # 01474500 = outletSchuylkill
-    df_salinity_flow_bc = pd.read_csv(pn.data.raw.get() / "pywrdrb_pub_nhmv10_BC_withObsScaled_flow_and_storage.csv", parse_dates=True, index_col=["date"])[start:end][["01463500", "01474500"]]
-    df_salinity_flow_bc.columns = ["01463500_bc", "01474500_bc"]
+    df_salinity_flow_bc = pd.read_csv(pn.data.raw.get() / "pywrdrb_pub_nhmv10_BC_withObsScaled_flow_and_storage.csv", parse_dates=True, index_col=["date"])[start:end][["flow_delTrenton", "flow_outletSchuylkill"]]
+    df_salinity_flow_bc.columns = ["Q_Trenton_bc", "Q_Schuylkill_bc"]
     df_salinity_obs = pd.read_csv(pn.data.raw.get("salt_front_data.csv"), parse_dates=True, index_col=["date"])[start:end]
     
     df_all = pd.concat(
@@ -37,7 +37,7 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
     
     # Form bmi attributes
     input_vars = list(df_all)
-    input_vars += ['y_src_lag_1']
+    input_vars += ['y_src_lag_1', 'saltfront_lag_1']
     
     unit_map = {}
     for v in input_vars:

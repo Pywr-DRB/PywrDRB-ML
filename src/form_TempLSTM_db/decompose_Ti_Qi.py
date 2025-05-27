@@ -24,8 +24,11 @@ df_Qobs["Q_C"] = df_cannonsville["discharge_cannonsville"]
 df_Qobs["Q_L"] = df_lordville["discharge_lordville"] 
 
 df_bc_Q = pd.DataFrame(index=rng)
-df_bc_Q["Q_C"] = df_bc["01425000"] 
-df_bc_Q["Q_L"] = df_bc["flow_lordville"] 
+df_bc_Q["Q_C"] = df_bc["flow_01425000"]
+df_bc_Q["Q_i"] = df_bc["flow_01417000"] + df_bc["inflow_delLordville"] - df_bc["consumption_delLordville"]
+# There are minor (<0.2) differences between Q_C + Q_i and df_bc["flow_lordville"] likely due to the numerical issue in pywr simulation.
+# For LSTM training purpose, we directly calculate Q_L by Q_C + Q_i to avoid water inbalance.
+df_bc_Q["Q_L"] = df_bc_Q["Q_C"] + df_bc_Q["Q_i"] #df_bc["flow_lordville"]
 
 df_Tmax = pd.DataFrame(index=rng)
 df_Tmax["T_C"] = df_cannonsville["tmmx_water_cannonsville"]
@@ -45,7 +48,10 @@ def infer_Qi_Ti(df_Q, df_T):
     df_T = df_T.copy()
     
     # Infer Q_i
-    df_Q["Q_i"] = df_Q["Q_L"] - df_Q["Q_C"]
+    if "Q_i" not in df_Q:
+        df_Q["Q_i"] = df_Q["Q_L"] - df_Q["Q_C"]
+    else:
+        print("Q_i is already given.")
     df_Q = df_Q[['Q_i', 'Q_C', 'Q_L']]
     
     # Infer T_i

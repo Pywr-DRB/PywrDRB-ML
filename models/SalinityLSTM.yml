@@ -8,7 +8,7 @@ spatial_idx_name: seg_id_nat
 time_idx_name: date
 seq_len: 365
 offset: 1.0
-x_vars: [01463500_bc, 01474500_bc, doy]
+x_vars: [Q_Trenton_bc, Q_Schuylkill_bc, doy]
 y_vars: [saltfront]
 y_vars_src: [saltfront_src]
 delta_temp_layer: false

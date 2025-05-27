@@ -91,34 +91,37 @@ from src.prep_data import data_prep
 df = data_prep(lstm1_config_file, root_dir)
 df = data_prep(lstm2_config_file, root_dir)
 """
+
 #%%
 subfolder = None #"TempLSTM_lag1_connected"
 model_ids = ["TempLSTM1", "TempLSTM2"]
 loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
+
 #%%
-subfolder = "TempLSTM_lag1_connected"
-model_ids = ["LSTM1", "LSTM2"]
+subfolder = None #"TempLSTM_lag1_connected"
+model_ids = ["TempLSTM1", "TempLSTM2"]
 lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
+
 #%%
 df_metric_train = loop_to_eval_lstm_models(lstms, period="train", only_months=None, mode="TempLSTM", disable=False)
 
 #%%
 df_metric = eval_TempLSTM(
-    lstm1=lstms["LSTM1"], 
-    lstm2=lstms["LSTM2"],
+    lstm1=lstms["TempLSTM1"], 
+    lstm2=lstms["TempLSTM2"],
     period="all", only_months=None, disable=False
     )
 
 
 df_metric_summer = eval_TempLSTM(
-    lstm1=lstms["LSTM1"], 
-    lstm2=lstms["LSTM2"],
+    lstm1=lstms["TempLSTM1"], 
+    lstm2=lstms["TempLSTM2"],
     period="all", only_months=[6,7,8], disable=False
     )
 
 #%%
 import clt
-df_obs, df_sim = return_sim_obs_pair_for_T_C(lstm1=lstms["LSTM1"], lstm2=lstms["LSTM2"])
+df_obs, df_sim = return_sim_obs_pair_for_T_C(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"])
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(4, 4))
