@@ -60,15 +60,15 @@ lstm_lag1_settings = {
     }
 
 #%%
-subfolder = "SalinityLSTM"
+subfolder = None # "SalinityLSTM"
 lstm_config = deepcopy(config_template)
 lstm_config.update(lstm_settings)
-lstm_config_file = make_lstm_model(model_id="LSTM_bc", subfolder=subfolder, **lstm_config)
+lstm_config_file = make_lstm_model(model_id="SalinityLSTM", subfolder=subfolder, **lstm_config)
 
 # Have gap in saltfront
-lstm_config = deepcopy(config_template)
-lstm_config.update(lstm_lag1_settings)
-lstm_lag1_config_file = make_lstm_model(model_id="LSTM_bc_lag1", subfolder=subfolder, **lstm_config)
+# lstm_config = deepcopy(config_template)
+# lstm_config.update(lstm_lag1_settings)
+# lstm_lag1_config_file = make_lstm_model(model_id="LSTM_bc_lag1", subfolder=subfolder, **lstm_config)
 #%%
 r"""
 from src.prep_data import data_prep
@@ -76,8 +76,8 @@ df = data_prep(lstm_config_file, root_dir)
 df = data_prep(lstm_lag1_config_file, root_dir)
 """
 #%%
-subfolder = "SalinityLSTM"
-model_ids = ["LSTM_bc_lag1"]
+subfolder = None #"SalinityLSTM"
+model_ids = ["SalinityLSTM"]
 loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
 #%%
 subfolder = "SalinityLSTM"

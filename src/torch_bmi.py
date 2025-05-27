@@ -562,7 +562,31 @@ class bmi_lstm(Bmi):
         self.results = res
         return res
 
-    def update_until(self, time):
+    def update_until(self, timestep):
+        # Get unscaled lstm input data
+        # mu_ft = []
+        # sd_ft = []
+        while self.t < timestep:
+            unscaled_data = self.get_unscaled_values(lead_time=0)
+            for vi, var in enumerate(unscaled_data):
+                if var in self.x_vars:
+                    self.set_value(var, unscaled_data.loc[0, var])
+                
+                # if self.delta_temp_layer and var in self.delta_vars:
+                #     self.set_value(var, unscaled_data.loc[int(self.t), var])           
+                
+            self.update()
+
+            # mu_pred = np.zeros(1)
+            # sd_pred = np.zeros(1)
+            # self.get_value("channel_water_surface_water__mu_max_of_temperature", mu_pred)
+            # self.get_value("channel_water_surface_water__sd_max_of_temperature", sd_pred)
+            # mu_ft.append(mu_pred[0])
+            # sd_ft.append(sd_pred[0])
+            
+        #return mu_ft, sd_ft
+        
+    def update_until_org(self, time):
         """Update model until a particular model time step.
         Parameters
         ----------
@@ -575,14 +599,12 @@ class bmi_lstm(Bmi):
             raise ValueError(f"End time, {time}, must be larger than current time, {cur_step}")
 
         # Check if the requested time to update until extends beyond the available data,
-        #  if it does, then throw an error
+        # if it does, then throw an error
         input_data_len = len(self.get_value_ptr(self.x_vars[0]))
         if (time+1) != (input_data_len + cur_step):
             target_time = input_data_len + cur_step - 1
             raise ValueError(f"The end time, {time}, does not match the length of data provided.\n Please use an end time of {target_time}, or provide a different amount of input data.")
-
         self.create_scaled_input_tensor()
-
         # make predictions
         if self.mc_dropout:
             self.lstm.train()

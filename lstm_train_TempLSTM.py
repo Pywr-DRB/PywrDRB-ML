@@ -7,6 +7,7 @@ else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
     
 pn = pathnavigator.create(root_dir)
+pn.add_to_sys_path()
 pn.chdir()
 from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, eval_TempLSTM, return_sim_obs_pair_for_T_C
 
@@ -76,13 +77,13 @@ lstm2_settings = {
     }
 
 #%%
-subfolder = "TempLSTM_lag1_connected"
+subfolder = None #"TempLSTM_lag1_connected"
 lstm1_config = deepcopy(config_template)
 lstm1_config.update(lstm1_settings)
 lstm2_config = deepcopy(config_template)
 lstm2_config.update(lstm2_settings)
-lstm1_config_file = make_lstm_model(model_id="LSTM1", subfolder=subfolder, **lstm1_config)
-lstm2_config_file = make_lstm_model(model_id="LSTM2", subfolder=subfolder, **lstm2_config)
+lstm1_config_file = make_lstm_model(model_id="TempLSTM1", subfolder=subfolder, **lstm1_config)
+lstm2_config_file = make_lstm_model(model_id="TempLSTM2", subfolder=subfolder, **lstm2_config)
 
 #%%
 r"""
@@ -91,9 +92,9 @@ df = data_prep(lstm1_config_file, root_dir)
 df = data_prep(lstm2_config_file, root_dir)
 """
 #%%
-subfolder = "TempLSTM_lag1_connected"
-model_ids = ["LSTM1", "LSTM2"]
-#loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
+subfolder = None #"TempLSTM_lag1_connected"
+model_ids = ["TempLSTM1", "TempLSTM2"]
+loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
 #%%
 subfolder = "TempLSTM_lag1_connected"
 model_ids = ["LSTM1", "LSTM2"]
