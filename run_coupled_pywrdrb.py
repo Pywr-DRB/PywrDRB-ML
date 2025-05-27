@@ -12,12 +12,6 @@ pn.sc.add("wd", pn.get("outputs/coupled_pywrdrb"), overwrite=True)
 
 import pywrdrb
 
-# inflow_type = 'pub_nhmv10_BC_withObsScaled'
-# output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
-# data = pywrdrb.Data()
-# results_sets = ['major_flow']
-# data.load_output(output_filenames=[output_filename], results_sets=results_sets)
-
 #%%
 inflow_type = 'pub_nhmv10_BC_withObsScaled'
 model_filename = str(pn.sc.wd / f"{inflow_type}.json")
@@ -36,8 +30,8 @@ temp_options = {
 salinity_options = {
     "PywrDRB_ML_plugin_path": pn.get(), 
     "start_date": None, 
-    "Q_Trenton_lstm_var_name": "01463500_bc", 
-    "Q_Schuylkill_lstm_var_name": "01474500_bc",
+    "Q_Trenton_lstm_var_name": "Q_Trenton_bc", 
+    "Q_Schuylkill_lstm_var_name": "Q_Schuylkill_bc",
     "disable_tqdm": False
     }
 
