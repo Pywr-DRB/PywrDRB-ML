@@ -81,7 +81,6 @@ df_obs_temp.loc[df_obs_temp["tmmx_water_src"] != "obs", "QbcTmax_T_L"] = np.nan
 df_obs_salinity = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"), parse_dates=True, index_col=[0])
 df_obs_salinity.loc[df_obs_salinity["saltfront_src"] != "obs", "saltfront"] = np.nan
 #%% Plot the results
-
 for year in range(2006, 2024):
     start_date = f"{year}-01-01"
     end_date = f"{year}-12-31"
