@@ -212,7 +212,7 @@ def get_rf_model():
         clt.io.to_joblib(rf_model, pn.models.get()/"rf_model.gz")
     return rf_model
     
-def return_T_C(lstm1, lstm2, map_to_Tmax=True):
+def return_T_L(lstm1, lstm2, map_to_Tmax=True):
     T_C = lstm1.simple_run()["mu_ft"].to_frame("T_C")
     T_i = lstm2.simple_run()["mu_ft"].to_frame("T_i")
     
@@ -235,11 +235,11 @@ def return_T_C(lstm1, lstm2, map_to_Tmax=True):
     df = pd.concat([T_C, T_i, Tavg], axis=1)
     return df
 
-def return_sim_obs_pair_for_T_C(lstm1, lstm2):
+def return_sim_obs_pair_for_T_L(lstm1, lstm2):
     global db_TempLSTM
     database = db_TempLSTM.copy()
     
-    df_sim = return_T_C(lstm1, lstm2, map_to_Tmax=True)
+    df_sim = return_T_L(lstm1, lstm2, map_to_Tmax=True)
     prefix = lstm1.cfg_bmi["y_vars"][0].split("_")[0]
     
     database = database.loc[df_sim.index, :]

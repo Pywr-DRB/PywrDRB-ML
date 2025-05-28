@@ -9,7 +9,7 @@ else:
 pn = pathnavigator.create(root_dir)
 pn.add_to_sys_path()
 pn.chdir()
-from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, eval_TempLSTM, return_sim_obs_pair_for_T_C
+from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, eval_TempLSTM, return_sim_obs_pair_for_T_L
 
 # from src.model_builder import config_template
 
@@ -121,7 +121,7 @@ df_metric_summer = eval_TempLSTM(
 
 #%%
 import clt
-df_obs, df_sim = return_sim_obs_pair_for_T_C(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"])
+df_obs, df_sim = return_sim_obs_pair_for_T_L(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"])
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(4, 4))

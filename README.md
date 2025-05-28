@@ -1,5 +1,15 @@
 # PywrDRB-ML
-LSTM plugin for water temperature and salt front prediction.
+ML plugin for water temperature and salt front prediction.
+
+# Run Coupled Pywr-DRB 
+Coupled Pywr-DRB = [Pywr-DRB v2.0](https://github.com/Pywr-DRB/Pywr-DRB) + PywrDRB-ML plugin
+
+See the demo in `run_coupled_pywrdrb.py`. You will be able to generate the figures as I shown below.
+
+Note: Please install [Pywr-DRB v2.0](https://github.com/Pywr-DRB/Pywr-DRB) first, which contains all dependencies to run the Coupled Pywr-DRB. Then clone this repo to run `run_coupled_pywrdrb.py`. In `run_coupled_pywrdrb.py` (top few lines), you need to change `root_dir` to your directory of cloned `PywrDRB-ML`.
+
+
+![alt text](./images/res_2019.png)
 
 # Data availability (Designed to run until 2023 as the reconstruction data end at 2023)
 | Data            | From        | Note |
@@ -28,6 +38,9 @@ LSTM plugin for water temperature and salt front prediction.
 |-----------------|-------------|------|
 | TempLSTM        | 7/28/2006   | Constrained by observed flow at Lordville|
 | SalinityLSTM    | 10/3/1963   | Constrained by saltfront location data if choosed to have lag 1 as an input|
+
+
+Below are Chung-Yi's code developing notes.
 
 # Raw data preparation
 ## Observed data download from API
@@ -91,4 +104,10 @@ LSTM plugin for water temperature and salt front prediction.
 - `lstm_train_SalinityLSTM.py`
     - Create model, train model, basic analysis
 
-
+# Coupled model debuging
+- `debug\temperature_coupled_pywrdrb_debug.py`
+    - Compare between obs, trained lstm, and coupled pywrdrb
+    - Help to debug logic flaws in coupled pywrdrb
+- `debug\salinity_coupled_pywrdrb_debug.py`
+    - Compare between obs, trained lstm, and coupled pywrdrb
+    - Help to debug logic flaws in coupled pywrdrb
