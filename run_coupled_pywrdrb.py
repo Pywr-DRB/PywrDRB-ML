@@ -66,13 +66,10 @@ results_sets = [
     'salinity', 
     ]
 data.load_output(output_filenames=[output_filename], results_sets=results_sets)
+
 df_temperature = data.temperature[inflow_type][0]
-for c in df_temperature:
-    if c != "thermal_release_requirement":
-        df_temperature[c] = df_temperature[c].shift(-1)
 df_salinity = data.salinity[inflow_type][0]
-for c in df_salinity:
-    df_salinity[c] = df_salinity[c].shift(-1)
+
 #%% Load obs for plotting
 import matplotlib.pyplot as plt
 import numpy as np
@@ -81,6 +78,7 @@ df_obs_temp.loc[df_obs_temp["tmmx_water_src"] != "obs", "QbcTmax_T_L"] = np.nan
 
 df_obs_salinity = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"), parse_dates=True, index_col=[0])
 df_obs_salinity.loc[df_obs_salinity["saltfront_src"] != "obs", "saltfront"] = np.nan
+
 #%% Plot the results
 for year in range(2006, 2024):
     start_date = f"{year}-01-01"
@@ -111,3 +109,12 @@ for year in range(2006, 2024):
     ax.set_ylim([40, 100])
     ax.legend(loc="upper left", frameon=False)
     plt.show()
+    
+#%%
+# No need to do this. It has been internalized in the Pywr-DRB
+# for c in df_temperature:
+#     if c != "thermal_release_requirement":
+#         df_temperature[c] = df_temperature[c].shift(-1)
+
+# for c in df_salinity:
+#     df_salinity[c] = df_salinity[c].shift(-1)
