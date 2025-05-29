@@ -71,7 +71,8 @@ for c in df_temperature:
     if c != "thermal_release_requirement":
         df_temperature[c] = df_temperature[c].shift(-1)
 df_salinity = data.salinity[inflow_type][0]
-
+for c in df_salinity:
+    df_salinity[c] = df_salinity[c].shift(-1)
 #%% Load obs for plotting
 import matplotlib.pyplot as plt
 import numpy as np
