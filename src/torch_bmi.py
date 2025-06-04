@@ -565,19 +565,32 @@ class bmi_lstm(Bmi):
         if self.mc_dropout:
             self.lstm.train()
             self.lstm_output, (self.h_t, self.c_t) = self.lstm(self.input_tensor,
-                                                        (self.h_t, self.c_t), self.dist_mat)
+                                                       (self.h_t, self.c_t), self.dist_mat_all, self.input_delta_tensor)
             self.lstm.eval()
         else:
             self.lstm.eval()
             self.lstm_output, (self.h_t, self.c_t) = self.lstm(self.input_tensor,
-                                                        (self.h_t, self.c_t), self.dist_mat)
+                                                       (self.h_t, self.c_t), self.dist_mat_all, self.input_delta_tensor)
 
         setattr(self, 'channel_water_surface_water__mu_max_of_temperature',
                 self.lstm_output['mu'].detach().numpy()[0,:,0])
         setattr(self, 'channel_water_surface_water__sd_max_of_temperature',
                 self.lstm_output['sigma'].detach().numpy()[0,:,0])
 
+        out_times = np.arange(cur_step, time+1)
+        # Retrieve the predicted values
+        predicted_mu = getattr(self, 'channel_water_surface_water__mu_max_of_temperature', np.zeros(len(out_times)))
+        predicted_sd = getattr(self, 'channel_water_surface_water__sd_max_of_temperature', np.zeros(len(out_times)))
+
+        out_preds = pd.DataFrame({
+            "timestep": out_times, 
+            "mu": predicted_mu, 
+            "sd": predicted_sd
+        })
+
         self.t = time + 1
+
+        return out_preds
 
 
     def forecast(self, lead_time=None):
@@ -1021,9 +1034,11 @@ class bmi_lstm(Bmi):
         elif self.input_array.ndim == 2:
             # input array is greater than one time step
             n_time = self.input_array.shape[1]
-            self.input_array_scaled = ((self.input_array - self.input_mean.reshape(self.n_feat,1)) / (self.input_std.reshape(self.n_feat,1) + 1e-10)).reshape(self.n_segs,n_time,self.n_feat)
+            self.input_array_scaled = ((self.input_array - self.input_mean[:,np.newaxis]) / (self.input_std[:,np.newaxis] + 1e-10))[np.newaxis,:,:]
+            self.input_array_scaled = np.moveaxis(self.input_array_scaled, 2, 1)
             if self.delta_temp_layer:
-                self.input_delta_array_scaled = ((self.input_delta_array - self.input_delta_mean.reshape(self.n_feat_delta,1)) / (self.input_delta_std.reshape(self.n_feat_delta,1) + 1e-10)).reshape(self.n_segs,n_time,self.n_feat_delta)
+                self.input_delta_array_scaled = ((self.input_delta_array - self.input_delta_mean[:,np.newaxis]) / (self.input_delta_std[:,np.newaxis] + 1e-10))[np.newaxis,:,:] 
+                self.input_delta_array_scaled = np.moveaxis(self.input_delta_array_scaled, 2, 1)
         if (DEBUG):
             print('### input_list =', self.input_list)
             print('### input_array =', self.input_array)
