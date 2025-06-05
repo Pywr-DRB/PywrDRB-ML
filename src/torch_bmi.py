@@ -784,53 +784,58 @@ class bmi_lstm(Bmi):
                                                self.n_feat_delta)
 
             self.pretrain_model.train() # ensure that dropout layers are active
-            # train_torch(model=self.pretrain_model,
-            #             loss_function=self.loss_fn,
-            #             optimizer=torch.optim.Adam(self.pretrain_model.parameters(), lr = self.learn_rate_pre),
-            #             x_train=self.x_trn,
-            #             y_train=self.y_trn,
-            #             h_train=self.start_h_trn,
-            #             c_train=self.start_c_trn,
-            #             h_val=self.start_h_val,
-            #             c_val=self.start_c_val,
-            #             weighting_matrix_train=self.dist_mat_trn,
-            #             weighting_matrix_val=self.dist_mat_val,
-            #             batch_size=self.x_trn.shape[0],
-            #             max_epochs=self.n_epochs_pre,
-            #             head=self.head,
-            #             umal_extend_batch=self.umal_extend_batch,
-            #             umal_n_taus_train=self.umal_n_taus_train,
-            #             umal_tau_min=self.umal_tau_min,
-            #             umal_tau_max=self.umal_tau_max,
-            #             early_stopping_patience=self.early_stopping_patience,
-            #             x_val=self.x_val,
-            #             y_val=self.y_val,
-            #             shuffle=False, # hard coding to False
-            #             weights_file=self.weights_file,
-            #             log_file=self.log_file,
-            #             device='cpu', # hard coding
-            #             keep_portion=None)
-            fit_torch_model(model = self.pretrain_model,
-                            x = self.x_trn,
-                            y = self.y_trn,
-                            h = self.start_h_trn,
-                            c = self.start_c_trn,
-                            weighting_matrix = self.dist_mat_trn,
-                            epochs = self.n_epochs_pre,
-                            loss_fn = self.loss_fn,
-                            optimizer = torch.optim.Adam(self.pretrain_model.parameters(), lr = self.learn_rate_pre),
-                            gpu = self.gpu,
-                            head = self.head,
-                            early_stopping_patience = self.early_stopping_patience,
-                            weights_file = self.weights_file,
-                            umal_extend_batch = self.umal_extend_batch,
-                            umal_n_taus_train = self.umal_n_taus_train,
-                            umal_tau_min = self.umal_tau_min,
-                            umal_tau_max = self.umal_tau_max,
-                            weight_loss=self.weight_loss,
-                            weight_threshold=self.weight_threshold,
-                            weight_value=self.weight_value,
-                            x_delta=self.x_delta_trn)
+            train_torch(model=self.pretrain_model,
+                        loss_function=self.loss_fn,
+                        optimizer=torch.optim.Adam(self.pretrain_model.parameters(), lr = self.learn_rate_pre),
+                        x_train=self.x_trn,
+                        x_delta_train=self.x_delta_trn, 
+                        y_train=self.y_trn,
+                        h_train=self.start_h_trn,
+                        c_train=self.start_c_trn,
+                        h_val=self.start_h_val,
+                        c_val=self.start_c_val,
+                        weighting_matrix_train=self.dist_mat_trn,
+                        weighting_matrix_val=self.dist_mat_val,
+                        batch_size=self.x_trn.shape[0],
+                        max_epochs=self.n_epochs_pre,
+                        head=self.head,
+                        umal_extend_batch=self.umal_extend_batch,
+                        umal_n_taus_train=self.umal_n_taus_train,
+                        umal_tau_min=self.umal_tau_min,
+                        umal_tau_max=self.umal_tau_max,
+                        weight_loss=self.weight_loss, 
+                        weight_threshold=self.weight_threshold,
+                        weight_value=self.weight_value,
+                        early_stopping_patience=self.early_stopping_patience,
+                        x_val=self.x_val,
+                        x_delta_val=self.x_delta_val, 
+                        y_val=self.y_val,
+                        shuffle=False, # hard coding to False
+                        weights_file=self.weights_file,
+                        log_file=self.log_file,
+                        device='cpu', # hard coding
+                        keep_portion=None)
+            # fit_torch_model(model = self.pretrain_model,
+            #                 x = self.x_trn,
+            #                 y = self.y_trn,
+            #                 h = self.start_h_trn,
+            #                 c = self.start_c_trn,
+            #                 weighting_matrix = self.dist_mat_trn,
+            #                 epochs = self.n_epochs_pre,
+            #                 loss_fn = self.loss_fn,
+            #                 optimizer = torch.optim.Adam(self.pretrain_model.parameters(), lr = self.learn_rate_pre),
+            #                 gpu = self.gpu,
+            #                 head = self.head,
+            #                 early_stopping_patience = self.early_stopping_patience,
+            #                 weights_file = self.weights_file,
+            #                 umal_extend_batch = self.umal_extend_batch,
+            #                 umal_n_taus_train = self.umal_n_taus_train,
+            #                 umal_tau_min = self.umal_tau_min,
+            #                 umal_tau_max = self.umal_tau_max,
+            #                 weight_loss=self.weight_loss,
+            #                 weight_threshold=self.weight_threshold,
+            #                 weight_value=self.weight_value,
+            #                 x_delta=self.x_delta_trn)
 
         if self.fine_tune:
             self.fine_tune_model = LSTMWithHead(self.n_feat,
@@ -847,59 +852,68 @@ class bmi_lstm(Bmi):
                 self.fine_tune_model.load_state_dict(torch.load(self.weights_file, weights_only=True))
 
             self.fine_tune_model.train() # ensure that dropout layers are active
-            # train_torch(model=self.fine_tune_model,
-            #             loss_function=self.loss_fn,
-            #             optimizer=torch.optim.Adam(self.fine_tune_model.parameters(), lr = self.learn_rate_fine),
-            #             x_train=self.x_trn,
-            #             y_train=self.obs_trn,
-            #             h_train=self.start_h_trn,
-            #             c_train=self.start_c_trn,
-            #             h_val=self.start_h_val,
-            #             c_val=self.start_c_val,
-            #             weighting_matrix_train=self.dist_mat_trn,
-            #             weighting_matrix_val=self.dist_mat_val,
-            #             batch_size=self.x_trn.shape[0],
-            #             max_epochs=self.n_epochs_fine,
-            #             head=self.head,
-            #             umal_extend_batch=self.umal_extend_batch,
-            #             umal_n_taus_train=self.umal_n_taus_train,
-            #             umal_tau_min=self.umal_tau_min,
-            #             umal_tau_max=self.umal_tau_max,
-            #             early_stopping_patience=self.early_stopping_patience,
-            #             x_val=self.x_val,
-            #             y_val=self.y_val,
-            #             shuffle=False, # hard coding to False
-            #             weights_file=self.weights_file,
-            #             log_file=self.log_file,
-            #             device='cpu', # hard coding
-            #             keep_portion=None)
-            fit_torch_model(model = self.fine_tune_model,
-                            x = self.x_trn,
-                            y = self.obs_trn,
-                            h = self.start_h_trn,
-                            c = self.start_c_trn,
-                            weighting_matrix = self.dist_mat_trn,
-                            epochs = self.n_epochs_fine,
-                            loss_fn = self.loss_fn,
-                            optimizer = torch.optim.Adam(self.fine_tune_model.parameters(), lr = self.learn_rate_fine),
-                            gpu = self.gpu,
-                            head = self.head,
-                            early_stopping_patience = self.early_stopping_patience,
-                            weights_file = self.weights_file,
-                            umal_extend_batch = self.umal_extend_batch,
-                            umal_n_taus_train = self.umal_n_taus_train,
-                            umal_tau_min = self.umal_tau_min,
-                            umal_tau_max = self.umal_tau_max,
-                            weight_loss=self.weight_loss,
-                            weight_threshold=self.weight_threshold,
-                            weight_value=self.weight_value,
-                            x_delta=self.x_delta_trn)
+            train_torch(model=self.fine_tune_model,
+                        loss_function=self.loss_fn,
+                        optimizer=torch.optim.Adam(self.fine_tune_model.parameters(), lr = self.learn_rate_fine),
+                        x_train=self.x_trn,
+                        x_delta_train=self.x_delta_trn,
+                        y_train=self.obs_trn,
+                        h_train=self.start_h_trn,
+                        c_train=self.start_c_trn,
+                        h_val=self.start_h_val,
+                        c_val=self.start_c_val,
+                        weighting_matrix_train=self.dist_mat_trn,
+                        weighting_matrix_val=self.dist_mat_val,
+                        batch_size=self.x_trn.shape[0],
+                        max_epochs=self.n_epochs_fine,
+                        head=self.head,
+                        umal_extend_batch=self.umal_extend_batch,
+                        umal_n_taus_train=self.umal_n_taus_train,
+                        umal_tau_min=self.umal_tau_min,
+                        umal_tau_max=self.umal_tau_max,
+                        weight_loss=self.weight_loss, 
+                        weight_threshold=self.weight_threshold,
+                        weight_value=self.weight_value,
+                        early_stopping_patience=self.early_stopping_patience,
+                        x_val=self.x_val,
+                        x_delta_val=self.x_delta_val, 
+                        y_val=self.y_val,
+                        shuffle=False, # hard coding to False
+                        weights_file=self.weights_file,
+                        log_file=self.log_file,
+                        device='cpu', # hard coding
+                        keep_portion=None)
+            # fit_torch_model(model = self.fine_tune_model,
+            #                 x = self.x_trn,
+            #                 y = self.obs_trn,
+            #                 h = self.start_h_trn,
+            #                 c = self.start_c_trn,
+            #                 weighting_matrix = self.dist_mat_trn,
+            #                 epochs = self.n_epochs_fine,
+            #                 loss_fn = self.loss_fn,
+            #                 optimizer = torch.optim.Adam(self.fine_tune_model.parameters(), lr = self.learn_rate_fine),
+            #                 gpu = self.gpu,
+            #                 head = self.head,
+            #                 early_stopping_patience = self.early_stopping_patience,
+            #                 weights_file = self.weights_file,
+            #                 umal_extend_batch = self.umal_extend_batch,
+            #                 umal_n_taus_train = self.umal_n_taus_train,
+            #                 umal_tau_min = self.umal_tau_min,
+            #                 umal_tau_max = self.umal_tau_max,
+            #                 weight_loss=self.weight_loss,
+            #                 weight_threshold=self.weight_threshold,
+            #                 weight_value=self.weight_value,
+            #                 x_delta=self.x_delta_trn)
 
             self.fine_tune_model.load_state_dict(torch.load(self.weights_file, weights_only=True))
             if self.mc_dropout:
                 pred_all, (self.h, self.c) = self.fine_tune_model.train()(self.x_all, [self.start_h_all_dates, self.start_c_all_dates], self.dist_mat_test, self.x_delta_all) # ensure that dropout layers are active w/ .train()
+                pred_val, (self.h, self.c) = self.fine_tune_model.train()(self.x_val, [self.start_h_val, self.start_c_val], self.dist_mat_val, self.x_delta_val)
+                pred_test, (self.h, self.c) = self.fine_tune_model.train()(self.x_test, [self.start_h_test, self.start_c_test], self.dist_mat_test, self.x_delta_test)
             else:
                 pred_all, (self.h, self.c) = self.fine_tune_model.eval()(self.x_all, [self.start_h_all_dates, self.start_c_all_dates], self.dist_mat_test, self.x_delta_all) # ensure that dropout layers are inactive w/ .eval()
+                pred_val, (self.h, self.c) = self.fine_tune_model.eval()(self.x_val, [self.start_h_val, self.start_c_val], self.dist_mat_val, self.x_delta_val)
+                pred_test, (self.h, self.c) = self.fine_tune_model.eval()(self.x_test, [self.start_h_test, self.start_c_test], self.dist_mat_test, self.x_delta_test)
 
             # pred_mean = unscale_output(y_scl=pred_all['mu'].detach().numpy()[0,:,0],
             #                            y_std=self.obs_data_sd,
@@ -910,11 +924,21 @@ class bmi_lstm(Bmi):
             # obs_unscaled = unscale_output(y_scl=self.obs_all[0,:,0],
             #                                 y_std=self.obs_data_sd,
             #                                 y_mean=self.obs_data_mean)
-            df_out_preds = pd.DataFrame({'date': self.dates_all[0,:,0],
+            df_all_preds = pd.DataFrame({'date': self.dates_all[0,:,0],
                                          'mean': pred_all['mu'].detach().numpy()[0,:,0],
                                          'sd': pred_all['sigma'].detach().numpy()[0,:,0],
                                          'obs': self.obs_all[0,:,0]})
-            df_out_preds.to_parquet(path = self.all_dates_preds_file)
+            df_all_preds.to_parquet(path = self.all_dates_preds_file)
+            df_val_preds = pd.DataFrame({'date': self.dates_val[0,:,0],
+                                         'mean': pred_val['mu'].detach().numpy()[0,:,0],
+                                         'sd': pred_val['sigma'].detach().numpy()[0,:,0],
+                                         'obs': self.obs_val[0,:,0]})
+            df_val_preds.to_parquet(path = self.val_preds_file)
+            df_test_preds = pd.DataFrame({'date': self.dates_test[0,:,0],
+                                         'mean': pred_test['mu'].detach().numpy()[0,:,0],
+                                         'sd': pred_test['sigma'].detach().numpy()[0,:,0],
+                                         'obs': self.obs_test[0,:,0]})
+            df_test_preds.to_parquet(path = self.test_preds_file)
             np.save(self.out_h_file, self.h.detach().numpy())
             np.save(self.out_c_file, self.c.detach().numpy())
 
@@ -1312,6 +1336,7 @@ class bmi_lstm(Bmi):
         self.out_c_file = os.path.join(self.train_dir, f'{self.model_id}_c.npy')
         self.test_preds_file = os.path.join(self.train_dir, f'{self.model_id}_test_preds.parquet')
         self.all_dates_preds_file = os.path.join(self.train_dir, f'{self.model_id}_all_dates_preds.parquet')
+        self.val_preds_file = os.path.join(self.train_dir, f'{self.model_id}_val_preds.parquet')
 
         self.model_type = str(self.cfg_bmi['model_type'])
         self.delta_temp_layer = bool(self.cfg_bmi['delta_temp_layer'])
