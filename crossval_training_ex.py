@@ -38,7 +38,7 @@ for outer_fold in crossval_folds:
     test_starts = outer_fold['outer_test_start_dates']
     test_ends = outer_fold['outer_test_end_dates'] 
     for inner_fold in outer_fold['inner_folds']: 
-        out_file = f"3_model_train/cfg/model_config_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
+        out_file = f"cfg/model_config_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
         new_config = main_config.copy()
 
         new_config['start_date_train'] = inner_fold['inner_train_start_dates']
@@ -48,7 +48,7 @@ for outer_fold in crossval_folds:
         new_config['start_date_test'] = test_starts
         new_config['end_date_test'] = test_ends
 
-        new_config['data_file'] = f"2_data_prep/out/data_lordville_2010_2024_log_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.npz"
+        new_config['data_file'] = f"data/data_lordville_2010_2024_log_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.npz"
 
         with open(out_file, 'w') as f:
             yaml.dump(new_config, f, default_flow_style=False, indent=4)
@@ -93,7 +93,7 @@ for outer_fold in crossval_folds:
     # Inner loop (4-fold crossval for hyperparameter tuning)
     for inner_fold in outer_fold['inner_folds']:
         # current model config 
-        config_file = f"3_model_train/cfg/model_config_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
+        config_file = f"cfg/model_config_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
         
         # Try different hyperparameter combinations
         for index, row in hyperparameter_df.iterrows():
@@ -107,7 +107,7 @@ for outer_fold in crossval_folds:
             cur_config['learn_rate_pre'] = float(row['learning_rate']) 
 
             # write out temporary config file with current hyperparametrs
-            cur_cfg_out_file = f"3_model_train/cfg/tmp/model_config_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
+            cur_cfg_out_file = f"cfg/tmp/model_config_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
             with open(cur_cfg_out_file, 'w') as f:
                 yaml.dump(cur_config, f, default_flow_style=False, indent=4)
 
@@ -128,7 +128,7 @@ for outer_fold in crossval_folds:
             if metrics['rmse'] < best_rmse:
                 best_hyperparameters = row
                 best_rmse = metrics['rmse']
-                best_cfg_out_file = f"3_model_train/cfg/best/model_config_outer_{outer_fold['outer_fold']}.yml"
+                best_cfg_out_file = f"cfg/best/model_config_outer_{outer_fold['outer_fold']}.yml"
                 with open(best_cfg_out_file, 'w') as f:
                     yaml.dump(cur_config, f, default_flow_style=False, indent=4)
 
