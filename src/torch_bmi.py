@@ -518,7 +518,7 @@ class bmi_lstm(Bmi):
         self.results = res
         return res
 
-    def update_until(self, timestep):
+    def update_until_loop(self, timestep):
         # Get unscaled lstm input data
         # mu_ft = []
         # sd_ft = []
@@ -542,12 +542,31 @@ class bmi_lstm(Bmi):
             
         #return mu_ft, sd_ft
         
-    def update_until_org(self, time):
+    def update_until(self, time):
         """Update model until a particular model time step.
         Parameters
         ----------
         time : float
             Time to run model until.
+            
+        Example
+        --------
+        >>> config_file = pn.models.get(f"SalinityLSTM.yml")
+        >>> from src.torch_bmi import bmi_lstm
+        >>> from pathnavigator import create
+        >>> pn = create(root_dir=pn.get())
+        >>> pn.chdir()
+        >>> config_file = pn.models.get(f"SalinityLSTM.yml")
+        >>> bmi_lstm = bmi_lstm()
+        >>> bmi_lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
+        >>> end_time_step = 200
+        >>> unscaled_data = bmi_lstm.get_unscaled_values(lead_time=end_time_step)
+        >>> for var in bmi_lstm.x_vars:
+        >>>     bmi_lstm.set_value(var, unscaled_data[var])
+        >>> if bmi_lstm.delta_temp_layer:
+        >>>     for var in bmi_lstm.delta_vars:
+        >>>         bmi_lstm.set_value(var, unscaled_data[var])
+        >>> bmi_lstm.update_until(end_time_step)
         """
         cur_step = int(self.get_current_time())
 
