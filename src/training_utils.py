@@ -764,6 +764,9 @@ def train_loop(epoch_index,
                umal_n_taus_train,
                umal_tau_min,
                umal_tau_max,
+               weight_loss, 
+               weight_threshold, 
+               weight_value,
                device = 'cpu'):
     """
     @param epoch_index: [int] Epoch number
@@ -779,13 +782,23 @@ def train_loop(epoch_index,
         for x, y in tepoch:
             trainx = x.to(device)
             trainy = y.to(device)
+
+            # Initialize weights for loss calculation
+            weights = torch.ones(trainy.shape)
+            if weight_loss:
+                # Assign higher weights to observations exceeding the threshold
+                weights[trainy > weight_threshold] = weight_value
+
             optimizer.zero_grad()
             output, (h, c) = model(trainx, (h.detach(), c.detach()), weighting_matrix)
             if head == 'UMAL':
                 taus = get_UMAL_taus(trainy, umal_n_taus_train, umal_tau_min, umal_tau_min, trainx.shape[0], umal_extend_batch)
                 loss = loss_function(trainy, taus, umal_n_taus_train, output)
             else:
-                loss = loss_function(trainy, output)
+                if weight_loss:
+                    loss = loss_function(trainy, output, weights)
+                else: 
+                    loss = loss_function(trainy, output) 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 3)
             optimizer.step()
@@ -805,6 +818,9 @@ def val_loop(dataloader,
              umal_n_taus_train,
              umal_tau_min,
              umal_tau_max,
+             weight_loss, 
+             weight_threshold, 
+             weight_value,
              device = 'cpu'):
     """
     @param dataloader: [object] torch dataloader with train and val data
@@ -817,12 +833,21 @@ def val_loop(dataloader,
     for iter, (x, y) in enumerate(dataloader):
         testx = x.to(device)
         testy = y.to(device)
+        # Initialize weights for loss calculation
+        weights = torch.ones(testy.shape)
+        if weight_loss:
+            # Assign higher weights to observations exceeding the threshold
+            weights[testy > weight_threshold] = weight_value
+
         output, (h, c) = model(testx, (h.detach(), c.detach()), weighting_matrix)
         if head == 'UMAL':
             taus = get_UMAL_taus(testy, umal_n_taus_train, umal_tau_min, umal_tau_min, testx.shape[0], umal_extend_batch)
             loss = loss_function(testy, taus, umal_n_taus_train, output)
         else:
-            loss = loss_function(testy, output)
+            if weight_loss:
+                loss = loss_function(testy, output, weights)
+            else: 
+                loss = loss_function(testy, output) 
         val_loss.append(loss.item())
     mval_loss = np.mean(val_loss)
     print(f"Valid loss: {mval_loss:.2f}")
@@ -832,6 +857,7 @@ def train_torch(model,
                 loss_function,
                 optimizer,
                 x_train,
+                x_delta_train,
                 y_train,
                 h_train,
                 c_train,
@@ -846,8 +872,12 @@ def train_torch(model,
                 umal_n_taus_train,
                 umal_tau_min,
                 umal_tau_max,
+                weight_loss, 
+                weight_threshold, 
+                weight_value,
                 early_stopping_patience=False,
                 x_val = None,
+                x_delta_val = None,
                 y_val = None,
                 shuffle = False,
                 weights_file = None,
@@ -887,23 +917,6 @@ def train_torch(model,
         if y_val is not None:
             y_val[:, :-period, ...] = np.nan
 
-    # Put together dataloaders
-    train_data = []
-    for i in range(len(x_train)):
-        train_data.append([x_train[i], y_train[i]])
-
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=shuffle, pin_memory=True)
-
-    if x_val is not None:
-        val_data = []
-        for i in range(len(x_val)):
-            val_data.append([x_val[i], y_val[i]])
-
-        val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=shuffle, pin_memory=True)
-
-    val_time = []
-    train_time = []
-
     if device == 'gpu':
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model.to(device)
@@ -918,6 +931,31 @@ def train_torch(model,
         weighting_matrix_train = weighting_matrix_train.to(device)
         weighting_matrix_val = weighting_matrix_val.to(device)
 
+    if x_delta_train is not None:
+        x_delta_train = x_delta_train.to(device)
+    if x_delta_val is not None: 
+        x_delta_val = x_delta_val.to(device)
+
+
+    # Put together dataloaders
+    train_data = []
+    for i in range(len(x_train)):
+        train_data.append([x_train[i], y_train[i]])
+
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=shuffle, pin_memory=True)
+
+    if x_val is not None:
+        val_data = []
+        for i in range(len(x_val)):
+            val_data.append([x_val[i], y_val[i]])
+
+        val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=shuffle, pin_memory=True)
+
+    # TODO: add in delta support for data loaders 
+
+    val_time = []
+    train_time = []
+
     ### Run training loop
     log_cols = ['epoch', 'loss', 'val_loss','time','val_time']
     train_log = pd.DataFrame(columns=log_cols)
@@ -929,7 +967,8 @@ def train_torch(model,
         model.train()
         epoch_loss = train_loop(i, train_loader, h_train, c_train, weighting_matrix_train,
                                 head, model, loss_function, optimizer, umal_extend_batch,
-                                umal_n_taus_train, umal_tau_min, umal_tau_max, device)
+                                umal_n_taus_train, umal_tau_min, umal_tau_max, 
+                                weight_loss, weight_threshold, weight_value, device)
         train_time.append(time.time() - t1)
         train_log = pd.concat([train_log,pd.DataFrame([[i, epoch_loss, np.nan,time.time()-t1,np.nan]],columns=log_cols,index=[i])])
 
@@ -939,7 +978,8 @@ def train_torch(model,
             model.eval()
             epoch_val_loss = val_loop(val_loader, h_val, c_val, weighting_matrix_val,
                                       head, model, loss_function, umal_extend_batch,
-                                      umal_n_taus_train, umal_tau_min, umal_tau_max, device)
+                                      umal_n_taus_train, umal_tau_min, umal_tau_max,
+                                      weight_loss, weight_threshold, weight_value, device)
 
             if epoch_val_loss < best_loss:
                 torch.save(model.state_dict(), weights_file)
