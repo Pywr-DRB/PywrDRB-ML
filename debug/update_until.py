@@ -23,6 +23,6 @@ if lstm.delta_temp_layer:
     for var in lstm.delta_vars:
         lstm.set_value(var, unscaled_data[var])
 
-lstm.update_until_org(end_time_step)
+lstm.update_until(end_time_step)
 
-# lstm.update_until(100)
+# lstm.update_until_loop(100)
