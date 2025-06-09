@@ -16,7 +16,7 @@ import sys
 
 sys.path.insert(1, "src")
 from prep_data import data_prep
-from crossval_utils import *
+from crossval_utils import calc_crossval_splits
 
 # splitting up data based on dates 
 k_outer_loop = 5
