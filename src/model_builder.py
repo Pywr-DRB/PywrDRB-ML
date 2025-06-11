@@ -275,7 +275,7 @@ def eval_TempLSTM(lstm1, lstm2, period="all", only_months=None, disable=False):
     global db_TempLSTM
     database = db_TempLSTM.copy()
     
-    df_sim = return_T_C(lstm1, lstm2, map_to_Tmax=True)
+    df_sim = return_T_L(lstm1, lstm2, map_to_Tmax=True)
     prefix = lstm1.cfg_bmi["y_vars"][0].split("_")[0]
     
     database = database.loc[df_sim.index, :]

@@ -7,8 +7,8 @@ else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
-pn.mkdir("outputs/coupled_pywrdrb")
-pn.sc.add("wd", pn.get("outputs/coupled_pywrdrb"), overwrite=True)
+pn.mkdir("outputs/coupled_pywrdrb_with_control")
+pn.sc.add("wd", pn.get("outputs/coupled_pywrdrb_with_control"), overwrite=True)
 
 import pywrdrb
 
@@ -20,30 +20,31 @@ output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
 temp_options = {
     "PywrDRB_ML_plugin_path": pn.get(), 
     "start_date": None, 
-    "activate_thermal_control": False, 
+    "activate_thermal_control": True, 
+    "activate_input_bias_correction": False, # Pywr start date need to be same as teh trained LSTM otherwise the flow dynamics will be significantly different leading large bias correct in the forecast.
     "Q_C_lstm_var_name": "QbcTavg_Q_C", 
     "Q_i_lstm_var_name": "QbcTavg_Q_i",
     "cannonsville_storage_pct_lstm_var_name": "bc_cannonsville_storage_pct",
     "disable_tqdm": False,
-    "debug": False
+    "debug": True
     }
 
-salinity_options = {
-    "PywrDRB_ML_plugin_path": pn.get(), 
-    "start_date": None, 
-    "Q_Trenton_lstm_var_name": "Q_Trenton_bc", 
-    "Q_Schuylkill_lstm_var_name": "Q_Schuylkill_bc",
-    "disable_tqdm": False,
-    "debug": False
-    }
+# salinity_options = {
+#     "PywrDRB_ML_plugin_path": pn.get(), 
+#     "start_date": None, 
+#     "Q_Trenton_lstm_var_name": "Q_Trenton_bc", 
+#     "Q_Schuylkill_lstm_var_name": "Q_Schuylkill_bc",
+#     "disable_tqdm": False,
+#     "debug": False
+#     }
 
 mb = pywrdrb.ModelBuilder(
     inflow_type=inflow_type, 
     start_date="1960-01-01",
-    end_date="2023-12-31",
+    end_date="2007-12-31",
     options={
         "temperature_model": temp_options,
-        "salinity_model": salinity_options,
+        #"salinity_model": salinity_options,
         }
     )
 
@@ -60,12 +61,16 @@ recorder = pywrdrb.OutputRecorder(
 
 
 #%% Thermal control (Future coding structure for MOEA during developing stage where control algorithm will be assigned externally after load model)
-plist = [p.name for p in model.parameters]
+# plist = [p.name for p in model.parameters]
 temperature_model = model.parameters["temperature_model"]
 
 def return_dps_func(*params):
     def dps_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, current_date):
-        return 1
+        ml_model.forecast(Q_C, Q_i, cannonsville_storage_pct, lead_time=0)
+        if current_date.month in [6, 7, 8]:
+            return 1 # Thermal release MGD
+        else:
+            return 0
     
     return dps_func
 
@@ -81,13 +86,29 @@ stats = model.run()
 data = pywrdrb.Data()
 results_sets = [
     'temperature', 
-    'salinity', 
+    #'salinity', 
     ]
 data.load_output(output_filenames=[output_filename], results_sets=results_sets)
 
 df_temperature = data.temperature[inflow_type][0]
-df_salinity = data.salinity[inflow_type][0]
+df_temperature["reduce degC"] = df_temperature["temperature_after_thermal_release_mu"] - df_temperature["forecasted_temperature_before_thermal_release_mu"]
+#df_salinity = data.salinity[inflow_type][0]
 
+temperature_model = model.parameters["temperature_model"]
+records = temperature_model.records
+
+#%%
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+ax.plot(df_temperature["temperature_after_thermal_release_mu"], label="no ctrl")
+ax.plot(df_temperature_ctrl["temperature_after_thermal_release_mu"], label="ctrl")
+ax.legend()
+plt.show()
+
+fig, ax = plt.subplots()
+ax.plot(df_temperature["temperature_after_thermal_release_mu"]-df_temperature_ctrl["temperature_after_thermal_release_mu"], label="diff")
+ax.legend()
+plt.show()
 #%% Load obs for plotting
 import matplotlib.pyplot as plt
 import numpy as np

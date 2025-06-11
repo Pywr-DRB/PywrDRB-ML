@@ -611,7 +611,6 @@ class bmi_lstm(Bmi):
 
         return out_preds
 
-
     def forecast(self, lead_time=None):
         """
         Forecast for a particular lead time, which is the number of days into the future from time t.
