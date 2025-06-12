@@ -66,7 +66,7 @@ lstm2_settings = {
     "x_vars": ["tmmn", "tmmx", "pr", "srad", "QbcTavg_Q_i", "doy", "QbcTavg_Q_C"],
     "y_vars": ["QbcTavg_T_i"],
     "y_vars_src": ["tavg_water_src"],
-    'min_date': '2006-07-31',
+    'min_date': '1979-01-01',
     'max_date': '2023-12-31',
     'start_date_train': '2006-12-31', #'1992-10-01', # Can add reservoir_io_sntemp.csv for pretrain T_i is constrainted by T_L & T_C
     'end_date_train': '2023-12-31',
@@ -77,7 +77,13 @@ lstm2_settings = {
     }
 
 #%%
-subfolder = "TempLSTMGapFiller"
+rmse = {
+    "TempLSTM (lag1 + Q_C)": 1.26,
+    "TempLSTM (lag1)": 1.55,
+    "TempLSTM (Q_C)": 1.26,
+    "TempLSTM (None)": 1.1
+    }
+subfolder = "TempLSTM_Q_C"
 lstm1_config = deepcopy(config_template)
 lstm1_config.update(lstm1_settings)
 lstm2_config = deepcopy(config_template)
@@ -156,15 +162,61 @@ with open(pn.models.get(f"{subfolder}") / "eval_metrics.txt", 'w') as f:
 #%% plot bar plot
 
 rmse = {
-    "TempLSTM (lag1 + Q_C)": 1.26,
-    "TempLSTM (lag1)": 1.55,
-    "TempLSTM (Q_C)": 1.26,
-    "TempLSTM (None)": 1.1
+    "TempLSTM (lag1 + Q_C)": 1.32,
+    "TempLSTM (lag1)": 1.39,
+    "TempLSTM (Q_C)": 1.55,
+    "TempLSTM (None)": 1.65
     }
 
 
+rmse_summer = {
+    "TempLSTM (lag1 + Q_C)": 1.86,
+    "TempLSTM (lag1)": 1.94,
+    "TempLSTM (Q_C)": 2.28,
+    "TempLSTM (None)": 2.44
+    }
 
+#%%
+import matplotlib.pyplot as plt
 
+# RMSE values
+rmse = {
+    "TempLSTM (lag1 + Q_C)": 1.32,
+    "TempLSTM (lag1)": 1.39,
+    "TempLSTM (Q_C)": 1.55,
+    "TempLSTM (None)": 1.65
+}
+
+rmse_summer = {
+    "TempLSTM (lag1 + Q_C)": 1.86,
+    "TempLSTM (lag1)": 1.94,
+    "TempLSTM (Q_C)": 2.28,
+    "TempLSTM (None)": 2.44
+}
+
+# Setup
+labels = list(rmse.keys())
+x = range(len(labels))
+width = 0.35
+
+# Create figure and axis
+fig, ax = plt.subplots(figsize=(8, 5))
+
+# Plot bars
+ax.bar([i - width/2 for i in x], rmse.values(), width, label='All Period')
+ax.bar([i + width/2 for i in x], rmse_summer.values(), width, label='Summer Period')
+
+# Formatting
+ax.set_ylabel('RMSE (°C)')
+ax.set_title('Comparison of TempLSTM Model RMSEs')
+ax.set_xticks(x)
+ax.set_xticklabels(labels, rotation=15)
+ax.legend()
+ax.grid(True, axis='y', linestyle='--', alpha=0.7)
+
+# Layout
+plt.tight_layout()
+plt.show()
 
 
 

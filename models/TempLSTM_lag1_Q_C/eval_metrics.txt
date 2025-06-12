@@ -1,0 +1,85 @@
+subfolder: TempLSTM_lag1_Q_C
+=== df_metric ===
+	nrmse	r	r2	rmse
+T_C	0.03652848801675968	0.974951007366627	0.9498256804657341	0.8839894100055843
+T_i	0.011556768061590637	0.9096985813914714	0.8269644548616303	4.909613308673564
+Tavg	0.041398584634774964	0.9878613013426942	0.9731482367937181	1.2085496972316614
+T_L	0.04256965154733102	0.9864823271293839	0.9706983830951362	1.324735971985045
+
+
+=== df_metric_summer ===
+	nrmse	r	r2	rmse
+T_C	0.05376974458334442	0.9252727612624221	0.8530100792172035	1.0323790960002128
+T_i	0.04531814804379311	0.7717725271786803	0.5915522272539665	4.388503713266983
+Tavg	0.0975604602410225	0.7830108446977418	0.533963799546994	1.7554072840865844
+T_L	0.09522810072302991	0.775429090991676	0.5313186997157284	1.8587818724856098
+
+
+=== lstm1_config ===
+input_data_file: data/database/TempLSTM_database.csv
+x_vars: ['tmmn', 'tmmx', 'pr', 'srad', 'bc_cannonsville_storage_pct', 'doy', 'QbcTavg_Q_C', 'QbcTavg_T_C']
+y_vars: ['QbcTavg_T_C']
+y_vars_src: ['tavg_water_cannonsville_src']
+lag_days: 1
+min_date: 1979-01-01
+max_date: 2023-12-31
+start_date_train: 1979-12-31
+end_date_train: 2023-12-31
+start_date_val: 2017-01-01
+end_date_val: 2017-12-31
+start_date_test: 2017-01-01
+end_date_test: 2017-12-31
+pre_train: True
+fine_tune: True
+learn_rate_pre: 0.05
+learn_rate_fine: 0.05
+n_epochs_pre: 50
+n_epochs_fine: 350
+early_stopping_patience: 50
+hidden_units: 16
+head_hidden_units: 16
+head_n_distr: 1
+weight_loss: True
+weight_threshold: 20
+weight_value: 2
+mc_dropout: True
+recurrent_dropout_rate: 0.3
+dropout_rate: 0.1
+seq_len: 365
+offset: 1.0
+seed: 4
+
+
+=== lstm2_config ===
+input_data_file: data/database/TempLSTM_database.csv
+x_vars: ['tmmn', 'tmmx', 'pr', 'srad', 'QbcTavg_Q_i', 'doy', 'QbcTavg_Q_C', 'QbcTavg_T_i']
+y_vars: ['QbcTavg_T_i']
+y_vars_src: ['tavg_water_src']
+lag_days: 1
+min_date: 1979-01-01
+max_date: 2023-12-31
+start_date_train: 2006-12-31
+end_date_train: 2023-12-31
+start_date_val: 2017-01-01
+end_date_val: 2017-12-31
+start_date_test: 2017-01-01
+end_date_test: 2017-12-31
+pre_train: True
+fine_tune: True
+learn_rate_pre: 0.05
+learn_rate_fine: 0.05
+n_epochs_pre: 50
+n_epochs_fine: 350
+early_stopping_patience: 50
+hidden_units: 16
+head_hidden_units: 16
+head_n_distr: 1
+weight_loss: True
+weight_threshold: 20
+weight_value: 2
+mc_dropout: True
+recurrent_dropout_rate: 0.3
+dropout_rate: 0.1
+seq_len: 365
+offset: 1.0
+seed: 4

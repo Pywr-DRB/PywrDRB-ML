@@ -21,7 +21,7 @@ inflow_type = 'pub_nhmv10_BC_withObsScaled'
 
 mb = pywrdrb.ModelBuilder(
     inflow_type=inflow_type, 
-    start_date="1945-01-01",
+    start_date="1978-01-01", # 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1945-01-01",
     end_date="2023-12-31"
     )
 

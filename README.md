@@ -64,6 +64,7 @@ Below are Chung-Yi's code developing notes.
     - seg_id_nat
         - 1566 => Canonsville outflow
         - 1444 => Pepecton outflow
+        - 1573 => Lordville
         - GIS: https://www.sciencebase.gov/catalog/item/535eda80e4b08e65d60fc834
 
 - `data\raw\sf_data.xlsx (.csv)` 
