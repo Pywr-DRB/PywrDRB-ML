@@ -160,4 +160,11 @@ dff = nwis.download(url=url, to_frame=True)
 dff.index = pd.to_datetime(dff["datetime"])
 df["01474500"] = dff["118500_00060_00003"] * 0.64632 # cfs to mgd
 
+new_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="D")
+df = df.reindex(new_index) # Make sure dates are consecutive
+df.index.name = "date"
+
+# Since we use 7-day average, some obs row are nan due to previous 7 days contains nan
+df.loc[df["saltfront"].isna(), "saltfront_src"] = "other"
+
 df.to_csv(pn.data.raw.get() / "salt_front_data.csv")

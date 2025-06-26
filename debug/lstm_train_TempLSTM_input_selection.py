@@ -68,7 +68,7 @@ lstm2_settings = {
     "y_vars_src": ["tavg_water_src"],
     'min_date': '1979-01-01',
     'max_date': '2023-12-31',
-    'start_date_train': '2006-12-31', #'1992-10-01', # Can add reservoir_io_sntemp.csv for pretrain T_i is constrainted by T_L & T_C
+    'start_date_train': '1979-01-01', #'1992-10-01', # Can add reservoir_io_sntemp.csv for pretrain T_i is constrainted by T_L & T_C
     'end_date_train': '2023-12-31',
     'start_date_val': '2017-01-01',
     'end_date_val': '2017-12-31',

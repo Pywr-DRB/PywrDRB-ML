@@ -144,6 +144,8 @@ class bmi_lstm(Bmi):
         '01474500',
         'Q_Trenton_bc',
         'Q_Schuylkill_bc',
+        'Q_Trenton_bc_7d_avg',
+        'Q_Schuylkill_bc_7d_avg',
         'doy_cos',
         'doy',
         'seg_id_nat',
@@ -241,6 +243,8 @@ class bmi_lstm(Bmi):
         '01474500': ['01474500', '--'],
         'Q_Trenton_bc': ['Q_Trenton_bc', '--'],
         'Q_Schuylkill_bc': ['Q_Schuylkill_bc', '--'],
+        'Q_Trenton_bc_7d_avg': ['Q_Trenton_bc_7d_avg', '--'],
+        'Q_Schuylkill_bc_7d_avg': ['Q_Schuylkill_bc_7d_avg', '--'],
         'doy_cos': ['doy_cos', '--'],
         'doy': ['doy', '--'],
         'seg_id_nat': ['seg_id_nat', '--'],
@@ -481,38 +485,25 @@ class bmi_lstm(Bmi):
             print("The results already exist.")
             return self.results
         # Get unscaled lstm input data
-        mu_ft = []
-        sd_ft = []
         length = self.x.shape[1]
         unscaled_data = self.get_unscaled_values(lead_time=length)
         
-        for _ in tqdm(range(length)):
-            for vi, var in enumerate(unscaled_data):
-                if var in self.x_vars:
-                    if var in force_zero_vars:
-                        self.set_value(var, 0)
-                    else:
-                        self.set_value(var, unscaled_data.loc[int(self.t), var])
-                
-                if self.delta_temp_layer and var in self.delta_vars:
-                    if var in force_zero_vars:
-                        self.set_value(var, 0)
-                    else:
-                        self.set_value(var, unscaled_data.loc[int(self.t), var])           
-                
-            self.update()
+        for var in self.x_vars:
+            if var in force_zero_vars:
+                self.set_value(var, np.zeros(length))
+            else:
+                self.set_value(var, unscaled_data[var])
+        self.update_until(length-1)
 
-            mu_pred = np.zeros(1)
-            sd_pred = np.zeros(1)
-            self.get_value("channel_water_surface_water__mu_max_of_temperature", mu_pred)
-            self.get_value("channel_water_surface_water__sd_max_of_temperature", sd_pred)
-            mu_ft.append(mu_pred[0])
-            sd_ft.append(sd_pred[0])
+        mu_pred = np.zeros(length)
+        sd_pred = np.zeros(length)
+        self.get_value("channel_water_surface_water__mu_max_of_temperature", mu_pred)
+        self.get_value("channel_water_surface_water__sd_max_of_temperature", sd_pred)
             
         res = pd.DataFrame()
         res["date"] = self.dates_all.flatten()
-        res['mu_ft'] = mu_ft
-        res['sd_ft'] = sd_ft
+        res['mu_ft'] = mu_pred
+        res['sd_ft'] = sd_pred
         res.set_index("date", inplace=True)
         res = res.reindex(pd.date_range(start=res.index.min(), end=res.index.max(), freq="D"))
         self.results = res

@@ -16,7 +16,18 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
     # 01474500 = outletSchuylkill
     df_salinity_flow_bc = pd.read_csv(pn.data.raw.get() / "pywrdrb_pub_nhmv10_BC_withObsScaled_flow_and_storage.csv", parse_dates=True, index_col=["date"])[start:end][["flow_delTrenton", "flow_outletSchuylkill"]]
     df_salinity_flow_bc.columns = ["Q_Trenton_bc", "Q_Schuylkill_bc"]
+    df_salinity_flow_bc["Q_Trenton_bc_7d_avg"] = df_salinity_flow_bc["Q_Trenton_bc"].rolling(window=7, min_periods=1).mean()
+    df_salinity_flow_bc["Q_Schuylkill_bc_7d_avg"] = df_salinity_flow_bc["Q_Schuylkill_bc"].rolling(window=7, min_periods=1).mean()
+
+    
     df_salinity_obs = pd.read_csv(pn.data.raw.get("salt_front_data.csv"), parse_dates=True, index_col=["date"])[start:end]
+    
+    # Fill gaps by lstm simed data
+    lstm_simed_saltfront = pd.read_csv(pn.data.raw.get("lstm_simed_saltfront.csv"), parse_dates=True, index_col=["date"])[start:end]
+    lstm_simed_saltfront = lstm_simed_saltfront.reindex(df_salinity_obs.index)
+    mask = (~lstm_simed_saltfront["saltfront"].isna()) & (df_salinity_obs["saltfront_src"] == "other") & (df_salinity_obs["saltfront"].isna())
+    df_salinity_obs.loc[mask, "saltfront"] = lstm_simed_saltfront.loc[mask, "saltfront"]
+    df_salinity_obs.loc[mask, "saltfront_src"] = "lstm"
     
     df_all = pd.concat(
         [df_salinity_obs, df_salinity_flow_bc], 
@@ -30,7 +41,7 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
     df_all['doy'] = df_all.index.dayofyear
     
     # Required by Jake's LSTM prep
-    df_all["seg_id_nat"] = 1573
+    df_all["seg_id_nat"] = 1573 # Lordville
     
     df_all.replace("obv", "obs", inplace=True) # in case of "obv" in the data
     df_all.to_csv(pn.data.database.get() / filename)

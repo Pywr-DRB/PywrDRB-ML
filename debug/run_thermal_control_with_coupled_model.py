@@ -62,6 +62,8 @@ recorder = pywrdrb.OutputRecorder(
 
 #%% Thermal control (Future coding structure for MOEA during developing stage where control algorithm will be assigned externally after load model)
 # plist = [p.name for p in model.parameters]
+
+#model = pywrdrb.Model.load(str(model_filename))
 temperature_model = model.parameters["temperature_model"]
 
 def return_dps_func(*params):

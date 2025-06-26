@@ -80,6 +80,9 @@ Below are Chung-Yi's code developing notes.
 
 # Creating database for LSTM training
 ## TempLSTM
+- `src\form_TempLSTM_db\use_lstm_to_fill_gaps.py`
+    - `data\raw\lstm_simed_T_degC.csv`
+    - later use this to fill gaps if linearly interpolate over 3 consecutive days
 - `src/form_TempLSTM_db/decompose_Ti_Qi.py`
     - `data\decomposed_Ti_Qi\df_QobsTavg.csv`
     - `data\decomposed_Ti_Qi\df_QbcTavg.csv`
