@@ -22,12 +22,16 @@ temp_rf = WaterTempRandomForestUncertaintyModel(
     )
 temp_rf.load_data(database)
 
-temp_rf.update_util(t=3)
+temp_rf.update_until(t=3)
 
 temp_rf.forecast(t=temp_rf.t, quantile=0.95)
+temp_rf.forecast(t=temp_rf.t)
 
-for _ in tqdm(range(500)):
-    temp_rf.update(t=temp_rf.t, quantile=0.95)
+temp_rf.forecast_T_L_arr
+temp_rf.forecast_T_L_lb_arr
+temp_rf.forecast_T_L_ub_arr
+# for _ in tqdm(range(500)):
+#     temp_rf.update(t=temp_rf.t, quantile=0.95)
 
 for _ in tqdm(range(500)):
     temp_rf.update(t=temp_rf.t, quantile=None)

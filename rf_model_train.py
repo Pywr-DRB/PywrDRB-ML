@@ -40,6 +40,7 @@ rf_model1 = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
 rf_model1.fit(X, obs)
 rf_model1.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
 rf_model1.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
+rf_model1.downsample_tau(size=5000)
 rf_model1.save(pn.models.get(folder) / "rf_model1.gz")
 # RMSE on training set: 0.572
 # Mean RMSE from cross-validation: 1.539
@@ -58,6 +59,7 @@ rf_model2 = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
 rf_model2.fit(X, obs)
 rf_model2.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
 rf_model2.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
+rf_model2.downsample_tau(size=5000)
 rf_model2.save(pn.models.get(folder) / "rf_model2.gz")
 # RMSE on training set: 1.890
 # Mean RMSE from cross-validation: 4.321
@@ -77,6 +79,8 @@ rf_model_map = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
 rf_model_map.fit(X, obs)
 rf_model_map.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
 rf_model_map.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
+rf_model_map.downsample_tau(size=5000)
+rf_model_map.save(pn.models.get(folder) / "rf_model_map.gz")
 # RMSE on training set: 0.217
 # Mean RMSE from cross-validation: 0.477
 
@@ -121,13 +125,13 @@ database = db_SalinityLSTM.copy()['1979-01-01': '2023-12-31']
 df_res = pd.DataFrame(index=database.index)
 
 rf_settings = {
-    "n_estimators": 1000,
+    "n_estimators": 100,
     "max_features": "sqrt",
     "random_state": 4,
     "n_jobs": -2,
     "max_depth": 30,
     }
-n_bootstrap = 100
+n_bootstrap = 1000
 
 df = database[["Q_Trenton_bc", "Q_Schuylkill_bc", "Q_Trenton_bc_7d_avg", "Q_Schuylkill_bc_7d_avg", "doy", "saltfront", "saltfront_src"]].dropna()
 df.loc[df["saltfront_src"] != "obs", "saltfront"] = np.nan
@@ -140,6 +144,7 @@ rf_model_saltfront = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
 rf_model_saltfront.fit(X, obs)
 rf_model_saltfront.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
 rf_model_saltfront.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
+rf_model_saltfront.downsample_tau(size=5000)
 rf_model_saltfront.save(pn.models.get(folder) / "rf_model_saltfront.gz")
 
 X = database[rf_model_saltfront.x_vars].values

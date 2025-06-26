@@ -168,6 +168,27 @@ class RandomForestUncertaintyModel:
         self.tau_list = tau_list
         return None
     
+    def downsample_tau(self, size=5000):
+        """
+        Downsample the tau_list to a specified size.
+        
+        Parameters
+        ==============
+        size: int, default=1000
+            The desired size of the downsampled tau_list.
+        """
+        if self.tau_list is None:
+            raise ValueError("tau_list has not been computed yet. Call compute_tau() first.")
+        
+        if len(self.tau_list) <= size:
+            print("tau_list is already smaller than or equal to the desired size.")
+            return None
+        
+        rng = np.random.RandomState(self.random_state)
+        downsampled_tau = rng.choice(self.tau_list, size=size, replace=False)
+        self.tau_list = downsampled_tau.tolist()
+        return None
+    
     def predict(self, X, quantile=None):
         """
         Predict using the fitted Random Forest model and estimate uncertainty if quantile is provided.
@@ -304,35 +325,36 @@ class WaterTempRandomForestUncertaintyModel:
         self.rf_model_map = joblib.load(rf_model_map)
         
         # Input data
-        self.X_1 = None
-        self.X_2 = None
-        self.X_map = None
-        self.Q_C = None
-        self.Q_i = None
-        self.Q_L = None
+        self.X_1 = np.nan
+        self.X_2 = np.nan
+        self.X_map = np.nan
+        self.Q_C = np.nan
+        self.Q_i = np.nan
+        self.Q_L = np.nan
         
         # Dates
         self.start_date = None
         self.end_date = None
+        self.length = None
         
         # Current predictions
-        self.T_C = None
-        self.T_C_lb = None
-        self.T_C_ub = None
-        self.T_i = None
-        self.T_i_lb = None
-        self.T_i_ub = None
-        self.Tavg_L = None
-        self.Tavg_L_lb = None
-        self.Tavg_L_ub = None
-        self.T_L = None
-        self.T_L_lb = None
-        self.T_L_ub = None
+        self.T_C = np.nan
+        self.T_C_lb = np.nan
+        self.T_C_ub = np.nan
+        self.T_i = np.nan
+        self.T_i_lb = np.nan
+        self.T_i_ub = np.nan
+        self.Tavg_L = np.nan
+        self.Tavg_L_lb = np.nan
+        self.Tavg_L_ub = np.nan
+        self.T_L = np.nan
+        self.T_L_lb = np.nan
+        self.T_L_ub = np.nan
         
         # Forecast predictions
-        self.forecast_T_L_arr = None
-        self.forecast_T_L_lb_arr = None
-        self.forecast_T_L_ub_arr = None
+        self.forecast_T_L_arr = [np.nan]
+        self.forecast_T_L_lb_arr = [np.nan]
+        self.forecast_T_L_ub_arr = [np.nan]
         
         # Time step
         self.t = 0
@@ -371,6 +393,7 @@ class WaterTempRandomForestUncertaintyModel:
         self.Q_i = db["QbcTavg_Q_i"].values
         
         length = db.shape[0]
+        self.length = length
         if self.debug:
             self.records = {
                 "Q_C": [np.nan] * length,
@@ -499,14 +522,14 @@ class WaterTempRandomForestUncertaintyModel:
                 self.records["T_i"][t] = T_i[0]
                 self.records["Tavg_L"][t] = Tavg_L[0]
                 self.records["T_L"][t] = T_L[0]
-            T_C_lb = [None]
-            T_C_ub = [None]
-            T_i_lb = [None]
-            T_i_ub = [None]
-            Tavg_L_lb = [None]
-            Tavg_L_ub = [None]
-            T_L_lb = [None]
-            T_L_ub = [None]
+            T_C_lb = [np.nan]
+            T_C_ub = [np.nan]
+            T_i_lb = [np.nan]
+            T_i_ub = [np.nan]
+            Tavg_L_lb = [np.nan]
+            Tavg_L_ub = [np.nan]
+            T_L_lb = [np.nan]
+            T_L_ub = [np.nan]
         
         self.T_C = T_C[0]
         self.T_C_lb = T_C_lb[0]
@@ -620,14 +643,14 @@ class WaterTempRandomForestUncertaintyModel:
                 self.forecast_records["T_i"][t] = T_i[0]
                 self.forecast_records["Tavg_L"][t] = Tavg_L[0]
                 self.forecast_records["T_L"][t] = T_L[0]
-            T_C_lb = None
-            T_C_ub = None
-            T_i_lb = None
-            T_i_ub = None
-            Tavg_L_lb = None
-            Tavg_L_ub = None
-            T_L_lb = None
-            T_L_ub = None
+            T_C_lb = np.nan
+            T_C_ub = np.nan
+            T_i_lb = np.nan
+            T_i_ub = np.nan
+            Tavg_L_lb = np.nan
+            Tavg_L_ub = np.nan
+            T_L_lb = [np.nan]
+            T_L_ub = [np.nan]
         
         self.forecast_T_L_arr = T_L
         self.forecast_T_L_lb_arr = T_L_lb
@@ -703,14 +726,14 @@ class WaterTempRandomForestUncertaintyModel:
                 self.records["T_i"][t:t+length] = T_i
                 self.records["Tavg_L"][t:t+length] = Tavg_L
                 self.records["T_L"][t:t+length] = T_L
-            T_C_lb = [None]
-            T_C_ub = [None]
-            T_i_lb = [None]
-            T_i_ub = [None]
-            Tavg_L_lb = [None]
-            Tavg_L_ub = [None]
-            T_L_lb = [None]
-            T_L_ub = [None]
+            T_C_lb = [np.nan]
+            T_C_ub = [np.nan]
+            T_i_lb = [np.nan]
+            T_i_ub = [np.nan]
+            Tavg_L_lb = [np.nan]
+            Tavg_L_ub = [np.nan]
+            T_L_lb = [np.nan]
+            T_L_ub = [np.nan]
         
         self.T_C = T_C[-1]
         self.T_C_lb = T_C_lb[-1]
