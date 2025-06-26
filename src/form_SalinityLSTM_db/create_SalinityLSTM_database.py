@@ -43,12 +43,17 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
     # Required by Jake's LSTM prep
     df_all["seg_id_nat"] = 1573 # Lordville
     
+    # Manually add lag1 y as an input variable (for RF model)
+    lag1_vars = ["saltfront"]
+    for var in lag1_vars:
+        df_all[f"{var}_lag1"] = df_all[var].shift(1)
+    
     df_all.replace("obv", "obs", inplace=True) # in case of "obv" in the data
     df_all.to_csv(pn.data.database.get() / filename)
     
     # Form bmi attributes
     input_vars = list(df_all)
-    input_vars += ['y_src_lag_1', 'saltfront_lag_1']
+    input_vars += ['y_src_lag_1', 'saltfront_lag_1'] # For LSTM
     
     unit_map = {}
     for v in input_vars:

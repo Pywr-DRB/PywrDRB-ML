@@ -42,6 +42,11 @@ def create_TempLSTM_database(pn, start="1979-01-01", end="2024-12-31", filename=
         axis=1
         )
     
+    # Manually add lag1 y as an input variable
+    lag1_vars = ["QbcTavg_T_C", "QbcTavg_T_i", "QbcTmax_T_L"]
+    for var in lag1_vars:
+        df_all[f"{var}_lag1"] = df_all[var].shift(1)
+
     # Load reservoir storage
     df_storage = pd.read_csv(pn.data.raw.get("drb_reservoir_storage_mg_2000_2024.csv"), parse_dates=True, index_col="date")[start:end]
     df_all["nyc_storage_pct"] = df_storage["nyc_total_pct"]

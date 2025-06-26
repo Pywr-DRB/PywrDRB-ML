@@ -16,6 +16,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
 from sklearn.model_selection import KFold, train_test_split
 from tqdm import tqdm
+from collections import deque
 
 class RandomForestUncertaintyModel:
     def __init__(self, x_vars, y_var, **rf_settings):
@@ -774,3 +775,317 @@ class WaterTempRandomForestUncertaintyModel:
         """
         Q_L = Q_C + Q_i
         return (T_C * Q_C + T_i * Q_i) / Q_L
+    
+    
+  
+class SaltfrontRandomForestUncertaintyModel:
+    def __init__(self, rf_model_saltfront, debug=False):
+        """
+        WaterTempRandomForestUncertaintyModel class for temperature prediction using Random Forest models.
+        
+        Parameters
+        ==============
+        rf_model_saltfront: str
+            Path to the Random Forest model for salt front prediction.
+        debug: bool, default=False
+            If True, enables debug mode which records intermediate values for debugging purposes.
+        """
+
+        # RF models
+        self.rf_model_saltfront = joblib.load(rf_model_saltfront)
+        
+        # Input data
+        self.X = np.nan
+        self.Q_Trenton = np.nan
+        self.Q_Schuylkill = np.nan
+        self.Q_Trenton_7d_avg = np.nan
+        self.Q_Schuylkill_7d_avg = np.nan
+        self.Q_Trenton_7darr = np.nan
+        self.Q_Schuylkill_7darr = np.nan
+        
+        # Dates
+        self.start_date = None
+        self.end_date = None
+        self.length = None
+        
+        # Current predictions
+        self.saltfront = np.nan
+        self.saltfront_lb = np.nan
+        self.saltfront_ub = np.nan
+        
+        # Forecast predictions
+        self.forecast_saltfront_arr = [np.nan]
+        self.forecast_saltfront_lb_arr = [np.nan]
+        self.forecast_saltfront_ub_arr = [np.nan]
+        
+        # Time step
+        self.t = 0
+        self.current_date = None
+        
+        # Debug mode
+        self.debug = debug
+        if debug:
+            self.records = {}
+            self.forecast_records = {}
+    
+    def load_data(self, database, start_date='1979-01-01', end_date='2023-12-31'):
+        """
+        Load data from the database for the specified date range.
+        Parameters
+        ==============
+        database: pd.DataFrame
+            The database containing the meteological, temperature and flow data.
+        start_date: str, default='1979-01-01'
+            The start date for the data to be loaded.
+        end_date: str, default='2023-12-31'
+            The end date for the data to be loaded.
+        """
+        
+        self.start_date = pd.to_datetime(start_date) 
+        self.current_date = pd.to_datetime(start_date)
+        self.end_date = pd.to_datetime(end_date) 
+        
+        db = database[start_date:end_date]
+        self.X = db[self.rf_model_saltfront.x_vars].values
+        
+        self.Q_Trenton = db["Q_Trenton_bc"].values
+        self.Q_Schuylkill = db["Q_Schuylkill_bc"].values
+        self.Q_Trenton_7d_avg = db["Q_Trenton_bc_7d_avg"].values
+        self.Q_Schuylkill_7d_avg = db["Q_Schuylkill_bc_7d_avg"].values
+        
+        self.Q_Trenton_7darr = deque(maxlen=7)
+        self.Q_Trenton_7darr.extend([self.Q_Trenton_7d_avg[0]]*7)
+        self.Q_Schuylkill_7darr = deque(maxlen=7)
+        self.Q_Schuylkill_7darr.extend([self.Q_Schuylkill_7d_avg[0]]*7)
+        
+        length = db.shape[0]
+        self.length = length
+        if self.debug:
+            self.records = {
+                "Q_Trenton": [np.nan] * length,
+                "Q_Schuylkill": [np.nan] * length,
+                "Q_Trenton_7d_avg": [np.nan] * length,
+                "Q_Schuylkill_7d_avg": [np.nan] * length,
+                "saltfront": [np.nan] * length,
+                "saltfront_lb": [np.nan] * length,
+                "saltfront_ub": [np.nan] * length,
+            }
+            self.forecast_records = {
+                "Q_Trenton": [np.nan] * length,
+                "Q_Schuylkill": [np.nan] * length,
+                "Q_Trenton_7d_avg": [np.nan] * length,
+                "Q_Schuylkill_7d_avg": [np.nan] * length,
+                "saltfront": [np.nan] * length,
+                "saltfront_lb": [np.nan] * length,
+                "saltfront_ub": [np.nan] * length,
+            }
+    
+    def update(self, t, Q_Trenton=None, Q_Schuylkill=None, quantile=None):
+        """
+        Update the model with new data for a specific time step.
+        
+        Parameters
+        ==============
+        t: int
+            The time step index to update the model.
+        Q_C: float, optional
+            The flow of cold water at time t.
+        Q_i: float, optional
+            The flow of hot water at time t.
+        cannonsville_storage_pct: float, optional
+            The percentage of Cannonsville storage at time t.
+        quantile: float, optional
+            If provided, compute the uncertainty bounds based on the quantile of tau_list.
+            Should be between 0 and 1 (e.g., 0.95 for 95% confidence interval).
+        """
+        if Q_Trenton is not None:
+            self.Q_Trenton[t] = Q_Trenton
+            try:
+                self.X[t, self.rf_model1.x_vars.index("Q_Trenton_bc")] = Q_Trenton
+            except ValueError:
+                print("Warning: 'Q_Trenton_bc' not found in rf_model_saltfront.x_vars. Skipping update.")
+            
+        if Q_Schuylkill is not None:
+            self.Q_Schuylkill[t] = Q_Schuylkill
+            try:
+                self.X[t, self.rf_model2.x_vars.index("Q_Schuylkill_bc")] = Q_Schuylkill
+            except ValueError:
+                print("Warning: 'Q_Schuylkill_bc' not found in rf_model_saltfront.x_vars. Skipping update.")
+                
+        self.Q_Trenton_7darr.append(self.Q_Trenton[t])
+        self.Q_Schuylkill_7darr.append(self.Q_Schuylkill[t])        
+        self.Q_Trenton_7d_avg[t] = np.mean(self.Q_Trenton_7darr)
+        self.Q_Schuylkill_7d_avg[t] = np.mean(self.Q_Schuylkill_7darr)
+        try:
+            self.X[t, self.rf_model_saltfront.x_vars.index("Q_Trenton_bc_7d_avg")] = self.Q_Trenton_7d_avg[t]
+        except ValueError:
+            print("Warning: 'Q_Trenton_bc_7d_avg' not found in rf_model_saltfront.x_vars. Skipping update.")
+        try:
+            self.X[t, self.rf_model_saltfront.x_vars.index("Q_Schuylkill_bc_7d_avg")] = self.Q_Schuylkill_7d_avg[t]
+        except ValueError:
+            print("Warning: 'Q_Schuylkill_bc_7d_avg' not found in rf_model_saltfront.x_vars. Skipping update.") 
+       
+        X = self.X[t].reshape(1, -1)
+        
+        if quantile is not None: 
+            saltfront, saltfront_lb, saltfront_ub = self.rf_model_saltfront.predict(X, quantile=quantile)
+            
+            if self.debug:
+                self.records["Q_Trenton"][t] = self.Q_Trenton[t]
+                self.records["Q_Schuylkill"][t] = self.Q_Schuylkill[t]
+                self.records["Q_Trenton_7d_avg"][t] = self.Q_Trenton_7d_avg[t]
+                self.records["Q_Schuylkill_7d_avg"][t] = self.Q_Schuylkill_7d_avg[t]
+                self.records["saltfront"][t] = saltfront[0]
+                self.records["saltfront_lb"][t] = saltfront_lb[0]
+                self.records["saltfront_ub"][t] = saltfront_ub[0]
+          
+        else:
+            saltfront = self.rf_model_saltfront.predict(X)
+        
+            if self.debug:
+                self.records["Q_Trenton"][t] = self.Q_Trenton[t]
+                self.records["Q_Schuylkill"][t] = self.Q_Schuylkill[t]
+                self.records["Q_Trenton_7d_avg"][t] = self.Q_Trenton_7d_avg[t]
+                self.records["Q_Schuylkill_7d_avg"][t] = self.Q_Schuylkill_7d_avg[t]
+                self.records["saltfront"][t] = saltfront[0]
+            saltfront_lb = [np.nan]
+            saltfront_ub = [np.nan]
+        
+        self.saltfront = saltfront[0]
+        self.saltfront_lb = saltfront_lb[0]
+        self.saltfront_ub = saltfront_ub[0]
+        
+        self.t += 1
+        self.current_date += pd.Timedelta(days=1)
+        return self.saltfront, self.saltfront_lb, self.saltfront_ub
+    
+    def forecast(self, t, Q_Trenton=None, Q_Schuylkill=None, quantile=None, lead_time=0):
+        """
+        Forecast the temperature for a given time step with a specified lead time.
+        Parameters
+        ==============
+        t: int
+            The time step index to forecast from.
+        Q_C: float, optional
+            The flow of cold water (Cannonsville release) at time t.
+        Q_i: float, optional
+            The flow of hot water (East branch) at time t.
+        cannonsville_storage_pct: float, optional
+            The percentage of Cannonsville storage at time t.
+        quantile: float, optional
+            If provided, compute the uncertainty bounds based on the quantile of tau_list.
+            Should be between 0 and 1 (e.g., 0.95 for 95% confidence interval).
+        lead_time: int, default=0
+            The number of time steps to forecast ahead. If 0, only the current time step is forecasted.
+        """
+        X = self.X[t:t+lead_time+1].reshape(lead_time+1, -1)
+        Q_Trenton_ = self.Q_Trenton[t:t+lead_time+1]
+        Q_Schuylkill_ = self.Q_Schuylkill[t:t+lead_time+1]
+        Q_Trenton_7d_avg_ = self.Q_Trenton_7d_avg[t:t+lead_time+1]
+        Q_Schuylkill_7d_avg_ = self.Q_Schuylkill_7d_avg[t:t+lead_time+1]
+        
+        if Q_Trenton is not None:
+            Q_Trenton_[0] = Q_Trenton
+            try:
+                X[0, self.rf_model_saltfront.x_vars.index("Q_Trenton_bc")] = Q_Trenton
+            except ValueError:
+                print("Warning: 'Q_Trenton_bc' not found in rf_model_saltfront.x_vars. Skipping update.")
+        if Q_Schuylkill is not None:
+            Q_Schuylkill_[0] = Q_Schuylkill
+            try:
+                X[0, self.rf_model_saltfront.x_vars.index("Q_Schuylkill_bc")] = Q_Schuylkill
+            except ValueError:
+                print("Warning: 'Q_Schuylkill_bc' not found in rf_model_saltfront.x_vars. Skipping update.")
+        
+        Q_Trenton_7darr = self.Q_Trenton_7darr.copy()
+        Q_Schuylkill_7darr = self.Q_Schuylkill_7darr.copy()
+        Q_Trenton_7darr.append(Q_Trenton_[0])
+        Q_Schuylkill_7darr.append(Q_Schuylkill_[0])
+        Q_Trenton_7d_avg_[0] = np.mean(Q_Trenton_7darr)
+        Q_Schuylkill_7d_avg_[0] = np.mean(Q_Schuylkill_7darr)
+        try:
+            X[0, self.rf_model_saltfront.x_vars.index("Q_Trenton_bc_7d_avg")] = Q_Trenton_7d_avg_[0]
+        except ValueError:
+            print("Warning: 'Q_Trenton_bc_7d_avg' not found in rf_model_saltfront.x_vars. Skipping update.")
+        try:
+            X[0, self.rf_model_saltfront.x_vars.index("Q_Schuylkill_bc_7d_avg")] = Q_Schuylkill_7d_avg_[0]
+        except ValueError:
+            print("Warning: 'Q_Schuylkill_bc_7d_avg' not found in rf_model_saltfront.x_vars. Skipping update.")
+                
+        if quantile is not None:
+            saltfront, saltfront_lb, saltfront_ub = self.rf_model_saltfront.predict(X, quantile=quantile)
+            
+            if self.debug:
+                self.forecast_records["Q_Trenton"][t] = Q_Trenton_[0]
+                self.forecast_records["Q_Schuylkill"][t] = Q_Schuylkill_[0]
+                self.forecast_records["Q_Trenton_7d_avg"][t] = Q_Trenton_7d_avg_[0]
+                self.forecast_records["Q_Schuylkill_7d_avg"][t] = Q_Schuylkill_7d_avg_[0]
+                self.forecast_records["saltfront"][t] = saltfront[0]
+                self.forecast_records["saltfront_lb"][t] = saltfront_lb[0]
+                self.forecast_records["saltfront_ub"][t] = saltfront_ub[0]
+        else:
+            saltfront = self.rf_model_saltfront.predict(X)
+            
+            if self.debug:
+                self.forecast_records["Q_Trenton"][t] = Q_Trenton_[0]
+                self.forecast_records["Q_Schuylkill"][t] = Q_Schuylkill_[0]
+                self.forecast_records["Q_Trenton_7d_avg"][t] = Q_Trenton_7d_avg_[0]
+                self.forecast_records["Q_Schuylkill_7d_avg"][t] = Q_Schuylkill_7d_avg_[0]
+                self.forecast_records["saltfront"][t] = saltfront[0]
+            saltfront_lb = [np.nan]
+            saltfront_ub = [np.nan]
+            
+        self.forecast_saltfront_arr = saltfront
+        self.forecast_saltfront_lb_arr = saltfront_lb
+        self.forecast_saltfront_ub_arr = saltfront_ub
+                
+        return None
+
+    def update_until(self, t=None, date=None, quantile=None):
+        if t is not None:
+            if t >= len(self.X) + 1 or t < self.t:
+                raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X) + 1}.")
+        if date is not None:
+            if isinstance(date, str):
+                date = date = pd.to_datetime(date)
+            t = (date - self.current_date).days
+            if t >= len(self.X) + 1 or t < self.t:
+                raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
+
+        length = t - self.t
+        if length == 0:
+            return None
+        
+        t = self.t
+        X = self.X[t:t+length].reshape(length, -1)
+        
+        if quantile is not None: 
+            saltfront, saltfront_lb, saltfront_ub = self.rf_model_saltfront.predict(X, quantile=quantile)
+            
+            if self.debug:
+                self.records["Q_Trenton"][t:t+length] = self.Q_Trenton[t:t+length]
+                self.records["Q_Schuylkill"][t:t+length] = self.Q_Schuylkill[t:t+length]
+                self.records["Q_Trenton_7d_avg"][t:t+length] = self.Q_Trenton_7d_avg[t:t+length]
+                self.records["Q_Schuylkill_7d_avg"][t:t+length] = self.Q_Schuylkill_7d_avg[t:t+length]
+                self.records["saltfront"][t:t+length] = saltfront
+                self.records["saltfront_lb"][t:t+length] = saltfront_lb
+                self.records["saltfront_ub"][t:t+length] = saltfront_ub
+        else:
+            saltfront = self.rf_model_saltfront.predict(X)
+            
+            if self.debug:
+                self.records["Q_Trenton"][t:t+length] = self.Q_Trenton[t:t+length]
+                self.records["Q_Schuylkill"][t:t+length] = self.Q_Schuylkill[t:t+length]
+                self.records["Q_Trenton_7d_avg"][t:t+length] = self.Q_Trenton_7d_avg[t:t+length]
+                self.records["Q_Schuylkill_7d_avg"][t:t+length] = self.Q_Schuylkill_7d_avg[t:t+length]
+                self.records["saltfront"][t:t+length] = saltfront
+            saltfront_lb = [np.nan]
+            saltfront_ub = [np.nan]
+        
+        self.saltfront = saltfront[-1]
+        self.saltfront_lb = saltfront_lb[-1]
+        self.saltfront_ub = saltfront_ub[-1]
+                
+        self.t += length
+        self.current_date += pd.Timedelta(days=length)
+        return self.saltfront, self.saltfront_lb, self.saltfront_ub
