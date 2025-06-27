@@ -30,10 +30,11 @@ temp_rf.forecast(t=temp_rf.t)
 temp_rf.forecast_T_L_arr
 temp_rf.forecast_T_L_lb_arr
 temp_rf.forecast_T_L_ub_arr
-# for _ in tqdm(range(500)):
-#     temp_rf.update(t=temp_rf.t, quantile=0.95)
 
-for _ in tqdm(range(500)):
+for _ in tqdm(range(20)):
+    temp_rf.update(t=temp_rf.t, quantile=0.95)
+
+for _ in tqdm(range(20)):
     temp_rf.update(t=temp_rf.t, quantile=None)
 
 

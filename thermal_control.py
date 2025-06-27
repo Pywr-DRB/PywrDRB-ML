@@ -89,14 +89,24 @@ class TemperatureModel():
         
         # Predict the Cannonsville reservoir release temperature (T_C)
         self.subfolder = subfolder
-        lstm1 = bmi_lstm()
-        lstm1.initialize(config_file=pn.models.get(f"{subfolder}/TempLSTM1.yml"), train=False, root_dir=pn.get())
-        self.lstm1 = lstm1
-        
-        # Predict the water temperature for east branch (T_i)
-        lstm2 = bmi_lstm()
-        lstm2.initialize(config_file=pn.models.get(f"{subfolder}/TempLSTM2.yml"), train=False, root_dir=pn.get())
-        self.lstm2 = lstm2
+        if subfolder is None:
+            lstm1 = bmi_lstm()
+            lstm1.initialize(config_file=pn.models.get(f"TempLSTM1.yml"), train=False, root_dir=pn.get())
+            self.lstm1 = lstm1
+            
+            # Predict the water temperature for east branch (T_i)
+            lstm2 = bmi_lstm()
+            lstm2.initialize(config_file=pn.models.get(f"TempLSTM2.yml"), train=False, root_dir=pn.get())
+            self.lstm2 = lstm2
+        else:
+            lstm1 = bmi_lstm()
+            lstm1.initialize(config_file=pn.models.get(f"{subfolder}/TempLSTM1.yml"), train=False, root_dir=pn.get())
+            self.lstm1 = lstm1
+            
+            # Predict the water temperature for east branch (T_i)
+            lstm2 = bmi_lstm()
+            lstm2.initialize(config_file=pn.models.get(f"{subfolder}/TempLSTM2.yml"), train=False, root_dir=pn.get())
+            self.lstm2 = lstm2
         
         # Map Tavg to Tmax (T_L) at Lordville
         rf_model = joblib.load(pn.models.get("rf_model.gz"))
@@ -379,13 +389,13 @@ class TemperatureModel():
         return T_L_mu, T_L_sd
 
 data = {
-    "start_date": "2020-08-01", #"1979-01-01",
+    "start_date": "1979-01-01", #"1979-01-01",
     "activate_thermal_control": True,
     "activate_input_bias_correction": False,
     "Q_C_lstm_var_name": "QbcTavg_Q_C",
     "Q_i_lstm_var_name": "QbcTavg_Q_i",
     "cannonsville_storage_pct_lstm_var_name": "bc_cannonsville_storage_pct",
-    "subfolder": "TempLSTM_lag1_Q_C",
+    "subfolder": None, #"TempLSTM",
     "disable_tqdm": True,
     "debug": True,
 }
@@ -393,6 +403,10 @@ data = {
 #%%
 model = TemperatureModel(**data)
 
+for i in tqdm(range(16000)):
+    model.update()
+    
+    
 model.update()
 model.forecast(dQ_C=100)
 model.update()

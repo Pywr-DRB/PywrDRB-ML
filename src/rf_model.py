@@ -8,15 +8,18 @@ Prediction Uncertainty for Random Forest Regression Models. Photogrammetric Engi
 
 This class can be saved by joblib and loaded later for predictions.
 """
-
 import numpy as np
 import pandas as pd
 import joblib
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
+from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold, train_test_split
 from tqdm import tqdm
 from collections import deque
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 class RandomForestUncertaintyModel:
     def __init__(self, x_vars, y_var, **rf_settings):
@@ -66,6 +69,9 @@ class RandomForestUncertaintyModel:
         self.rmses = None
         self.n_splits = None
         self.shuffle = None
+        
+        # For grid search results
+        self.grid_search_results = None
 
     def fit(self, X, y, test_size=None, n_jobs=-2, overwrite=False, shuffle=True):
         """
@@ -212,7 +218,7 @@ class RandomForestUncertaintyModel:
             upper = preds + half_width
             return preds, lower, upper
         else:
-            return preds
+            return preds, np.nan, np.nan
         
     def cross_val_rmse(self, X, y, n_splits=5, shuffle=True, test_size=None, overwrite=False):
         if self.rmse_cross_vali is not None and not overwrite:
@@ -287,6 +293,91 @@ class RandomForestUncertaintyModel:
         print(f"RMSE: {rmse:.3f}")
         return rmse
     
+    def grid_search(self, X, y, param_grid=None, n_splits=5, test_size=0.2, n_jobs=-1, verwrite=False):
+        """
+        Perform grid search to find the best hyperparameters for the Random Forest model.
+        
+        Parameters
+        ==============
+        X: array-like, shape (n_samples, n_features)
+            The input features.
+        y: array-like, shape (n_samples,)
+            The target values.
+        param_grid: dict
+            Dictionary with parameters names as keys and lists of parameter settings to try as values.
+        n_splits: int, default=5
+            Number of splits for cross-validation.
+        shuffle: bool, default=True
+            If True, shuffle the data before splitting into training and test sets.
+        test_size: float, optional
+            If provided, the data will be split into training and test sets for evaluation.
+        n_jobs: int, default=-1
+            The number of jobs to run in parallel for grid search.
+        """
+        if self.grid_search_results is None or verwrite:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
+
+            # Define model
+            rf = RandomForestRegressor(random_state=42)
+
+            # Define hyperparameter grid
+            if param_grid is None:
+                # Default parameter grid if not provided
+                param_grid = {
+                    'n_estimators': [10, 20, 25, 30, 35, 40, 45, 50, 60],
+                    'max_depth': [1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+                    }
+
+            # Grid search with 5-fold cross-validation
+            grid_search = GridSearchCV(estimator=rf,
+                                    param_grid=param_grid,
+                                    cv=n_splits,
+                                    scoring='neg_root_mean_squared_error',
+                                    n_jobs=n_jobs,
+                                    verbose=1)
+
+            # Fit
+            grid_search.fit(X_train, y_train)
+
+            # Best parameters and performance
+            print("Best parameters:", grid_search.best_params_)
+            print("Best score (neg RMSE):", grid_search.best_score_)
+
+            # Use the best model
+            best_rf = grid_search.best_estimator_
+
+            # Predict on test set
+            y_pred = best_rf.predict(X_test)
+
+            # Evaluate performance
+            rmse = root_mean_squared_error(y_test, y_pred)
+
+            print(f"Test RMSE: {rmse:.4f}")
+
+            # Extract results into a DataFrame
+            results = pd.DataFrame(grid_search.cv_results_)
+
+            # Convert negative RMSE to positive
+            results['mean_rmse'] = -results['mean_test_score']
+            
+            self.grid_search_results = results
+        else:
+            results = self.grid_search_results
+
+        # Pivot table for heatmap
+        heatmap_data = results.pivot(index='param_max_depth',
+                                    columns='param_n_estimators',
+                                    values='mean_rmse')
+        # Plot heatmap
+        plt.figure()
+        sns.heatmap(heatmap_data, annot=True, fmt=".3f", cmap="viridis")
+        plt.title("Grid Search RMSE Heatmap")
+        plt.xlabel("n_estimators")
+        plt.ylabel("max_depth")
+        plt.tight_layout()
+        plt.show()
+        return grid_search        
+    
     def save(self, filename):
         """
         Save the model to a file using joblib.
@@ -304,7 +395,7 @@ class RandomForestUncertaintyModel:
         return model
     
 class WaterTempRandomForestUncertaintyModel:
-    def __init__(self, rf_model1, rf_model2, rf_model_map, debug=False):
+    def __init__(self, model1, model2, model_map, debug=False, thermal_mitigation_bank_size=1620):
         """
         WaterTempRandomForestUncertaintyModel class for temperature prediction using Random Forest models.
         
@@ -321,9 +412,9 @@ class WaterTempRandomForestUncertaintyModel:
         """
 
         # RF models
-        self.rf_model1 = joblib.load(rf_model1)
-        self.rf_model2 = joblib.load(rf_model2)
-        self.rf_model_map = joblib.load(rf_model_map)
+        self.rf_model1 = joblib.load(model1)
+        self.rf_model2 = joblib.load(model2)
+        self.rf_model_map = joblib.load(model_map)
         
         # Input data
         self.X_1 = np.nan
@@ -356,6 +447,11 @@ class WaterTempRandomForestUncertaintyModel:
         self.forecast_T_L_arr = [np.nan]
         self.forecast_T_L_lb_arr = [np.nan]
         self.forecast_T_L_ub_arr = [np.nan]
+        
+        # Thermal control variables
+        self.thermal_mitigation_bank_size = thermal_mitigation_bank_size
+        self.thermal_release = np.nan # mgd
+        self.remained_bank_amount = thermal_mitigation_bank_size  # mgd
         
         # Time step
         self.t = 0
@@ -395,6 +491,7 @@ class WaterTempRandomForestUncertaintyModel:
         
         length = db.shape[0]
         self.length = length
+        self.thermal_releases = [np.nan] * length
         if self.debug:
             self.records = {
                 "Q_C": [np.nan] * length,
@@ -411,7 +508,9 @@ class WaterTempRandomForestUncertaintyModel:
                 "Tavg_L_ub": [np.nan] * length,
                 "T_L": [np.nan] * length,
                 "T_L_lb": [np.nan] * length,
-                "T_L_ub": [np.nan] * length
+                "T_L_ub": [np.nan] * length,
+                "thermal_releases": [np.nan] * length,
+                "remained_bank_amounts": [np.nan] * length,
             }
             self.forecast_records = {
                 "Q_C": [np.nan] * length,
@@ -508,8 +607,8 @@ class WaterTempRandomForestUncertaintyModel:
                 self.records["T_L_lb"][t] = T_L_lb[0]
                 self.records["T_L_ub"][t] = T_L_ub[0]
         else:
-            T_C = self.rf_model1.predict(X_1)
-            T_i = self.rf_model2.predict(X_2)
+            T_C, _, _ = self.rf_model1.predict(X_1)
+            T_i, _, _ = self.rf_model2.predict(X_2)
             Tavg_L = self.blend_hot_cold_water(T_C=T_C, T_i=T_i, Q_C=self.Q_C[t], Q_i=self.Q_i[t])
             
             X_map[0, self.rf_model_map.x_vars.index("QbcTavg_T_L")] = Tavg_L
@@ -532,18 +631,18 @@ class WaterTempRandomForestUncertaintyModel:
             T_L_lb = [np.nan]
             T_L_ub = [np.nan]
         
-        self.T_C = T_C[0]
-        self.T_C_lb = T_C_lb[0]
-        self.T_C_ub = T_C_ub[0]
-        self.T_i = T_i[0]
-        self.T_i_lb = T_i_lb[0]
-        self.T_i_ub = T_i_ub[0]
-        self.Tavg_L = Tavg_L[0]
-        self.Tavg_L_lb = Tavg_L_lb[0]
-        self.Tavg_L_ub = Tavg_L_ub[0]
-        self.T_L = T_L[0]
-        self.T_L_lb = T_L_lb[0]
-        self.T_L_ub = T_L_ub[0]
+        self.T_C = float(T_C[0])
+        self.T_C_lb = float(T_C_lb[0])
+        self.T_C_ub = float(T_C_ub[0])
+        self.T_i = float(T_i[0])
+        self.T_i_lb = float(T_i_lb[0])
+        self.T_i_ub = float(T_i_ub[0])
+        self.Tavg_L = float(Tavg_L[0])
+        self.Tavg_L_lb = float(Tavg_L_lb[0])
+        self.Tavg_L_ub = float(Tavg_L_ub[0])
+        self.T_L = float(T_L[0])
+        self.T_L_lb = float(T_L_lb[0])
+        self.T_L_ub = float(T_L_ub[0])
         
         self.t += 1
         self.current_date += pd.Timedelta(days=1)
@@ -629,8 +728,8 @@ class WaterTempRandomForestUncertaintyModel:
                 self.forecast_records["T_L_lb"][t] = T_L_lb[0]
                 self.forecast_records["T_L_ub"][t] = T_L_ub[0]
         else:
-            T_C = self.rf_model1.predict(X_1)
-            T_i = self.rf_model2.predict(X_2)
+            T_C, _, _ = self.rf_model1.predict(X_1)
+            T_i, _, _ = self.rf_model2.predict(X_2)
             Tavg_L = self.blend_hot_cold_water(T_C=T_C, T_i=T_i, Q_C=self.Q_C[t], Q_i=self.Q_i[t])
             
             X_map[0, self.rf_model_map.x_vars.index("QbcTavg_T_L")] = Tavg_L
@@ -665,8 +764,8 @@ class WaterTempRandomForestUncertaintyModel:
                 raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X_1) + 1}.")
         if date is not None:
             if isinstance(date, str):
-                date = date = pd.to_datetime(date)
-            t = (date - self.current_date).days
+                date = pd.to_datetime(date)
+            t = (date - self.start_date).days
             if t >= len(self.X_1) + 1 or t < self.t:
                 raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
 
@@ -712,8 +811,8 @@ class WaterTempRandomForestUncertaintyModel:
                 self.records["T_L_lb"][t:t+length] = T_L_lb
                 self.records["T_L_ub"][t:t+length] = T_L_ub
         else:
-            T_C = self.rf_model1.predict(X_1)
-            T_i = self.rf_model2.predict(X_2)
+            T_C, _, _ = self.rf_model1.predict(X_1)
+            T_i, _, _ = self.rf_model2.predict(X_2)
             Tavg_L = self.blend_hot_cold_water(T_C=T_C, T_i=T_i, Q_C=Q_C_, Q_i=Q_i_)
             
             X_map[:, self.rf_model_map.x_vars.index("QbcTavg_T_L")] = Tavg_L
@@ -736,18 +835,18 @@ class WaterTempRandomForestUncertaintyModel:
             T_L_lb = [np.nan]
             T_L_ub = [np.nan]
         
-        self.T_C = T_C[-1]
-        self.T_C_lb = T_C_lb[-1]
-        self.T_C_ub = T_C_ub[-1]
-        self.T_i = T_i[-1]
-        self.T_i_lb = T_i_lb[-1]
-        self.T_i_ub = T_i_ub[-1]
-        self.Tavg_L = Tavg_L[-1]
-        self.Tavg_L_lb = Tavg_L_lb[-1]
-        self.Tavg_L_ub = Tavg_L_ub[-1]
-        self.T_L = T_L[-1]
-        self.T_L_lb = T_L_lb[-1]
-        self.T_L_ub = T_L_ub[-1]
+        self.T_C = float(T_C[-1])
+        self.T_C_lb = float(T_C_lb[-1])
+        self.T_C_ub = float(T_C_ub[-1])
+        self.T_i = float(T_i[-1])
+        self.T_i_lb = float(T_i_lb[-1])
+        self.T_i_ub = float(T_i_ub[-1])
+        self.Tavg_L = float(Tavg_L[-1])
+        self.Tavg_L_lb = float(Tavg_L_lb[-1])
+        self.Tavg_L_ub = float(Tavg_L_ub[-1])
+        self.T_L = float(T_L[-1])
+        self.T_L_lb = float(T_L_lb[-1])
+        self.T_L_ub = float(T_L_ub[-1])
                 
         self.t += length
         self.current_date += pd.Timedelta(days=length)
@@ -951,9 +1050,9 @@ class SaltfrontRandomForestUncertaintyModel:
             saltfront_lb = [np.nan]
             saltfront_ub = [np.nan]
         
-        self.saltfront = saltfront[0]
-        self.saltfront_lb = saltfront_lb[0]
-        self.saltfront_ub = saltfront_ub[0]
+        self.saltfront = float(saltfront[0])
+        self.saltfront_lb = float(saltfront_lb[0])
+        self.saltfront_ub = float(saltfront_ub[0])
         
         self.t += 1
         self.current_date += pd.Timedelta(days=1)
@@ -1047,8 +1146,8 @@ class SaltfrontRandomForestUncertaintyModel:
                 raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X) + 1}.")
         if date is not None:
             if isinstance(date, str):
-                date = date = pd.to_datetime(date)
-            t = (date - self.current_date).days
+                date = pd.to_datetime(date)
+            t = (date - self.start_date).days
             if t >= len(self.X) + 1 or t < self.t:
                 raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
 
@@ -1082,9 +1181,9 @@ class SaltfrontRandomForestUncertaintyModel:
             saltfront_lb = [np.nan]
             saltfront_ub = [np.nan]
         
-        self.saltfront = saltfront[-1]
-        self.saltfront_lb = saltfront_lb[-1]
-        self.saltfront_ub = saltfront_ub[-1]
+        self.saltfront = float(saltfront[-1])
+        self.saltfront_lb = float(saltfront_lb[-1])
+        self.saltfront_ub = float(saltfront_ub[-1])
                 
         self.t += length
         self.current_date += pd.Timedelta(days=length)

@@ -22,24 +22,32 @@ temp_options = {
     "ml_model_type": "rf",
     "quantile": None,
     "start_date": None, 
-    "activate_thermal_control": False, 
+    "activate_thermal_control": True, 
     "asycronized_update": True,
-    "disable_tqdm": False,
     "debug": True,
     }
 
+salinity_options = {
+    "PywrDRB_ML_plugin_path": pn.get(), 
+    "ml_model_type": "rf",
+    "quantile": None,
+    "start_date": None, 
+    "asycronized_update": False,
+    "debug": True,
+    }
 
-mb = pywrdrb.ModelBuilder(
-    inflow_type=inflow_type, 
-    start_date="1979-01-01", # 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1960-01-01"
-    end_date="2023-12-31",
-    options={
-        "temperature_model": temp_options,
-        }
-    )
+# mb = pywrdrb.ModelBuilder(
+#     inflow_type=inflow_type, 
+#     start_date="1979-01-01", # 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1960-01-01"
+#     end_date="2023-12-31",
+#     options={
+#         "temperature_model": temp_options,
+#         #"salinity_model": salinity_options
+#         }
+#     )
 
-mb.make_model()
-mb.write_model(model_filename)
+# mb.make_model()
+# mb.write_model(model_filename)
 
 #%% Load the model and run it
 model = pywrdrb.Model.load(str(model_filename))
@@ -49,18 +57,37 @@ recorder = pywrdrb.OutputRecorder(
     parameters=[p for p in model.parameters if p.name]
 )
 
-
 #%% Thermal control (Future coding structure for MOEA during developing stage where control algorithm will be assigned externally after load model)
 plist = [p.name for p in model.parameters]
 temperature_model = model.parameters["temperature_model"]
 
 def return_dps_func(*params):
-    def dps_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, current_date):
-        return 1
+    def dps_func(model, Q_C, Q_i, cannonsville_storage_pct, current_date):
+        ml_model = model.ml_model
+        # Control period
+        if current_date.month in [6, 7, 8]:
+            print(f"before: {ml_model.current_date}")
+            ml_model.update_until(date=current_date)
+            print(f"after: {ml_model.current_date}")
+        else:
+            return 0
+        
+        # Control policy
+        ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
+        
+        forecast_T_L = ml_model.forecast_T_L_arr[-1]
+        print(f"forecast_T_L_arr: {ml_model.forecast_T_L_arr}")
+        
+        if forecast_T_L >= 24:
+            thermal_release = 300 # mgd
+        else:
+            thermal_release = 0
+        
+        return thermal_release
     
     return dps_func
 
-params = [0, 0, 0]
+params = []
 dps_func = return_dps_func(*params)
 
 temperature_model.control_algorithm = dps_func
@@ -74,6 +101,14 @@ ml_model = temperature_model.ml_model
 ml_model.current_date
 ml_model.update_until(date="2023-12-31")
 records = ml_model.records
+
+#%%
+salinity_model = model.parameters["salinity_model"]
+ml_model = salinity_model.ml_model
+ml_model.current_date
+ml_model.update_until(date="2023-12-31")
+records = ml_model.records
+ml_model.saltfront
 #%% Load the output data
 data = pywrdrb.Data()
 results_sets = [
