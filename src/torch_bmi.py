@@ -64,7 +64,7 @@ class bmi_lstm(Bmi):
     #---------------------------------------------
     # Input variable names (CSDMS standard names)
     #---------------------------------------------
-    
+
     _input_var_names = [
         'tmmx',
         'tmmn',
@@ -251,7 +251,7 @@ class bmi_lstm(Bmi):
         'y_src_lag_1': ['y_src_lag_1', '--'],
         'saltfront_lag_1': ['saltfront_lag_1', '--']
         }
-    
+
     def __getattribute__(self, item):
         """
         Customize instance attribute access.
@@ -473,6 +473,61 @@ class bmi_lstm(Bmi):
             else:
                 self.preds = self.samples
 
+        # We make it flexible to update whatever the length of the input data is given
+        # Assuming users understand that it is based on the current step
+
+        setattr(self, 'channel_water_surface_water__mu_max_of_temperature',
+                self.lstm_output['mu'].detach().numpy()[0,:,0])
+        setattr(self, 'channel_water_surface_water__sd_max_of_temperature',
+                self.lstm_output['sigma'].detach().numpy()[0,:,0])
+
+        forward_steps = len(self.lstm_output['mu'].detach().numpy()[0,:,0])
+
+        self.t += self.get_time_step()*forward_steps
+
+        predicted_mu = getattr(self, 'channel_water_surface_water__mu_max_of_temperature', np.zeros(forward_steps))
+        predicted_sd = getattr(self, 'channel_water_surface_water__sd_max_of_temperature', np.zeros(forward_steps))
+        print(f"We are at the beginning of t = {int(self.get_current_time())}: {self.get_current_date()}")
+        return predicted_mu, predicted_sd
+
+
+
+    def update_org(self):
+        """Update the LSTM model for a single time step.
+
+        This function updates the LSTM model for a single time step by performing the following steps:
+        - Prepares input data for the LSTM model.
+        - Makes predictions using the LSTM model.
+        - Generates samples based on the prediction using different uncertainty quantification methods.
+        - Saves predicted values to the appropriate output variables.
+        - Advances the simulation time by one time step.
+        """
+
+        self.create_scaled_input_tensor()
+
+        # make predictions
+        if self.mc_dropout:
+            self.lstm.train()
+            self.lstm_output, (self.h_t, self.c_t) = self.lstm(self.input_tensor,
+                                                       (self.h_t, self.c_t), self.dist_mat_all, self.input_delta_tensor)
+            self.lstm.eval()
+        else:
+            self.lstm.eval()
+            self.lstm_output, (self.h_t, self.c_t) = self.lstm(self.input_tensor,
+                                                       (self.h_t, self.c_t), self.dist_mat_all, self.input_delta_tensor)
+        if self.produce_ensembles:
+            if self.head == 'GMM':
+                self.samples = sample_GMM(self.lstm_output, self.n_samples)
+            if self.head == 'CMAL':
+                self.samples = sample_CMAL(self.lstm_output, self.n_samples)
+            if self.head == 'UMAL':
+                self.samples = sample_UMAL(self.lstm_output, self.n_samples, self.head_n_dist, self.x.shape[0])
+            if self.head == 'Regression':
+                self.preds = self.lstm_output['y_hat'].detach().numpy()
+                self.preds = np.repeat(self.preds, self.n_samples, axis = 2)
+            else:
+                self.preds = self.samples
+
         setattr(self, 'channel_water_surface_water__mu_max_of_temperature',
                 self.lstm_output['mu'].detach().numpy()[0,0,0])
         setattr(self, 'channel_water_surface_water__sd_max_of_temperature',
@@ -487,7 +542,7 @@ class bmi_lstm(Bmi):
         # Get unscaled lstm input data
         length = self.x.shape[1]
         unscaled_data = self.get_unscaled_values(lead_time=length)
-        
+
         for var in self.x_vars:
             if var in force_zero_vars:
                 self.set_value(var, np.zeros(length))
@@ -499,7 +554,7 @@ class bmi_lstm(Bmi):
         sd_pred = np.zeros(length)
         self.get_value("channel_water_surface_water__mu_max_of_temperature", mu_pred)
         self.get_value("channel_water_surface_water__sd_max_of_temperature", sd_pred)
-            
+
         res = pd.DataFrame()
         res["date"] = self.dates_all.flatten()
         res['mu_ft'] = mu_pred
@@ -518,10 +573,10 @@ class bmi_lstm(Bmi):
             for vi, var in enumerate(unscaled_data):
                 if var in self.x_vars:
                     self.set_value(var, unscaled_data.loc[0, var])
-                
+
                 # if self.delta_temp_layer and var in self.delta_vars:
-                #     self.set_value(var, unscaled_data.loc[int(self.t), var])           
-                
+                #     self.set_value(var, unscaled_data.loc[int(self.t), var])
+
             self.update()
 
             # mu_pred = np.zeros(1)
@@ -530,16 +585,16 @@ class bmi_lstm(Bmi):
             # self.get_value("channel_water_surface_water__sd_max_of_temperature", sd_pred)
             # mu_ft.append(mu_pred[0])
             # sd_ft.append(sd_pred[0])
-            
+
         #return mu_ft, sd_ft
-        
+
     def update_until(self, time):
         """Update model until a particular model time step.
         Parameters
         ----------
         time : float
             Time to run model until.
-            
+
         Example
         --------
         >>> config_file = pn.models.get(f"SalinityLSTM.yml")
@@ -560,6 +615,8 @@ class bmi_lstm(Bmi):
         >>> bmi_lstm.update_until(end_time_step)
         """
         cur_step = int(self.get_current_time())
+        cur_date = self.get_current_date()
+        print(f"{cur_step}: {cur_date}")
 
         if time <= cur_step:
             raise ValueError(f"End time, {time}, must be larger than current time, {cur_step}")
@@ -593,8 +650,8 @@ class bmi_lstm(Bmi):
         predicted_sd = getattr(self, 'channel_water_surface_water__sd_max_of_temperature', np.zeros(len(out_times)))
 
         out_preds = pd.DataFrame({
-            "timestep": out_times, 
-            "mu": predicted_mu, 
+            "timestep": out_times,
+            "mu": predicted_mu,
             "sd": predicted_sd
         })
 
@@ -797,7 +854,7 @@ class bmi_lstm(Bmi):
                         loss_function=self.loss_fn,
                         optimizer=torch.optim.Adam(self.pretrain_model.parameters(), lr = self.learn_rate_pre),
                         x_train=self.x_trn,
-                        x_delta_train=self.x_delta_trn, 
+                        x_delta_train=self.x_delta_trn,
                         y_train=self.y_trn,
                         h_train=self.start_h_trn,
                         c_train=self.start_c_trn,
@@ -812,12 +869,12 @@ class bmi_lstm(Bmi):
                         umal_n_taus_train=self.umal_n_taus_train,
                         umal_tau_min=self.umal_tau_min,
                         umal_tau_max=self.umal_tau_max,
-                        weight_loss=self.weight_loss, 
+                        weight_loss=self.weight_loss,
                         weight_threshold=self.weight_threshold,
                         weight_value=self.weight_value,
                         early_stopping_patience=self.early_stopping_patience,
                         x_val=self.x_val,
-                        x_delta_val=self.x_delta_val, 
+                        x_delta_val=self.x_delta_val,
                         y_val=self.y_val,
                         shuffle=False, # hard coding to False
                         weights_file=self.weights_file,
@@ -880,12 +937,12 @@ class bmi_lstm(Bmi):
                         umal_n_taus_train=self.umal_n_taus_train,
                         umal_tau_min=self.umal_tau_min,
                         umal_tau_max=self.umal_tau_max,
-                        weight_loss=self.weight_loss, 
+                        weight_loss=self.weight_loss,
                         weight_threshold=self.weight_threshold,
                         weight_value=self.weight_value,
                         early_stopping_patience=self.early_stopping_patience,
                         x_val=self.x_val,
-                        x_delta_val=self.x_delta_val, 
+                        x_delta_val=self.x_delta_val,
                         y_val=self.y_val,
                         shuffle=False, # hard coding to False
                         weights_file=self.weights_file,
@@ -1070,7 +1127,7 @@ class bmi_lstm(Bmi):
             self.input_array_scaled = ((self.input_array - self.input_mean[:,np.newaxis]) / (self.input_std[:,np.newaxis] + 1e-10))[np.newaxis,:,:]
             self.input_array_scaled = np.moveaxis(self.input_array_scaled, 2, 1)
             if self.delta_temp_layer:
-                self.input_delta_array_scaled = ((self.input_delta_array - self.input_delta_mean[:,np.newaxis]) / (self.input_delta_std[:,np.newaxis] + 1e-10))[np.newaxis,:,:] 
+                self.input_delta_array_scaled = ((self.input_delta_array - self.input_delta_mean[:,np.newaxis]) / (self.input_delta_std[:,np.newaxis] + 1e-10))[np.newaxis,:,:]
                 self.input_delta_array_scaled = np.moveaxis(self.input_delta_array_scaled, 2, 1)
         if (DEBUG):
             print('### input_list =', self.input_list)
@@ -1332,10 +1389,10 @@ class bmi_lstm(Bmi):
         else:
             self.train_dir = self.cfg_bmi['train_dir']
             self.data_file = self.cfg_bmi['data_file']
-            
+
         if not os.path.exists(self.train_dir): # Create subfolder in models/
             os.mkdir(self.train_dir)
-        
+
         self.model_id = self.cfg_bmi['model_id']
         self.weights_dir = os.path.join(self.train_dir, f'{self.model_id}_wgts')
         self.weights_file = os.path.join(self.weights_dir, 'weights.pth')
