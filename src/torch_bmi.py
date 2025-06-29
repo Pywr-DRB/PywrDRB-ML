@@ -487,7 +487,7 @@ class bmi_lstm(Bmi):
 
         predicted_mu = getattr(self, 'channel_water_surface_water__mu_max_of_temperature', np.zeros(forward_steps))
         predicted_sd = getattr(self, 'channel_water_surface_water__sd_max_of_temperature', np.zeros(forward_steps))
-        print(f"We are at the beginning of t = {int(self.get_current_time())}: {self.get_current_date()}")
+        #print(f"We are at the beginning of t = {int(self.get_current_time())}: {self.get_current_date()}")
         return predicted_mu, predicted_sd
 
 

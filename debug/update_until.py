@@ -14,7 +14,7 @@ pn.chdir()
 from src.torch_bmi import bmi_lstm
 
 config_file = pn.models.get(f"TempLSTM1.yml")
-config_file = r"C:\Users\cl2769\Documents\GitHub\PywrDRB-ML\models\TempLSTM1_comparison\TempLSTM1_none.yml"
+config_file = r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\models\TempLSTM1_comparison\TempLSTM1_none.yml"
 # lstm = bmi_lstm()
 # lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
 
@@ -29,20 +29,48 @@ config_file = r"C:\Users\cl2769\Documents\GitHub\PywrDRB-ML\models\TempLSTM1_com
 lstm = bmi_lstm()
 lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
 print(f"{int(lstm.get_current_time())}: {lstm.get_current_date()}")
-length = 600
+length = 10000
 unscaled_data_arr = lstm.get_unscaled_values(lead_time=length-1)
 
-lstm.mc_dropout = True
+lstm.mc_dropout = False
 for var in lstm.x_vars:
     lstm.set_value(var, unscaled_data_arr[var])
 
 T_C_mu_arr, T_C_sd_arr = lstm.update()
 
+
+lstm = bmi_lstm()
+lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
+print(f"{int(lstm.get_current_time())}: {lstm.get_current_date()}")
+length = 10000
+unscaled_data_arr = lstm.get_unscaled_values(lead_time=length-1)
+lstm.mc_dropout = True
+for var in lstm.x_vars:
+    lstm.set_value(var, unscaled_data_arr[var])
+
+T_C_mu_arr_, T_C_sd_arr_ = lstm.update()
+
+#%% Test for startdate
+from datetime import datetime
+lstm = bmi_lstm()
+lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
+print(f"{int(lstm.get_current_time())}: {lstm.get_current_date()}")
+
+dt = np.datetime64("1980-01-01")
+idx = np.where(lstm.dates_all == dt)[1].item()
+length = idx - int(lstm.get_current_time())
+unscaled_data_arr = lstm.get_unscaled_values(lead_time=length-1)
+lstm.mc_dropout = False
+for var in lstm.x_vars:
+    lstm.set_value(var, unscaled_data_arr[var])
+lstm.update()
+print(f"{int(lstm.get_current_time())}: {lstm.get_current_date()}")
+
 #%%
 lstm = bmi_lstm()
 lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
 print(f"{int(lstm.get_current_time())}: {lstm.get_current_date()}")
-lstm.mc_dropout = True
+lstm.mc_dropout = False
 
 length = 600
 T_C_mu_loop, T_C_sd_loop = np.zeros(length), np.zeros(length)
@@ -57,17 +85,39 @@ for i in range(length):
     T_C_mu_loop[i], T_C_sd_loop[i] = T_C_mu, T_C_sd
 
 
+lstm = bmi_lstm()
+lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
+print(f"{int(lstm.get_current_time())}: {lstm.get_current_date()}")
+lstm.mc_dropout = True
+
+length = 600
+T_C_mu_loop_, T_C_sd_loop_ = np.zeros(length), np.zeros(length)
+unscaled_data_loop = pd.DataFrame()
+for i in range(length):
+    unscaled_data = lstm.get_unscaled_values(lead_time=0)
+    unscaled_data_loop = pd.concat([unscaled_data_loop, unscaled_data])
+    for var in lstm.x_vars:
+        lstm.set_value(var, unscaled_data[var])
+
+    T_C_mu, T_C_sd = lstm.update()
+    T_C_mu_loop_[i], T_C_sd_loop_[i] = T_C_mu, T_C_sd
+
 #%%
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots()
-ax.plot(T_C_mu_arr, label='T_C_mu_arr')
-ax.plot(T_C_mu_loop, label='T_C_mu_loop')
+ax.plot(T_C_mu_arr, label='T_C_mu_arr', lw=1)
+#ax.plot(T_C_mu_loop, label='T_C_mu_loop')
+ax.plot(T_C_mu_arr_, label='T_C_mu_arr_withMC', lw=1, alpha = 0.5)
+#ax.plot(T_C_mu_loop_, label='T_C_mu_loop_withMC')
 ax.legend()
 plt.show()
 
+#%%
 fig, ax = plt.subplots()
-ax.plot(T_C_mu_arr-T_C_mu_loop, label='diff')
+#ax.plot(T_C_mu_arr-T_C_mu_loop, label='diff')
+ax.plot(T_C_mu_arr-T_C_mu_arr_, label='diff_arr (noMC - withMC)')
+#ax.plot(T_C_mu_loop-T_C_mu_loop_, label='diff_loop (noMC - withMC)')
 ax.legend()
 plt.show()
 

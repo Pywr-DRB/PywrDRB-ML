@@ -422,7 +422,6 @@ class WaterTempRandomForestUncertaintyModel:
         self.X_map = np.nan
         self.Q_C = np.nan
         self.Q_i = np.nan
-        self.Q_L = np.nan
         
         # Dates
         self.start_date = None

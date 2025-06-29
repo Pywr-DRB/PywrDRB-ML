@@ -13,20 +13,19 @@ from src.lstm_model import WaterTempLSTMModel
 from src.policies import RuleBasedPolicy
 
 disable = False  # Set to True to disable tqdm progress bar
-folder = "RFModels_deeptree"
+#folder = "lstm"
 database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
 
 ml_model = WaterTempLSTMModel(
     model1=r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\models\TempLSTM1_comparison\TempLSTM1_Qc.yml",
     model2=r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\models\TempLSTM2_comparison\TempLSTM2_Qc.yml",
     model_map=pn.get() / "models/RFModels/rf_model_map.gz",
-    disable_tqdm=False,
     debug=True,
     thermal_mitigation_bank_size=1620,  # mgd
     )
 ml_model.load_data(database)
 
-ml_model.update(t=ml_model.t)
+#ml_model.update(t=ml_model.t)
 
 #%%
 def return_dps_func(*params):
@@ -58,11 +57,10 @@ def return_dps_func(*params):
         ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
 
         # Make thermal release decision and record the thermal release
-        thermal_release = policy.run(X=ml_model.forecast_T_L_arr)
+        thermal_release = policy.run(X=ml_model.forecast_T_L_mu_arr)
         thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
         
         # Record
-        ml_model.thermal_release = thermal_release
         ml_model.remained_bank_amount -= thermal_release
         ml_model.records["thermal_releases"][ml_model.t] = thermal_release 
         ml_model.records["remained_bank_amounts"][ml_model.t] = ml_model.remained_bank_amount 
@@ -84,24 +82,25 @@ for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
     thermal_release = dm_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, date)
     
     # Update data in the ml_model for the next step(s) model update.
-    t = ml_model.t
-    ml_model.Q_C[t] += thermal_release
-    try:
-        ml_model.X_1[t, ml_model.rf_model1.x_vars.index("QbcTavg_Q_C")] += thermal_release
-    except ValueError:
-        pass
-    try:
-        ml_model.X_2[t, ml_model.rf_model2.x_vars.index("QbcTavg_Q_C")] = Q_C
-    except ValueError:
-        pass
+    if thermal_release != 0:
+        t = ml_model.t
+        ml_model.Q_C[t] += thermal_release
+        Q_C = ml_model.Q_C[t]
+        try:
+            ml_model.X_1.loc[t, ml_model.Q_C_lstm_var_name] = Q_C
+        except ValueError:
+            if ml_model.debug:  
+                print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+        try:
+            ml_model.X_2.loc[t, ml_model.Q_C_lstm_var_name] = Q_C
+        except ValueError:
+            if ml_model.debug:
+                print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm2.x_vars. Skipping update.")
 # Update the model until the end of the simulation period
 ml_model.update_until(date="2024-01-01")
 
 #%% Calculate objectives
 df = pd.DataFrame(ml_model.records, index=dates)
-df.to_csv(pn.get() / f"models/{folder}/rule_based.csv")
+#df.to_csv(pn.get() / f"models/{folder}/rule_based.csv")
 
-#%%
-total_nodes = sum(tree.tree_.node_count for tree in ml_model.rf_model1.rf_final.estimators_)
-print(f"Total number of nodes in the forest: {total_nodes}")
 

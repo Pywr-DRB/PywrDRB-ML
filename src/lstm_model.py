@@ -26,7 +26,6 @@ class WaterTempLSTMModel():
                  Q_i_lstm_var_name="QbcTavg_Q_i", 
                  cannonsville_storage_pct_lstm_var_name="bc_cannonsville_storage_pct",
                  thermal_mitigation_bank_size=1620,  # mgd
-                 disable_tqdm=True,
                  debug=False
                  ):
         """
@@ -55,14 +54,24 @@ class WaterTempLSTMModel():
         """
         
         ##### LSTM models
+        mc_dropout = False
+        # The main difference between the batch run and looping over seems to stem from 
+        # MC dropout: a single dropout mask is used during the batch run, whereas a new 
+        # mask is drawn at each step when looping through update(). When I manually 
+        # disable MC dropout while using the trained model, the output results remain 
+        # identical between the two approaches.
+        
         # Predict the Cannonsville reservoir release temperature (T_C)
         lstm1 = bmi_lstm()
         lstm1.initialize(config_file=model1, train=False, root_dir=pn.get())
+        lstm1.mc_dropout = mc_dropout
         self.lstm1 = lstm1
+        
         
         # Predict the water temperature for east branch (T_i)
         lstm2 = bmi_lstm()
         lstm2.initialize(config_file=model2, train=False, root_dir=pn.get())
+        lstm2.mc_dropout = mc_dropout
         self.lstm2 = lstm2
         
         # Map Tavg to Tmax (T_L) at Lordville
@@ -71,53 +80,39 @@ class WaterTempLSTMModel():
         
         ##### Dates and lengths        
         # Identify the start date of the LSTM models
-        dt1 = pd.to_datetime(lstm1.get_current_date())
-        dt2 = pd.to_datetime(lstm2.get_current_date())
+        dt1 = lstm1.get_current_date()
+        dt2 = lstm2.get_current_date()
         # Get the start date, which the latest among LSTM1, LSTM2, and pywrdrb start dates
         if start_date is not None:
-            dt = datetime.strptime(start_date, "%Y-%m-%d")
+            dt = np.datetime64(start_date)
         else:
-            dt = max(dt1, dt2)
-            
+            dt = max(dt1, dt2)   
         start_date = min(max(dt1, dt2, dt), dt)
-        length1 = max((start_date - dt1).days, 0)
-        length2 = max((start_date - dt2).days, 0)
-        if length1 == 0 and length2 == 0:
-            start_date = max(dt1, dt2)
-        elif length1 == 0 and length2 > 0:
-            start_date = dt1
-        elif length1 > 0 and length2 == 0:
-            start_date = dt2
-        length1 = max((start_date - dt1).days, 0)
-        length2 = max((start_date - dt2).days, 0)
-        
-        if disable_tqdm is False: # For debugging
-            print(f"Advancing the TempLSTM1 model to the start date: {start_date} (length={length1} days)")
-            print(f"Advancing the TempLSTM2 model to the start date: {start_date} (length={length2} days)")
-        
-        # Advance the LSTM models to the start date 
-        def update_until_(lstm, length):
-            # If the length is 0, we do not need to update the LSTM model
-            if length == 0:
+              
+        # Advance the LSTM models to the beginning of the start date 
+        def update_until_(lstm, start_date):
+            idx = np.where(lstm.dates_all == start_date)[1].item()
+            if idx == 0: # Already at the right time step.
                 return None
+            length = idx - int(lstm.get_current_time())
+            unscaled_data_arr = lstm.get_unscaled_values(lead_time=length-1)
             
-            # Get unscaled lstm input data
-            unscaled_data = lstm.get_unscaled_values(lead_time=length) 
             for var in lstm.x_vars:
-                lstm.set_value(var, unscaled_data[var])
-            lstm.update_until(length)
-                
-        if disable_tqdm is False: # For debugging
-            print(f"Advancing TempLSTM models to the {start_date} ...")
-            
-        update_until_(lstm=self.lstm1, length=length1)
-        update_until_(lstm=self.lstm2, length=length2)
+                lstm.set_value(var, unscaled_data_arr[var])
+            lstm.update()
+            return None
         
+        update_until_(lstm=self.lstm1, start_date=start_date)
+        update_until_(lstm=self.lstm2, start_date=start_date)
+        if debug:
+            print(f"Updated LSTM1 to {lstm1.get_current_date()} at time step {int(lstm1.get_current_time())}.")
+            print(f"Updated LSTM2 to {lstm2.get_current_date()} at time step {int(lstm2.get_current_time())}.")
+
         # Dates
         self.start_date = start_date
-        self.end_date = pd.to_datetime(end_date)
+        self.end_date = np.datetime64(end_date)
         self.current_date = self.start_date 
-        self.length = (self.end_date - self.start_date).days + 1
+        self.length = int((self.end_date - self.start_date) / np.timedelta64(1, 'D')) + 1
         self.t = 0
         
         # Input data
@@ -126,7 +121,6 @@ class WaterTempLSTMModel():
         self.X_map = np.nan
         self.Q_C = np.nan
         self.Q_i = np.nan
-        self.Q_L = np.nan
         
         # Current predictions
         self.T_C_mu = np.nan
@@ -144,10 +138,9 @@ class WaterTempLSTMModel():
         
         # Thermal control variables
         self.thermal_mitigation_bank_size = thermal_mitigation_bank_size
-        self.thermal_release = np.nan # mgd
         self.remained_bank_amount = thermal_mitigation_bank_size  # mgd
         
-        # Others        
+        # Coupling variables        
         self.Q_C_lstm_var_name = Q_C_lstm_var_name
         self.Q_i_lstm_var_name = Q_i_lstm_var_name
         self.cannonsville_storage_pct_lstm_var_name = cannonsville_storage_pct_lstm_var_name
@@ -186,63 +179,78 @@ class WaterTempLSTMModel():
             }
             
     
-    def load_data(self, database):
-        # Load db
+    def load_data(self, database=None):
+        """
+        Load the data from the database & lstm internal data for the specified date range.
+        """
         
+        # Load db (Future more flexible to load from different sources)
         db = database[self.start_date:self.end_date] 
-        self.Q_C = db["QbcTavg_Q_C"].values
-        self.Q_i = db["QbcTavg_Q_i"].values
+        self.Q_C = db[self.Q_C_lstm_var_name].values
+        self.Q_i = db[self.Q_i_lstm_var_name].values
+        #self.cannonsville_storage_pct = db[self.cannonsville_storage_pct_lstm_var_name].values
         
+        # Now we directly use the LSTM models to get the data
         length = self.length
         lstm1 = self.lstm1
-        self.X_1 = lstm1.get_unscaled_values(lead_time=length) # A DataFrame
+        self.X_1 = lstm1.get_unscaled_values(lead_time=length-1).reset_index(drop=True) # A DataFrame
         
         lstm2 = self.lstm2
-        self.X_2 = lstm2.get_unscaled_values(lead_time=length) # A DataFrame
+        self.X_2 = lstm2.get_unscaled_values(lead_time=length-1).reset_index(drop=True) # A DataFrame
         
         self.X_map = db[self.rf_model_map.x_vars].values
 
     
     def update_until(self, t=None, date=None):
+        """
+        Update the LSTM models until the beginning of the specified time step or date.
+        
+        Parameters
+        ----------
+        t : int, optional
+            The time step to update the models to. If None, updates to the next time step
+        date : str or datetime, optional
+            The date to update the models to. If None, updates to the next time step.
+        Returns
+        -------
+        tuple
+            The predicted T_L_mu and T_L_sd from the lstm model current date before 
+            update the t-1 of the specified time step (t).
+        """
         if t is not None:
-            if t >= len(self.X_1) + 1 or t < self.t:
+            if t >= self.length - 1 or t <= self.t:
                 raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X_1) + 1}.")
         if date is not None:
             if isinstance(date, str):
-                date = pd.to_datetime(date)
+                date = np.datetime64(date)
             t = (date - self.start_date).days
-            if t >= len(self.X_1) + 1 or t < self.t:
+            if t >= len(self.X_1) + 1 or t <= self.t:
                 raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
 
-        length = t - self.t
-        if length == 0:
-            return None
-        
+        length = t - self.t # Minimum 1 step
         t = self.t
-        # Somehow the data length need to be 1 step higher for lstm
-        # # python slicing is exclusive for the end index so need to add 1
-        X_map = self.X_map[t:t+length].reshape(length, -1)
-        Q_C_ = self.Q_C[t:t+length]
-        Q_i_ = self.Q_i[t:t+length]
+        
+        # Pandas DF takes t:t but array takes t:t+1
+        X_1 = self.X_1.loc[t:t+length-1, :].reset_index(drop=True)
+        X_2 = self.X_2.loc[t:t+length-1, :].reset_index(drop=True)
+        X_map = self.X_map[t:t+length, :]
         
         lstm = self.lstm1
         for var in lstm.x_vars:
-            lstm.set_value(var, self.X_1[var][t:t+length+1])
-        lstm.update_until(t+length)
-        T_C_mu = np.zeros(length)
-        T_C_sd = np.zeros(length)
-        lstm.get_value("channel_water_surface_water__mu_max_of_temperature", T_C_mu)
-        lstm.get_value("channel_water_surface_water__sd_max_of_temperature", T_C_sd)
+            lstm.set_value(var, X_1[var])
+        T_C_mu, T_C_sd = lstm.update()
+        if length == 1:
+            T_C_mu, T_C_sd = np.array([T_C_mu]), np.array([T_C_sd])
         
         lstm = self.lstm2
         for var in lstm.x_vars:
-            lstm.set_value(var, self.X_2[var][t:t+length+1])
-        lstm.update_until(t+length)
-        T_i_mu = np.zeros(length)
-        T_i_sd = np.zeros(length)
-        lstm.get_value("channel_water_surface_water__mu_max_of_temperature", T_i_mu)
-        lstm.get_value("channel_water_surface_water__sd_max_of_temperature", T_i_sd)
+            lstm.set_value(var, X_2[var])
+        T_i_mu, T_i_sd = lstm.update()
+        if length == 1:
+            T_i_mu, T_i_sd = np.array([T_i_mu]), np.array([T_i_sd])
         
+        Q_C_ = self.Q_C[t:t+length]
+        Q_i_ = self.Q_i[t:t+length]
         Tavg_L_mu, Tavg_L_sd = self.blend_hot_cold_water(
             T_C_mu=T_C_mu, T_i_mu=T_i_mu, 
             T_C_sd=T_C_sd, T_i_sd=T_i_sd, 
@@ -250,8 +258,9 @@ class WaterTempLSTMModel():
         )
         
         # T_L (Tmax at Lordville) Using a random forest model to map Tavg to T_L
-        X_map[:, self.rf_model_map.x_vars.index("QbcTavg_T_L")] = Tavg_L_mu
-        T_L_mu, _, _ = self.rf_model_map.predict(X_map, quantile=None)
+        rf_model_map = self.rf_model_map
+        X_map[:, rf_model_map.x_vars.index('QbcTavg_T_L')] = Tavg_L_mu
+        T_L_mu, _, _ = rf_model_map.predict(X_map, quantile=None)
         T_L_sd = Tavg_L_sd  # assuming a constant sd for T_L
         
         if self.debug:
@@ -276,10 +285,10 @@ class WaterTempLSTMModel():
         self.T_L_sd = float(T_L_sd[-1])
         
         self.t += length
-        self.current_date += pd.Timedelta(days=length)
+        self.current_date += np.timedelta64(length, 'D')
         return self.T_L_mu, self.T_L_sd
     
-    def update(self, t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, dQ_C=0):
+    def update(self, t, Q_C=None, Q_i=None, cannonsville_storage_pct=None):
         """
         Update the LSTM models to the specified time step.
         
@@ -293,13 +302,11 @@ class WaterTempLSTMModel():
             The East Branch downstream flow (01417000) and natural inflow to Lordville.
         cannonsville_storage_pct : float, optional
             The percentage of the Cannonsville reservoir storage.
-        dQ_C : float, optional
-            The change in Cannonsville reservoir downstream flow.
         
         Returns
         -------
         tuple
-            The predicted T_L_mu and T_L_sd at the specified time step.
+            The predicted T_L_mu and T_L_sd at the specified time step (t).
         """
         Q_C_lstm_var_name = self.Q_C_lstm_var_name
         Q_i_lstm_var_name = self.Q_i_lstm_var_name
@@ -310,35 +317,57 @@ class WaterTempLSTMModel():
             try:
                 self.X_1.loc[t, Q_C_lstm_var_name] = Q_C
             except ValueError:
-                print(f"Warning: '{Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+                if self.debug:  
+                    print(f"Warning: '{Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
             try:
                 self.X_2.loc[t, Q_C_lstm_var_name] = Q_C
             except ValueError:
-                print(f"Warning: '{Q_C_lstm_var_name}' not found in lstm2.x_vars. Skipping update.")
+                if self.debug:
+                    print(f"Warning: '{Q_C_lstm_var_name}' not found in lstm2.x_vars. Skipping update.")
             
         if Q_i is not None:
             self.Q_i[t] = Q_i
             try:
                 self.X_2.loc[t, Q_i_lstm_var_name] = Q_i
             except ValueError:
-                print(f"Warning: '{Q_i_lstm_var_name}' not found in lstm2.x_vars. Skipping update.")
+                if self.debug:
+                    print(f"Warning: '{Q_i_lstm_var_name}' not found in lstm2.x_vars. Skipping update.")
             
         if cannonsville_storage_pct is not None:
             try:
                 self.X_1.loc[t, cannonsville_storage_pct_lstm_var_name] = cannonsville_storage_pct
             except ValueError:
-                print(f"Warning: '{cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+                if self.debug:
+                    print(f"Warning: '{cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
         
-        #Weired thing here
-        #return self.update_until(t=t+1, date=None)
-        
-        
-        
+        return self.update_until(t=t+1, date=None)
     
     def forecast(self, t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0):
-        X_1 = self.X_1.loc[t:t+lead_time+1, :].copy().reset_index(drop=True)
-        X_2 = self.X_2.loc[t:t+lead_time+1, :].copy().reset_index(drop=True)
-        X_map = self.X_map[t:t+lead_time+1].reshape(lead_time+1, -1)
+        """
+        Forecast the water temperature at Lordville for the specified lead time.
+        
+        Parameters
+        ----------
+        t : int
+            The time step to forecast from.
+        Q_C : float, optional
+            The Cannonsville reservoir downstream flow (01425000).
+        Q_i : float, optional
+            The East Branch downstream flow (01417000) and natural inflow to Lordville.
+        cannonsville_storage_pct : float, optional
+            The percentage of the Cannonsville reservoir storage.
+        lead_time : int, optional
+            The number of time steps to forecast ahead. Default is 0, which means nowcast
+            and returns the current prediction.
+        Returns
+        -------
+        None
+            The forecasted water temperature at Lordville is stored in the class attributes.
+        """
+        # Pandas DF takes t:t but array takes t:t+1
+        X_1 = self.X_1.loc[t:t+lead_time, :].reset_index(drop=True).copy()
+        X_2 = self.X_2.loc[t:t+lead_time, :].reset_index(drop=True).copy()
+        X_map = self.X_map[t:t+lead_time+1, :].copy()
         Q_C_ = self.Q_C[t:t+lead_time+1].copy()
         Q_i_ = self.Q_i[t:t+lead_time+1].copy()
         
@@ -412,6 +441,27 @@ class WaterTempLSTMModel():
         return None
         
     def blend_hot_cold_water(self, T_C_mu, T_i_mu, T_C_sd, T_i_sd, Q_C, Q_i):
+        """
+        Blend the hot and cold water temperatures to get the average temperature at Lordville.
+        
+        Parameters
+        ----------
+        T_C_mu : float or np.ndarray
+            The mean temperature of the Cannonsville reservoir release.
+        T_i_mu : float or np.ndarray
+            The mean temperature of the East Branch flow and natural inflow to Lordville.
+        T_C_sd : float or np.ndarray
+            The standard deviation of the Cannonsville reservoir release temperature.
+        T_i_sd : float or np.ndarray
+            The standard deviation of the East Branch flow and natural inflow to Lordville temperature.
+        Q_C : float or np.ndarray
+            The flow rate of the Cannonsville reservoir release.
+        Q_i : float or np.ndarray
+            The flow rate of the East Branch flow and natural inflow to Lordville.
+        Returns
+        tuple
+            The average temperature at Lordville (Tavg_L_mu) and its standard deviation (Tavg_L_sd).
+        """
         Tavg_L_mu = (T_C_mu*Q_C + T_i_mu*Q_i)/(Q_C + Q_i)
         # Assuming T_i and T_C are independent
         Tavg_L_sd = np.sqrt((T_C_sd**2 * Q_C**2 + T_i_sd**2 * Q_i**2) / (Q_C + Q_i)**2)
