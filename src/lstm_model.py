@@ -236,7 +236,7 @@ class WaterTempLSTMModel():
             update the t-1 of the specified time step (t).
         """
         if t is not None:
-            if t >= self.length - 1 or t <= self.t:
+            if t >= self.length or t <= self.t:
                 raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X_1) + 1}.")
         if date is not None:
             if isinstance(date, str):
@@ -308,7 +308,7 @@ class WaterTempLSTMModel():
         self.current_date += np.timedelta64(length, 'D')
         return self.T_L_mu, self.T_L_sd
 
-    def update(self, t, Q_C=None, Q_i=None, cannonsville_storage_pct=None):
+    def update(self, t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, asycronized_update=False):
         """
         Update the LSTM models to the specified time step.
 
@@ -360,7 +360,10 @@ class WaterTempLSTMModel():
                 if self.debug:
                     print(f"Warning: '{cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
 
-        return self.update_until(t=t+1, date=None)
+        if asycronized_update:
+            return None
+        else:
+            return self.update_until(t=t+1, date=None)
 
     def forecast(self, t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0):
         """
