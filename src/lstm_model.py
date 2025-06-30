@@ -223,7 +223,7 @@ class WaterTempLSTMModel():
         if date is not None:
             if isinstance(date, str):
                 date = np.datetime64(date)
-            t = (date - self.start_date).days
+            t = int((date - self.start_date) / np.timedelta64(1, 'D'))
             if t >= len(self.X_1) + 1 or t <= self.t:
                 raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
 
