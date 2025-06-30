@@ -14,7 +14,7 @@ pn.chdir()
 from src.torch_bmi import bmi_lstm
 
 config_file = pn.models.get(f"TempLSTM1.yml")
-config_file = r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\models\TempLSTM1_comparison\TempLSTM1_none.yml"
+config_file = r"C:\Users\cl2769\Documents\GitHub\PywrDRB-ML\models\TempLSTM1_comparison\TempLSTM1_none.yml"
 # lstm = bmi_lstm()
 # lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
 
@@ -29,15 +29,18 @@ config_file = r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\models\TempLSTM1_compari
 lstm = bmi_lstm()
 lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())
 print(f"{int(lstm.get_current_time())}: {lstm.get_current_date()}")
-length = 10000
+length = 1
 unscaled_data_arr = lstm.get_unscaled_values(lead_time=length-1)
 
 lstm.mc_dropout = False
 for var in lstm.x_vars:
     lstm.set_value(var, unscaled_data_arr[var])
 
+lstm.forecast()
+
 T_C_mu_arr, T_C_sd_arr = lstm.update()
 
+#%%
 
 lstm = bmi_lstm()
 lstm.initialize(config_file=config_file, train=False, root_dir=pn.get())

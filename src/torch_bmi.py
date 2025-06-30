@@ -659,7 +659,29 @@ class bmi_lstm(Bmi):
 
         return out_preds
 
-    def forecast(self, lead_time=None):
+    def forecast(self):
+        # Save the current states of the model's hidden and cell states,
+        #  as well as the current time step and input vars
+        saved_h_t = self.h_t.clone()
+        saved_c_t = self.c_t.clone()
+        saved_t = self.t
+        # Save the current random state in torch
+        saved_rng_state = torch.get_rng_state()
+
+        try:
+            predicted_mu, predicted_sd = self.update()
+
+        finally:
+            # Restore the saved states to ensure the model's state is consistent after forecasting
+            self.h_t = saved_h_t
+            self.c_t = saved_c_t
+            self.t = saved_t
+            # Restore the saved random state
+            torch.set_rng_state(saved_rng_state)
+
+        return np.atleast_1d(predicted_mu).astype(float), np.atleast_1d(predicted_sd).astype(float)
+
+    def forecast_org(self, lead_time=None):
         """
         Forecast for a particular lead time, which is the number of days into the future from time t.
 
