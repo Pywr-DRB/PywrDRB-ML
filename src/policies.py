@@ -6,7 +6,7 @@ from sklearn.preprocessing import PolynomialFeatures
 class BasePolicy:
     def __init__(self):
         pass
-    
+
     def plot_response_surface(self, dim1=0, dim2=1, resolution=100):
         """
         Plot 3D surface for a generalized piecewise linear policy with two selected input dimensions.
@@ -25,17 +25,6 @@ class BasePolicy:
         - All input dimensions are normalized to [0, 1].
         - Other input dimensions are fixed at 0.5.
         """
-        params = self.params
-        # First, parse number of dimensions from param structure
-        i = 0
-        parsed_params = []
-        while i < len(params):
-            n_step = int(params[i])
-            n_points = n_step + 1
-            total_len = 1 + 2 * n_points
-            parsed_params.append(params[i : i + total_len])
-            i += total_len
-        ndim = len(parsed_params)
 
         # Grid of values for the two selected dimensions
         x_vals = np.linspace(0, 1, resolution)
@@ -46,7 +35,7 @@ class BasePolicy:
         for i in range(resolution):
             for j in range(resolution):
                 # Construct full input vector with all values = 0.5, except selected dims
-                X_input = [0.5] * ndim
+                X_input = [0.5] * self.n_dim
                 X_input[dim1] = X_grid[i, j]
                 X_input[dim2] = Y_grid[i, j]
 
@@ -60,16 +49,120 @@ class BasePolicy:
 
         ax.set_xlabel(f'x{dim1} input', labelpad=10, fontsize=12)
         ax.set_ylabel(f'x{dim2} input', labelpad=10, fontsize=12)
-        ax.set_zlabel('Thermal Release', labelpad=15, fontsize=12)
-        ax.set_title('Policy Surface: Generalized Piecewise Linear Function')
-        
+        ax.set_zlabel('Response', labelpad=15, fontsize=12)
+
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_zlim(0, 1)
-        
+
         plt.tight_layout()
         plt.show()
-        
+
+    def plot_response_contour(self, dim1=0, dim2=1, resolution=100, filled=True, levels=20, cmap='plasma'):
+        """
+        Plot 2D contour map for a generalized piecewise linear policy
+        with two selected input dimensions.
+
+        Parameters
+        ----------
+        dim1 : int
+            Index of the first input dimension to vary (x-axis).
+        dim2 : int
+            Index of the second input dimension to vary (y-axis).
+        resolution : int
+            Number of points per axis for the surface plot grid.
+        filled : bool
+            If True, uses filled contours (contourf); otherwise, contour lines.
+        levels : int
+            Number of contour levels.
+        cmap : str
+            Colormap to use.
+        """
+        # Generate grid
+        x_vals = np.linspace(0, 1, resolution)
+        y_vals = np.linspace(0, 1, resolution)
+        X_grid, Y_grid = np.meshgrid(x_vals, y_vals)
+        Z = np.zeros_like(X_grid)
+
+        # Evaluate policy on grid
+        for i in range(resolution):
+            for j in range(resolution):
+                X_input = [0.5] * self.n_dim
+                X_input[dim1] = X_grid[i, j]
+                X_input[dim2] = Y_grid[i, j]
+                Z[i, j] = self.run(X_input)
+
+        # Plot 2D contour
+        fig, ax = plt.subplots(figsize=(8, 6))
+        if filled:
+            contour = ax.contourf(X_grid, Y_grid, Z, levels=levels, cmap=cmap)
+            fig.colorbar(contour, ax=ax, label='Response')
+        else:
+            contour = ax.contour(X_grid, Y_grid, Z, levels=levels, cmap=cmap)
+            ax.clabel(contour, inline=True, fontsize=8)
+
+        ax.set_xlabel(f'x{dim1} input')
+        ax.set_ylabel(f'x{dim2} input')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        plt.tight_layout()
+        plt.show()
+
+    def plot_response_line(self, dim=0, resolution=200):
+        """
+        Plot 1D line of the policy response as a function of a single input dimension.
+
+        Parameters
+        ----------
+        dim : int
+            Index of the input dimension to vary.
+        resolution : int
+            Number of points to evaluate in the range [0, 1].
+        """
+        # Generate input values
+        x_vals = np.linspace(0, 1, resolution)
+        y_vals = []
+
+        for x in x_vals:
+            X_input = [0.5] * self.n_dim
+            X_input[dim] = x
+            y = self.run(X_input)
+            y_vals.append(y)
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.plot(x_vals, y_vals, label=f'x{dim} input', lw=2)
+        ax.set_xlabel(f'x{dim} input')
+        ax.set_ylabel('Response')
+        ax.grid(True)
+        ax.set_ylim(0, 1)
+        ax.legend()
+        plt.tight_layout()
+        plt.show()
+
+    def gen_params(self, n=1, seed=None):
+        """
+        Generate random parameters for the policy.
+
+        Parameters
+        ----------
+        n : int
+            Number of parameter sets to generate.
+        seed : int, optional
+            Random seed for reproducibility. If None, uses a random seed.
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape (n, self.n_params) containing the generated parameters.
+        """
+        if seed is not None:
+            rng = np.random.default_rng(seed=42)
+            params = rng.uniform(0, 1, (n, self.n_params))
+        else:
+            params = np.random.uniform(0, 1, (n, self.n_params))
+        return params
+
 class RuleBasedPolicy(BasePolicy):
     """
     A class representing a rule-based thermal control policy.
@@ -77,7 +170,7 @@ class RuleBasedPolicy(BasePolicy):
     This policy implements a simple rule-based approach to determine the amount of water to release
     based on the current temperature. If the temperature exceeds a specified threshold, it releases
     a fixed amount of water; otherwise, it does not release any water.
-    
+
     Parameters
     ----------
     threshold : float, optional
@@ -92,7 +185,7 @@ class RuleBasedPolicy(BasePolicy):
     def run(self, X,  *args, **kwargs):
         """
         Execute the rule-based policy.
-        
+
         Parameters
         ----------
         X : array-like of shape (1,)
@@ -110,65 +203,64 @@ class RuleBasedPolicy(BasePolicy):
 
 class GeneralizedPiecewiseLinearPolicy(BasePolicy):
     """
-    A class representing a generalized piecewise linear policy for thermal control.
+    A generalized piecewise linear policy for thermal control.
 
-    This policy allows for multiple input dimensions, each with its own set of breakpoints
-    and corresponding output values. The output is computed as the average of the piecewise
-    linear interpolated values for each input dimension.
-    
+    For each input dimension, the parameters specify:
+        - distances between breakpoints (positive values summing to 1 after normalization)
+        - corresponding z_values for each breakpoint
+
+    The x_breaks are constructed to span [0, 1], with the first break at 0 and the last at 1.
+
     Parameters
     ----------
-    *params : variable length
-        For each input dimension xi, the parameters are provided in the following order:
-            - x_breaks_i : array-like of shape (n_step_i + 1,)
-                Strictly increasing breakpoints along xi's domain.
-            - z_values_i : array-like of shape (n_step_i + 1,)
-                Output values corresponding to each breakpoint.
-    The total number of parameters should match the sum over all dimensions:
-    dim * (1 + 2 * (n_step_i + 1))  # varies depending on per-dimension n_step_i
+    n_dim : int
+        Number of input dimensions.
+    n_steps : int or list of int
+        Number of steps (linear segments) per dimension.
     """
 
-    def __init__(self, n_dim, n_steps, *params):
-        self.params = np.asarray(params)
+    def __init__(self, n_dim, n_steps):
+        super().__init__()
         self.n_dim = n_dim
+
         if isinstance(n_steps, int):
             n_steps = [n_steps] * n_dim
         self.n_steps = n_steps
         self.n_params = self._compute_n_params()
-        assert len(self.params) == self.n_params, \
-            f"Expected {self.n_params} parameters, got {len(self.params)}."
-        
+
+    def set_params(self, *params):
+        """
+        Set the parameters for the policy.
+
+        Parameters
+        ----------
+        params : array-like of shape (n_params,)
+            New parameters to set for the policy.
+        """
+        params = np.asarray(params)
+        assert len(params) == self.n_params, \
+            f"Expected {self.n_params} parameters, got {len(params)}."
+        self.params = params
+
     def _compute_n_params(self):
-        """
-        Compute the total number of parameters based on the number of dimensions and steps.
-        Each dimension has:
-            - 1 for n_step
-            - n_step + 1 for x_breaks
-            - n_step + 1 for z_values
-        Total: dim * (1 + 2 * (n_step + 1))
-        """
-        return sum((1 + 2 * (n_step + 1)) for n_step in self.n_steps)
-    
+        # Each dimension has:
+        # - n_step distances
+        # - (n_step + 1) z values
+        return sum(n_step + (n_step + 1) for n_step in self.n_steps)
+
     def run(self, X):
         """
-        Compute the output of the generalized piecewise linear policy.
+        Compute the policy output as the average of piecewise linear outputs.
 
         Parameters
         ----------
         X : array-like of shape (n_dim,)
-            Input feature vector. Each element corresponds to a dimension that
-            will be mapped using its own piecewise linear function.
+            Input vector with values in [0, 1].
 
         Returns
         -------
         z : float
-            Scalar output value, computed as the average of all per-dimension
-            piecewise linear interpolated values.
-
-        Raises
-        ------
-        ValueError
-            If x_breaks are not strictly increasing for any dimension.
+            Averaged output from all piecewise linear mappings.
         """
         X = np.asarray(X)
         assert len(X) == self.n_dim, "Input dimension mismatch."
@@ -179,15 +271,21 @@ class GeneralizedPiecewiseLinearPolicy(BasePolicy):
             n_step = self.n_steps[d]
             n_points = n_step + 1
 
-            x_breaks = np.array(self.params[i : i + n_points])
-            i += n_points
+            # Extract distance and z values
+            distances = np.array(self.params[i : i + n_step])
+            i += n_step
             z_values = np.array(self.params[i : i + n_points])
             i += n_points
 
-            if not np.all(np.diff(x_breaks) > 0):
-                raise ValueError(f"x_breaks for input {d} must be strictly increasing.")
+            # Normalize distances to sum to 1 and compute breakpoints
+            distances = distances / np.sum(distances)
+            x_breaks = np.concatenate(([0], np.cumsum(distances)))
 
-            xi = np.clip(X[d], x_breaks[0], x_breaks[-1])
+            # Ensure x_breaks ends exactly at 1
+            x_breaks[-1] = 1.0
+
+            # Clip and interpolate
+            xi = np.clip(X[d], 0, 1)
             zi = np.interp(xi, x_breaks, z_values)
             z_total += zi
 
@@ -200,7 +298,7 @@ class RegressionPolicy(BasePolicy):
     This policy uses polynomial regression to map a normalized input vector
     to a scalar output value. The model is defined by a fixed polynomial
     degree and corresponding coefficients.
-    
+
     Parameters
     ----------
     degree : int, optional
@@ -217,14 +315,25 @@ class RegressionPolicy(BasePolicy):
 
     """
 
-    def __init__(self, n_dim, degree=2, *params):
-        self.params = np.asarray(params)
+    def __init__(self, n_dim, degree=2):
         self.degree = degree
         self.n_dim = n_dim
         self.n_params = self._compute_n_params()
-        assert len(self.params) == self.n_params, \
-            f"Expected {self.n_params} parameters, got {len(self.params)}."
         self.poly = PolynomialFeatures(degree=degree, include_bias=True)
+
+    def set_params(self, *params):
+        """
+        Set the parameters for the policy.
+
+        Parameters
+        ----------
+        params : array-like of shape (n_params,)
+            New parameters to set for the policy.
+        """
+        params = np.asarray(params)
+        assert len(params) == self.n_params, \
+            f"Expected {self.n_params} parameters, got {len(params)}."
+        self.params = params
 
     def _compute_n_params(self):
         """
@@ -234,6 +343,7 @@ class RegressionPolicy(BasePolicy):
         This accounts for all combinations of input dimensions up to the specified degree.
         """
         return (self.degree + 1) * (self.n_dim + self.degree) // 2
+
     def run(self, X):
         """
         Predict the policy output for input vector X.
@@ -250,10 +360,14 @@ class RegressionPolicy(BasePolicy):
         """
         X = np.asarray(X)
         assert X.shape[0] == self.n_dim, "Input dimension mismatch."
-        
+
         X = X.reshape(1, -1)
         X_poly = self.poly.fit_transform(X)
-        return float(X_poly @ self.params)
+        y = float(X_poly @ self.params)
+
+        # Force y to be in [0, 1]
+        y = np.clip(y, 0, 1)
+        return y
 
 class GaussianRBFPolicy(BasePolicy):
     """
@@ -277,29 +391,40 @@ class GaussianRBFPolicy(BasePolicy):
         ]
     """
 
-    def __init__(self, n_dim, n_basis, *params):
+    def __init__(self, n_dim, n_basis):
         self.n_dim = n_dim
         self.n_basis = n_basis
-        self.params = np.asarray(params)
         self.n_params = self._compute_n_params()
-        assert len(self.params) == self.n_params, \
-            f"Expected {self.n_params} parameters, got {len(self.params)}."
-        self._parse_params(*params)
 
-    def _parse_params(self, *params):
+    def set_params(self, *params):
+        """
+        Set the parameters for the policy.
+
+        Parameters
+        ----------
+        params : array-like of shape (n_params,)
+            New parameters to set for the policy.
+        """
+        params = np.asarray(params)
+        assert len(params) == self.n_params, \
+            f"Expected {self.n_params} parameters, got {len(params)}."
+        self.params = params
+        self._parse_params(params)
+
+    def _parse_params(self, params):
         n_dim = self.n_dim
         n_basis = self.n_basis
-        
+
         # centers [0, 1]
         centers = params[:n_dim*n_basis].reshape(n_dim, n_basis)
-        
+
         # b = 2*sigma^2 [0, 1]
         basises = params[n_dim*n_basis:n_dim*n_basis*2].reshape(n_dim, n_basis)
         basises = np.where(basises != 0.0, basises, 1e-6) # Avoid zero sigma
-        
+
         weights = params[n_dim*n_basis*2:]
         weights /= (np.sum(weights)+1e-10)  # Normalizing weights to sum to 1
-        
+
         self.weights = weights
         self.centers = centers
         self.basises = basises
@@ -310,7 +435,7 @@ class GaussianRBFPolicy(BasePolicy):
         Each RBF has n_dim centers, 1 sigma, and 1 weight.
         """
         return self.n_basis + 2*(self.n_dim*self.n_basis)
-    
+
     def run(self, X):
         X = np.asarray(X)
         assert X.shape[0] == self.n_dim, "Input dimension mismatch."
@@ -324,6 +449,9 @@ class GaussianRBFPolicy(BasePolicy):
 
         # Weighted sum
         y = np.dot(self.weights, rbf_values)
+        
+        # Force y to be in [0, 1]
+        y = np.clip(y, 0, 1)
         return float(y)
 
 class CubicRBFPolicy(BasePolicy):
@@ -355,29 +483,40 @@ class CubicRBFPolicy(BasePolicy):
         ]
     """
 
-    def __init__(self, n_dim, n_basis, *params):
+    def __init__(self, n_dim, n_basis):
         self.n_dim = n_dim
         self.n_basis = n_basis
-        self.params = np.asarray(params)
-        self._parse_params(*params)
-        assert len(self.params) == self.n_params, \
-            f"Expected {self.n_params} parameters, got {len(self.params)}."
         self.n_params = self._compute_n_params()
 
-    def _parse_params(self, *params):
+    def set_params(self, *params):
+        """
+        Set the parameters for the policy.
+
+        Parameters
+        ----------
+        params : array-like of shape (n_params,)
+            New parameters to set for the policy.
+        """
+        params = np.asarray(params)
+        assert len(params) == self.n_params, \
+            f"Expected {self.n_params} parameters, got {len(params)}."
+        self.params = params
+        self._parse_params(params)
+
+    def _parse_params(self, params):
         n_dim = self.n_dim
         n_basis = self.n_basis
-        
+
         # centers [0, 1]
         centers = params[:n_dim*n_basis].reshape(n_dim, n_basis)
-        
+
         # b = 2*sigma^2 [0, 1]
         basises = params[n_dim*n_basis:n_dim*n_basis*2].reshape(n_dim, n_basis)
         basises = np.where(basises != 0.0, basises, 1e-6) # Avoid zero sigma
-        
+
         weights = params[n_dim*n_basis*2:]
         weights /= (np.sum(weights)+1e-10)  # Normalizing weights to sum to 1
-        
+
         self.weights = weights
         self.centers = centers
         self.basises = basises
@@ -388,7 +527,7 @@ class CubicRBFPolicy(BasePolicy):
         Each RBF has n_dim centers, 1 sigma, and 1 weight.
         """
         return self.n_basis + 2*(self.n_dim*self.n_basis)
-    
+
     def run(self, X):
         X = np.asarray(X)
         assert X.shape[0] == self.n_dim, "Input dimension mismatch."
@@ -401,4 +540,7 @@ class CubicRBFPolicy(BasePolicy):
 
         # Weighted sum
         y = np.dot(self.weights, rbf_values)
+        
+        # Force y to be in [0, 1]
+        y = np.clip(y, 0, 1)
         return float(y)
