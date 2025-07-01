@@ -23,6 +23,7 @@ db_SalinityLSTM = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"),
 def make_lstm_model(
         model_id="my_model",
         subfolder=None,
+        yml_subsubfolder=None,
         **kwargs
         ):
     
@@ -47,7 +48,9 @@ def make_lstm_model(
         else:
             print(f"Warning: {key} not found in model_config template.")
             model_config[key] = value
-    if subfolder is not None:
+    if subfolder is not None and yml_subsubfolder is not None:
+        yml_filename = pn.models.get() / f"{subfolder}/{yml_subsubfolder}/{model_id}.yml"
+    elif subfolder is not None:
         yml_filename = pn.models.get() / f"{subfolder}/{model_id}.yml"
     else:
         yml_filename = pn.models.get() / f"{model_id}.yml"

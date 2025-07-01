@@ -466,7 +466,8 @@ class WaterTempLSTMModel():
         self.forecast_T_L_sd_arr = forecast_T_L_sd
         return None
 
-    def blend_hot_cold_water(self, T_C_mu, T_i_mu, T_C_sd, T_i_sd, Q_C, Q_i):
+    @staticmethod
+    def blend_hot_cold_water(T_C_mu, T_i_mu, T_C_sd, T_i_sd, Q_C, Q_i):
         """
         Blend the hot and cold water temperatures to get the average temperature at Lordville.
 

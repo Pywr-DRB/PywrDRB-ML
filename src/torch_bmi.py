@@ -5,7 +5,6 @@ from pathlib import Path
 # Basic utilities
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 # Need these for BMI
 from bmipy import Bmi
 # LSTM here is based on PyTorch
@@ -326,7 +325,7 @@ class bmi_lstm(Bmi):
     #------------------------------------------------------------
 
     #-------------------------------------------------------------------
-    def initialize(self, config_file = None, torch_seed = None, train = False, root_dir = None):
+    def initialize(self, config_file = None, torch_seed = None, train = False, root_dir = None, disable_tqdm = False):
         """Initialize the BMI LSTM model with BMI configuration file.
 
         This function initializes the BMI LSTM model by performing the following steps:
@@ -436,6 +435,9 @@ class bmi_lstm(Bmi):
         # Gather verbosity lvl from bmi-config for stdout printing, etc.
         self.verbose = self.cfg_bmi['verbose']
         self.results = None # For simple run
+        self.disable_tqdm = disable_tqdm
+        if disable_tqdm:
+            self.verbose = False
 
     def update(self):
         """Update the LSTM model for a single time step.
@@ -902,7 +904,8 @@ class bmi_lstm(Bmi):
                         weights_file=self.weights_file,
                         log_file=self.log_file,
                         device='cpu', # hard coding
-                        keep_portion=None)
+                        keep_portion=None,
+                        disable_tqdm=self.disable_tqdm)
             # fit_torch_model(model = self.pretrain_model,
             #                 x = self.x_trn,
             #                 y = self.y_trn,
@@ -970,7 +973,8 @@ class bmi_lstm(Bmi):
                         weights_file=self.weights_file,
                         log_file=self.log_file,
                         device='cpu', # hard coding
-                        keep_portion=None)
+                        keep_portion=None,
+                        disable_tqdm=self.disable_tqdm)
             # fit_torch_model(model = self.fine_tune_model,
             #                 x = self.x_trn,
             #                 y = self.obs_trn,
