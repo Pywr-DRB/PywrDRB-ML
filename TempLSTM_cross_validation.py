@@ -283,7 +283,13 @@ overall_performance2_df = pd.concat(overall_performance2, ignore_index=True)
 overall_performance_Tavg_df = pd.concat(overall_performance_Tavg, ignore_index=True)
 overall_performance_Tmax_df = pd.concat(overall_performance_Tmax, ignore_index=True)
 
-overall_performance1_df.to_csv(pn.models.get(f"{subfolder}/overall_performance1.csv"), index=False)
-overall_performance2_df.to_csv(pn.models.get(f"{subfolder}/overall_performance2.csv"), index=False)
-overall_performance_Tavg_df.to_csv(pn.models.get(f"{subfolder}/overall_performance_Tavg.csv"), index=False)
-overall_performance_Tmax_df.to_csv(pn.models.get(f"{subfolder}/overall_performance_Tmax.csv"), index=False)
+overall_performance1_df.to_csv(pn.models.get() / f"{subfolder}/overall_performance1.csv", index=False)
+overall_performance2_df.to_csv(pn.models.get() / f"{subfolder}/overall_performance2.csv", index=False)
+overall_performance_Tavg_df.to_csv(pn.models.get() / f"{subfolder}/overall_performance_Tavg.csv", index=False)
+overall_performance_Tmax_df.to_csv(pn.models.get() / f"{subfolder}/overall_performance_Tmax.csv", index=False)
+
+mean_rmse = {}
+mean_rmse["T_C"] = overall_performance1_df.mean()["rmse"]
+mean_rmse["T_i"] = overall_performance2_df.mean()["rmse"]
+mean_rmse["Tavg"] = overall_performance_Tavg_df.mean()["rmse"]
+mean_rmse["T_L"] = overall_performance_Tmax_df.mean()["rmse"]

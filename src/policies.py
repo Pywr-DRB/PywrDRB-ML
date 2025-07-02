@@ -176,9 +176,9 @@ class RuleBasedPolicy(BasePolicy):
     threshold : float, optional
         The temperature threshold for releasing water (default is 24 degrees Celsius).
     thermal_release : float, optional
-        The amount of water to release when the temperature exceeds the threshold (default is 300 mgd).
+        The amount of water to release when the temperature exceeds the threshold (default is 65 mgd (~100 cfs)).
     """
-    def __init__(self, threshold=24, thermal_release_amount=300):
+    def __init__(self, threshold=24, thermal_release_amount=65):
         self.threshold = threshold
         self.thermal_release_amount = thermal_release_amount
 

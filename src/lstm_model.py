@@ -25,7 +25,7 @@ class WaterTempLSTMModel():
                  Q_C_lstm_var_name="QbcTavg_Q_C",
                  Q_i_lstm_var_name="QbcTavg_Q_i",
                  cannonsville_storage_pct_lstm_var_name="bc_cannonsville_storage_pct",
-                 thermal_mitigation_bank_size=1620,  # mgd
+                 thermal_mitigation_bank_size=1620,  # MGD-days ~= 2500 cfs-days
                  debug=False
                  ):
         """
@@ -128,6 +128,7 @@ class WaterTempLSTMModel():
         # Dates
         self.start_date = start_date
         self.end_date = np.datetime64(end_date)
+        self.dates = pd.date_range(start=self.start_date, end=self.end_date, freq='D')
         self.current_date = self.start_date
         self.length = int((self.end_date - self.start_date) / np.timedelta64(1, 'D')) + 1
         self.t = 0
