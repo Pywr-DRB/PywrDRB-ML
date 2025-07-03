@@ -73,9 +73,9 @@ def eval_func(*params):
     dm_func = return_dps_func() #*params
 
     ml_model = WaterTempLSTMModel(
-        model1=pn.models.get() / r"TempLSTM1_comparison\TempLSTM1_Qc.yml",
-        model2=pn.models.get() / r"TempLSTM2_comparison\TempLSTM2_Qc.yml",
-        Tavg2Tmax_coefs=pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json",
+        model1=pn.models.get() / r"TempLSTM\TempLSTM1.yml",
+        model2=pn.models.get() / r"TempLSTM\TempLSTM2.yml",
+        Tavg2Tmax_coefs=pn.models.get() / r"TempLSTM\Tavg2Tmax_coefs.json",
         debug=True,
         thermal_mitigation_bank_size=1620 * 3,  # mgd
         )
