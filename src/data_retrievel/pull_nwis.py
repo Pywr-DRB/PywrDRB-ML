@@ -96,10 +96,12 @@ raw = nwis.download(url, to_frame=False).text
 data = nwis.download(url, to_frame=True)
 data["105329_00060_00003"] *= 0.64632 # cfs to mgd
 data.index = pd.to_datetime(data["datetime"])
-data.index.name = "date"
 data = data[['105330_00010_00001', '105331_00010_00002', '105332_00010_00003', '105329_00060_00003']]
 cols = ['tmmx_water_cannonsville', 'tmmn_water_cannonsville', 'tavg_water_cannonsville', 'discharge_cannonsville']
 data.columns = cols
+new_index = pd.date_range(start=data.index.min(), end=data.index.max(), freq="D")
+data = data.reindex(new_index) # Make sure dates are consecutive
+data.index.name = "date"
 for col in cols:
     col_src = col + "_src"
     data[col_src] = "obs"
@@ -116,10 +118,12 @@ raw = nwis.download(url, to_frame=False).text
 data = nwis.download(url, to_frame=True)
 data["105344_00060_00003"] *= 0.64632 # cfs to mgd
 data.index = pd.to_datetime(data["datetime"])
-data.index.name = "date"
 data = data[['105345_00010_00001', '105346_00010_00002', '105347_00010_00003', '105344_00060_00003']]
 cols = ['tmmx_water_lordville', 'tmmn_water_lordville', 'tavg_water_lordville', 'discharge_lordville']
 data.columns = cols
+new_index = pd.date_range(start=data.index.min(), end=data.index.max(), freq="D")
+data = data.reindex(new_index) # Make sure dates are consecutive
+data.index.name = "date"
 for col in cols:
     col_src = col + "_src"
     data[col_src] = "obs"
@@ -155,5 +159,12 @@ raw_text = nwis.download(url=url).text
 dff = nwis.download(url=url, to_frame=True)
 dff.index = pd.to_datetime(dff["datetime"])
 df["01474500"] = dff["118500_00060_00003"] * 0.64632 # cfs to mgd
+
+new_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="D")
+df = df.reindex(new_index) # Make sure dates are consecutive
+df.index.name = "date"
+
+# Since we use 7-day average, some obs row are nan due to previous 7 days contains nan
+df.loc[df["saltfront"].isna(), "saltfront_src"] = "other"
 
 df.to_csv(pn.data.raw.get() / "salt_front_data.csv")

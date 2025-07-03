@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 
 def calc_crossval_splits(
-    min_date: str,
-    max_date: str,
+    date_range: pd.DatetimeIndex = None,
+    min_date: str = None,
+    max_date: str = None,
     k_outer: int = 5,
     k_inner: int = 4
 ) -> list:
@@ -26,7 +27,8 @@ def calc_crossval_splits(
     """
 
     # Calculate the date range
-    date_range = pd.date_range(start=min_date, end=max_date, freq='D')
+    if date_range is None:
+        date_range = pd.date_range(start=min_date, end=max_date, freq='D')
 
     # Calculate the total number of days
     total_days = len(date_range)

@@ -1,3 +1,4 @@
+#%%
 import pandas as pd
 import numpy as np
 import pathnavigator
@@ -42,6 +43,11 @@ def create_TempLSTM_database(pn, start="1979-01-01", end="2024-12-31", filename=
         axis=1
         )
     
+    # Manually add lag1 y as an input variable
+    lag1_vars = ["QbcTavg_T_C", "QbcTavg_T_i", "QbcTmax_T_L"]
+    for var in lag1_vars:
+        df_all[f"{var}_lag1"] = df_all[var].shift(1)
+
     # Load reservoir storage
     df_storage = pd.read_csv(pn.data.raw.get("drb_reservoir_storage_mg_2000_2024.csv"), parse_dates=True, index_col="date")[start:end]
     df_all["nyc_storage_pct"] = df_storage["nyc_total_pct"]
@@ -68,6 +74,21 @@ def create_TempLSTM_database(pn, start="1979-01-01", end="2024-12-31", filename=
     df_all["seg_id_nat"] = 1573
     
     df_all.replace("obv", "obs", inplace=True) # in case of "obv" in the data
+    
+    # Create doc (day of cooling season) column: 6/1 = 1, 6/2 = 2, ..., 8/31 = 92, rest = NaN
+    df_all["doc"] = np.nan
+    cooling_season_mask = (df_all.index.month >= 6) & (df_all.index.month <= 8)
+    # Compute day-of-year for June 1st for each year
+    june_1_doy_series = pd.to_datetime(
+        df_all.index.year.astype(str) + '-06-01'
+    ).dayofyear.values
+    # Align June 1st DOY with index
+    june_1_doy = pd.Series(june_1_doy_series, index=df_all.index)
+    # Calculate day of cooling season (starting at 1 on June 1st)
+    df_all.loc[cooling_season_mask, "doc"] = (
+        df_all.index.dayofyear[cooling_season_mask] - june_1_doy[cooling_season_mask] + 1
+    )
+    
     df_all.to_csv(pn.data.database.get() / filename)
     
     # Form bmi attributes

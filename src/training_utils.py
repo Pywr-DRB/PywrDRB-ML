@@ -767,7 +767,8 @@ def train_loop(epoch_index,
                weight_loss, 
                weight_threshold, 
                weight_value,
-               device = 'cpu'):
+               device = 'cpu', 
+               disable_tqdm = False):
     """
     @param epoch_index: [int] Epoch number
     @param dataloader: [object] torch dataloader with train and val data
@@ -778,7 +779,7 @@ def train_loop(epoch_index,
     @return: [float] epoch loss
     """
     train_loss=[]
-    with tqdm(dataloader, ncols=100, desc= f"Epoch {epoch_index+1}", unit="batch") as tepoch:
+    with tqdm(dataloader, ncols=100, desc= f"Epoch {epoch_index+1}", unit="batch", disable=disable_tqdm) as tepoch:
         for x, y in tepoch:
             trainx = x.to(device)
             trainy = y.to(device)
@@ -883,7 +884,8 @@ def train_torch(model,
                 weights_file = None,
                 log_file= None,
                 device = 'cpu',
-                keep_portion = None):
+                keep_portion = None,
+                disable_tqdm = False):
     """
     modified from river-dl
     @param model: [objetct] initialized torch model
@@ -968,7 +970,7 @@ def train_torch(model,
         epoch_loss = train_loop(i, train_loader, h_train, c_train, weighting_matrix_train,
                                 head, model, loss_function, optimizer, umal_extend_batch,
                                 umal_n_taus_train, umal_tau_min, umal_tau_max, 
-                                weight_loss, weight_threshold, weight_value, device)
+                                weight_loss, weight_threshold, weight_value, device, disable_tqdm)
         train_time.append(time.time() - t1)
         train_log = pd.concat([train_log,pd.DataFrame([[i, epoch_loss, np.nan,time.time()-t1,np.nan]],columns=log_cols,index=[i])])
 
