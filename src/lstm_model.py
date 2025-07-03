@@ -205,7 +205,11 @@ class WaterTempLSTMModel():
         db = database[self.start_date:self.end_date]
         self.Q_C = db[self.Q_C_lstm_var_name].values
         self.Q_i = db[self.Q_i_lstm_var_name].values
-        #self.cannonsville_storage_pct = db[self.cannonsville_storage_pct_lstm_var_name].values
+        
+        
+        # For control purposes
+        self.doc = db["doc"].values if "doc" in db.columns else None
+        self.cannonsville_storage_pct = db[self.cannonsville_storage_pct_lstm_var_name].values
 
         # Now we directly use the LSTM models to get the data
         length = self.length
@@ -213,7 +217,6 @@ class WaterTempLSTMModel():
         self.X_1 = lstm1.get_unscaled_values(lead_time=length-1).reset_index(drop=True) # A DataFrame
         self.x_vars_1 = list(lstm1.x_vars)  # Store x_vars for later use
         self.X_1 = self.X_1[self.x_vars_1].values  # Ensure same order as LSTM x_vars are included
-
 
         lstm2 = self.lstm2
         self.X_2 = lstm2.get_unscaled_values(lead_time=length-1).reset_index(drop=True) # A DataFrame

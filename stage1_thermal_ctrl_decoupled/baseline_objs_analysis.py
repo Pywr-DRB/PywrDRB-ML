@@ -25,7 +25,7 @@ ml_model_noCtrl = WaterTempLSTMModel(
     model2=pn.models.get() / r"TempLSTM2_comparison\TempLSTM2_Qc.yml",
     Tavg2Tmax_coefs=pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json",
     debug=True,
-    thermal_mitigation_bank_size=1620,  # mgd-day
+    thermal_mitigation_bank_size=1620 * 3,  # mgd-day
     )
 ml_model_noCtrl.load_data(database)
 ml_model_noCtrl.update_until(date=pd.Timestamp('2024-01-01'))  # Update until the end of 2023
@@ -175,9 +175,4 @@ ax.set_xlim([0, 230])
 plt.tight_layout()
 plt.show()
 
-r"""
-{'T_C': np.float64(1.612883998379305),
- 'T_i': np.float64(6.684021409680599),
- 'Tavg': np.float64(1.2969361086676146),
- 'T_L': np.float64(1.4062992125475333)}
-"""
+

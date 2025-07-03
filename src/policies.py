@@ -157,7 +157,7 @@ class BasePolicy:
             Array of shape (n, self.n_params) containing the generated parameters.
         """
         if seed is not None:
-            rng = np.random.default_rng(seed=42)
+            rng = np.random.default_rng(seed=seed)
             params = rng.uniform(0, 1, (n, self.n_params))
         else:
             params = np.random.uniform(0, 1, (n, self.n_params))
@@ -179,8 +179,11 @@ class RuleBasedPolicy(BasePolicy):
         The amount of water to release when the temperature exceeds the threshold (default is 65 mgd (~100 cfs)).
     """
     def __init__(self, threshold=24, thermal_release_amount=65):
+        super().__init__()
         self.threshold = threshold
-        self.thermal_release_amount = thermal_release_amount
+        self.thermal_release_amount = thermal_release_amount 
+        
+        self.name = "RuleBasedPolicy"
 
     def run(self, X,  *args, **kwargs):
         """
@@ -227,6 +230,12 @@ class GeneralizedPiecewiseLinearPolicy(BasePolicy):
             n_steps = [n_steps] * n_dim
         self.n_steps = n_steps
         self.n_params = self._compute_n_params()
+        
+        # For Borg
+        self.param_names = self._gen_param_names()
+        self.bounds = self.assign_bounds()
+        
+        self.name = "GeneralizedPiecewiseLinearPolicy"
 
     def set_params(self, *params):
         """
@@ -247,6 +256,51 @@ class GeneralizedPiecewiseLinearPolicy(BasePolicy):
         # - n_step distances
         # - (n_step + 1) z values
         return sum(n_step + (n_step + 1) for n_step in self.n_steps)
+    
+    def _gen_param_names(self):
+        """
+        Generate parameter names for the policy.
+
+        Returns
+        -------
+        list of str
+            List of parameter names for each piecewise linear segment.
+        """
+        param_names = []
+        for d in range(self.n_dim):
+            n_step = self.n_steps[d]
+            for i in range(n_step):
+                param_names.append(f'dist_{d}_{i}')
+            for i in range(n_step + 1):
+                param_names.append(f'z_{d}_{i}')
+        self.param_names = param_names
+        return param_names
+    
+    def assign_bounds(self, x_range=[0.01, 1], z_range=[0, 1]):
+        """
+        Assign bounds for the policy parameters.
+
+        Parameters
+        ----------
+        x_range : list of tuple
+            List of (min, max) bounds for each x parameter (distance).
+            Default [0.01, 1] prevents zero distances which cause numerical issues.
+        z_range : list of tuple, optional
+            List of (min, max) bounds for each z parameter (default is [0, 1]).
+        
+        Note: Distance parameters are normalized to sum to 1, so they represent
+        relative segment lengths. Minimum of 0.01 ensures all segments exist.
+        Z parameters directly control output values at breakpoints.
+        """
+        bounds = []
+        for d in range(self.n_dim):
+            n_step = self.n_steps[d]
+            for i in range(n_step):
+                bounds.append([x_range[0], x_range[1]])  # distances
+            for i in range(n_step + 1):
+                bounds.append([z_range[0], z_range[1]])  # z values
+        self.bounds = bounds
+        return bounds
 
     def run(self, X):
         """
@@ -298,6 +352,8 @@ class RegressionPolicy(BasePolicy):
     This policy uses polynomial regression to map a normalized input vector
     to a scalar output value. The model is defined by a fixed polynomial
     degree and corresponding coefficients.
+    The degree-2 polynomial features are [1, a, b, a^2, ab, b^2]
+    f(x1, x2) = c0 + c1*x1 + c2*x2 + c3*x1² + c4*x1*x2 + c5*x2²
 
     Parameters
     ----------
@@ -320,6 +376,12 @@ class RegressionPolicy(BasePolicy):
         self.n_dim = n_dim
         self.n_params = self._compute_n_params()
         self.poly = PolynomialFeatures(degree=degree, include_bias=True)
+        
+        self.name = "RegressionPolicy"
+        
+        # For Borg
+        self.param_names = self._gen_param_names()
+        self.bounds = self.assign_bounds()
 
     def set_params(self, *params):
         """
@@ -344,6 +406,40 @@ class RegressionPolicy(BasePolicy):
         """
         return (self.degree + 1) * (self.n_dim + self.degree) // 2
 
+    def _gen_param_names(self):
+        """
+        Generate parameter names for the policy.
+
+        Returns
+        -------
+        list of str
+            List of parameter names for each piecewise linear segment.
+        """
+        param_names = [f"c{i}" for i in range(self.n_params)]
+        return param_names
+    
+    def assign_bounds(self, output_range=[0, 1]):
+        """
+        Assign parameter bounds to ensure output stays within specified range
+        for inputs in [0,1]^n_dim.
+        
+        For polynomial regression with normalized inputs [0,1] and outputs [0,1]:
+        - Constant term (c0): [0, 1] to ensure non-negative baseline
+        - Other coefficients: [-2, 2] to allow flexibility while maintaining output bounds
+        
+        Note: These bounds are conservative. Tighter bounds could be derived
+        from constraint optimization, but would be computationally expensive.
+        """
+        bounds = []
+        for i in range(self.n_params):
+            if i == 0:  # Constant term
+                bounds.append([output_range[0], output_range[1]])
+            else:  # Linear, quadratic, and interaction terms
+                # Allow negative coefficients for flexibility
+                # The clipping in run() ensures output bounds are respected
+                bounds.append([-2.0, 2.0])
+        return bounds
+    
     def run(self, X):
         """
         Predict the policy output for input vector X.
@@ -395,6 +491,12 @@ class GaussianRBFPolicy(BasePolicy):
         self.n_dim = n_dim
         self.n_basis = n_basis
         self.n_params = self._compute_n_params()
+        
+        self.name = "GaussianRBFPolicy"
+        
+        # For Borg
+        self.param_names = self._gen_param_names()
+        self.bounds = self.assign_bounds()
 
     def set_params(self, *params):
         """
@@ -415,19 +517,73 @@ class GaussianRBFPolicy(BasePolicy):
         n_dim = self.n_dim
         n_basis = self.n_basis
 
-        # centers [0, 1]
-        centers = params[:n_dim*n_basis].reshape(n_dim, n_basis)
-
-        # b = 2*sigma^2 [0, 1]
-        basises = params[n_dim*n_basis:n_dim*n_basis*2].reshape(n_dim, n_basis)
-        basises = np.where(basises != 0.0, basises, 1e-6) # Avoid zero sigma
-
-        weights = params[n_dim*n_basis*2:]
-        weights /= (np.sum(weights)+1e-10)  # Normalizing weights to sum to 1
+        # Parse parameters in the order: weight_i, center_d_i, basis_d_i for each basis i
+        # This matches the order from _gen_param_names and assign_bounds
+        weights = np.zeros(n_basis)
+        centers = np.zeros((n_dim, n_basis))
+        basises = np.zeros((n_dim, n_basis))
+        
+        idx = 0
+        for i in range(n_basis):
+            # Weight for basis i
+            weights[i] = params[idx]
+            idx += 1
+            
+            # Centers and basises for all dimensions of basis i
+            for d in range(n_dim):
+                centers[d, i] = params[idx]
+                idx += 1
+                basises[d, i] = params[idx]
+                idx += 1
+        
+        # Avoid zero sigma
+        basises = np.where(basises != 0.0, basises, 1e-6)
+        
+        # Normalizing weights to sum to 1
+        weights /= (np.sum(weights) + 1e-10)
 
         self.weights = weights
         self.centers = centers
         self.basises = basises
+        
+    def _gen_param_names(self):
+        """
+        Generate parameter names for the policy.
+
+        Returns
+        -------
+        list of str
+            List of parameter names for each RBF.
+        """
+        param_names = []
+        for i in range(self.n_basis):
+            param_names.append(f'weight_{i}')
+            for d in range(self.n_dim):
+                param_names.append(f'center_{d}_{i}')
+                param_names.append(f'basis_{d}_{i}')
+        return param_names
+    
+    def assign_bounds(self, weight_bound=[0, 1], center_bound=[0, 1], basis_bound=[1e-6, 2.0]):
+        """
+        Assign parameter bounds to ensure output stays within specified range
+        for inputs in [0,1]^n_dim.
+        
+        For Gaussian RBFs with normalized inputs [0,1] and outputs [0,1]:
+        - Weights: [0, 1] - ensures non-negative contributions, normalized to sum=1
+        - Centers: [0, 1] - matches input domain for optimal coverage  
+        - Basis (sigma): [1e-6, 2.0] - avoids numerical issues while allowing both
+          narrow (fine details) and broad (global trends) RBFs
+        
+        Note: Larger sigma allows RBFs to influence larger regions, improving
+        generalization for smooth functions.
+        """
+        bounds = []
+        for i in range(self.n_basis):
+            bounds.append(weight_bound)
+            for d in range(self.n_dim):
+                bounds.append(center_bound)
+                bounds.append(basis_bound)
+        return bounds
 
     def _compute_n_params(self):
         """
@@ -459,7 +615,7 @@ class CubicRBFPolicy(BasePolicy):
     A class representing a Cubic Radial Basis Function (RBF) policy for thermal control.
 
     This policy uses a weighted sum of cubic RBFs:
-        φ(r) = r³, where r is the Euclidean distance from the center.
+        φ(r) = |r|³, where r is the scaled distance from the center.
 
     Parameters
     ----------
@@ -470,16 +626,20 @@ class CubicRBFPolicy(BasePolicy):
     *params : list
         A flattened 1D list with the following format:
             - For each RBF (repeat n_basis times):
-                - center_i : n_dim floats
-                - weight_i : float
+                - weight_i : 1 float
+                - center_i : n_dim floats  
+                - basis_i : n_dim floats (scaling parameters)
 
     Example
     -------
-    For 2D input and 3 RBFs:
+    For 2D input and 2 RBFs:
         params = [
-            0.2, 0.2,     # center1, weight1
-            0.5, 0.5,     # center2, weight2
-            0.8, 0.8,     # center3, weight3
+            0.5,           # weight_0
+            0.2, 0.3,      # center_0 (x, y)
+            1.0, 1.0,      # basis_0 (scale_x, scale_y)
+            0.5,           # weight_1
+            0.7, 0.8,      # center_1 (x, y)  
+            0.5, 0.5,      # basis_1 (scale_x, scale_y)
         ]
     """
 
@@ -487,6 +647,12 @@ class CubicRBFPolicy(BasePolicy):
         self.n_dim = n_dim
         self.n_basis = n_basis
         self.n_params = self._compute_n_params()
+        
+        self.name = "CubicRBFPolicy"
+        
+        # For Borg
+        self.param_names = self._gen_param_names()
+        self.bounds = self.assign_bounds()
 
     def set_params(self, *params):
         """
@@ -503,30 +669,86 @@ class CubicRBFPolicy(BasePolicy):
         self.params = params
         self._parse_params(params)
 
+    def _compute_n_params(self):
+        """
+        Compute the total number of parameters based on the number of dimensions and basis functions.
+        Each RBF has n_dim centers, n_dim basis parameters, and 1 weight.
+        """
+        return self.n_basis + 2*(self.n_dim*self.n_basis)
+
     def _parse_params(self, params):
         n_dim = self.n_dim
         n_basis = self.n_basis
 
-        # centers [0, 1]
-        centers = params[:n_dim*n_basis].reshape(n_dim, n_basis)
-
-        # b = 2*sigma^2 [0, 1]
-        basises = params[n_dim*n_basis:n_dim*n_basis*2].reshape(n_dim, n_basis)
-        basises = np.where(basises != 0.0, basises, 1e-6) # Avoid zero sigma
-
-        weights = params[n_dim*n_basis*2:]
-        weights /= (np.sum(weights)+1e-10)  # Normalizing weights to sum to 1
+        # Parse parameters in the order: weight_i, center_d_i, basis_d_i for each basis i
+        # This matches the order from _gen_param_names and assign_bounds
+        weights = np.zeros(n_basis)
+        centers = np.zeros((n_dim, n_basis))
+        basises = np.zeros((n_dim, n_basis))
+        
+        idx = 0
+        for i in range(n_basis):
+            # Weight for basis i
+            weights[i] = params[idx]
+            idx += 1
+            
+            # Centers and basises for all dimensions of basis i
+            for d in range(n_dim):
+                centers[d, i] = params[idx]
+                idx += 1
+                basises[d, i] = params[idx]
+                idx += 1
+        
+        # Avoid zero basis values
+        basises = np.where(basises != 0.0, basises, 1e-6)
+        
+        # Normalizing weights to sum to 1
+        weights /= (np.sum(weights) + 1e-10)
 
         self.weights = weights
         self.centers = centers
         self.basises = basises
 
-    def _compute_n_params(self):
+    def _gen_param_names(self):
         """
-        Compute the total number of parameters based on the number of dimensions and basis functions.
-        Each RBF has n_dim centers, 1 sigma, and 1 weight.
+        Generate parameter names for the policy.
+
+        Returns
+        -------
+        list of str
+            List of parameter names for each RBF.
         """
-        return self.n_basis + 2*(self.n_dim*self.n_basis)
+        param_names = []
+        for i in range(self.n_basis):
+            param_names.append(f'weight_{i}')
+            for d in range(self.n_dim):
+                param_names.append(f'center_{d}_{i}')
+                param_names.append(f'basis_{d}_{i}')
+        return param_names
+
+    def assign_bounds(self, weight_bound=[0, 0.5], center_bound=[0, 1], basis_bound=[0.1, 1.0]):
+        """
+        Assign parameter bounds to ensure output stays within specified range
+        for inputs in [0,1]^n_dim.
+        
+        For Cubic RBFs with normalized inputs [0,1] and outputs [0,1]:
+        - Weights: [0, 0.5] - REDUCED from [0,1] because cubic RBFs can grow large
+          With normalized weights, this helps prevent output explosion
+        - Centers: [0, 1] - matches input domain for optimal coverage  
+        - Basis (scale): [0.1, 1.0] - INCREASED minimum from 1e-6 to prevent
+          explosive growth near centers. Max distance in [0,1]^n_dim is sqrt(n_dim),
+          so (1.0/0.1)³ = 1000 max, manageable with reduced weights
+        
+        Note: For cubic RBFs φ(r) = |r|³, the function grows rapidly with distance.
+        These bounds balance expressiveness with output constraint satisfaction.
+        """
+        bounds = []
+        for i in range(self.n_basis):
+            bounds.append(weight_bound)
+            for d in range(self.n_dim):
+                bounds.append(center_bound)
+                bounds.append(basis_bound)
+        return bounds
 
     def run(self, X):
         X = np.asarray(X)

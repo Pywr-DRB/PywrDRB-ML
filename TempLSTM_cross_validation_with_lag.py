@@ -140,8 +140,10 @@ def run_inner_loop(inner_folds, hyperparameter_df, TempLSTM):
     # Initialize best hyperparameters and best rmse
     best_hyperparameters = None
     best_rmse = 10000
+    best_config = None
+    best_cfg_out_file = None
     # Inner loop (4-fold crossval for hyperparameter tuning)
-    for inner_fold in tqdm(outer_fold['inner_folds'], desc="Inner"):
+    for inner_fold in tqdm(inner_folds, desc="Inner"):
         # current model config
         config_file = pn.models.get(f"{subfolder}/cfg/{TempLSTM}_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml")
         # Try different hyperparameter combinations
@@ -178,12 +180,12 @@ def run_inner_loop(inner_folds, hyperparameter_df, TempLSTM):
                 best_hyperparameters = row
                 best_rmse = metrics['rmse']
                 best_cfg_out_file = pn.models.get(f"{subfolder}/best") / f"{TempLSTM}_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
-                with open(best_cfg_out_file, 'w') as f:
-                    yaml.dump(cur_config, f, default_flow_style=False, indent=4)
+                best_config = deepcopy(cur_config)
+    with open(best_cfg_out_file, 'w') as f:
+        yaml.dump(best_config, f, default_flow_style=False, indent=4)
 
-    return best_cfg_out_file
+    return best_cfg_out_file, best_hyperparameters
 #%%
-
 # source functions for training
 import pandas as pd
 import numpy as np
@@ -217,6 +219,8 @@ overall_performance1 = []
 overall_performance2 = []
 overall_performance_Tavg = []
 overall_performance_Tmax = []
+overall_best_hyperparameters1 = []
+overall_best_hyperparameters2 = []
 
 # outer loop (5-fold crossval)
 pn.models.mkdir(f"{subfolder}/tmp")
@@ -228,11 +232,14 @@ for outer_fold in tqdm(crossval_folds, desc="Outer"):
     best_model1 = None
     best_model2 = None
 
-    best_cfg_out_file1 = run_inner_loop(inner_folds=outer_fold['inner_folds'],
+    best_cfg_out_file1, best_hyperparameters1 = run_inner_loop(inner_folds=outer_fold['inner_folds'],
                                         hyperparameter_df=hyperparameter_df, TempLSTM="TempLSTM1")
 
-    best_cfg_out_file2 = run_inner_loop(inner_folds=outer_fold['inner_folds'],
+    best_cfg_out_file2, best_hyperparameters2 = run_inner_loop(inner_folds=outer_fold['inner_folds'],
                                         hyperparameter_df=hyperparameter_df, TempLSTM="TempLSTM2")
+    # Save best hyperparameters for each model
+    overall_best_hyperparameters1.append(best_hyperparameters1)
+    overall_best_hyperparameters2.append(best_hyperparameters2)
 
     # LSTM1
     best_model1 = bmi_lstm()
@@ -299,4 +306,25 @@ r"""
  'T_i': np.float64(6.5752070188210965),
  'Tavg': np.float64(1.0340518656020192),
  'T_L': np.float64(1.1580018171373427)}
+"""
+
+overall_best_hyperparameters1_df = pd.concat(overall_best_hyperparameters1, ignore_index=True, axis=1)
+overall_best_hyperparameters2_df = pd.concat(overall_best_hyperparameters2, ignore_index=True, axis=1)
+overall_best_hyperparameters1_df.to_csv(pn.models.get() / f"{subfolder}/overall_best_hyperparameters1.csv", index=False)
+overall_best_hyperparameters2_df.to_csv(pn.models.get() / f"{subfolder}/overall_best_hyperparameters2.csv", index=False)
+
+r"""
+overall_best_hyperparameters1_df
+Out[7]:
+                     0       1       2       3       4
+learning_rate    0.005   0.005   0.005   0.005   0.005
+early_stopping  50.000  50.000  20.000  20.000  50.000
+dropout_rate     0.000   0.000   0.000   0.000   0.000
+
+overall_best_hyperparameters2_df
+Out[8]:
+                    0       1      2      3      4
+learning_rate    0.05   0.005   0.05   0.05   0.05
+early_stopping  50.00  20.000  50.00  50.00  50.00
+dropout_rate     0.00   0.000   0.00   0.00   0.00
 """

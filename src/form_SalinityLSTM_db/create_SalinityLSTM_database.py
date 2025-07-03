@@ -1,3 +1,4 @@
+#%%
 import pandas as pd
 import numpy as np
 import pathnavigator
@@ -49,6 +50,21 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
         df_all[f"{var}_lag1"] = df_all[var].shift(1)
     
     df_all.replace("obv", "obs", inplace=True) # in case of "obv" in the data
+    
+    # Create doc (day of cooling season) column: 6/1 = 1, 6/2 = 2, ..., 8/31 = 92, rest = NaN
+    df_all["doc"] = np.nan
+    cooling_season_mask = (df_all.index.month >= 6) & (df_all.index.month <= 8)
+    # Compute day-of-year for June 1st for each year
+    june_1_doy_series = pd.to_datetime(
+        df_all.index.year.astype(str) + '-06-01'
+    ).dayofyear.values
+    # Align June 1st DOY with index
+    june_1_doy = pd.Series(june_1_doy_series, index=df_all.index)
+    # Calculate day of cooling season (starting at 1 on June 1st)
+    df_all.loc[cooling_season_mask, "doc"] = (
+        df_all.index.dayofyear[cooling_season_mask] - june_1_doy[cooling_season_mask] + 1
+    )
+    
     df_all.to_csv(pn.data.database.get() / filename)
     
     # Form bmi attributes
