@@ -293,3 +293,10 @@ mean_rmse["T_C"] = overall_performance1_df.mean()["rmse"]
 mean_rmse["T_i"] = overall_performance2_df.mean()["rmse"]
 mean_rmse["Tavg"] = overall_performance_Tavg_df.mean()["rmse"]
 mean_rmse["T_L"] = overall_performance_Tmax_df.mean()["rmse"]
+
+r"""
+{'T_C': np.float64(0.493806418786891),
+ 'T_i': np.float64(6.5752070188210965),
+ 'Tavg': np.float64(1.0340518656020192),
+ 'T_L': np.float64(1.1580018171373427)}
+"""

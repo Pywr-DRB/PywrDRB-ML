@@ -175,3 +175,9 @@ ax.set_xlim([0, 230])
 plt.tight_layout()
 plt.show()
 
+r"""
+{'T_C': np.float64(1.612883998379305),
+ 'T_i': np.float64(6.684021409680599),
+ 'Tavg': np.float64(1.2969361086676146),
+ 'T_L': np.float64(1.4062992125475333)}
+"""

@@ -3,8 +3,8 @@ da_localization: false
 data_file: models/TempLSTM_CrossVali_lag/TempLSTM1_outer_3_inner_3/data_TempLSTM1_outer_3_inner_3.npz
 delta_temp_layer: false
 delta_temp_vars: []
-dropout_rate: 0.0
-early_stopping_patience: 20
+dropout_rate: 0.3
+early_stopping_patience: 50
 end_date_test:
 - '2019-12-28'
 end_date_train:
