@@ -1,3 +1,5 @@
+The following example can only be used with v0.0.0.
+
 # PywrDRB-ML
 ML plugin for water temperature and salt front prediction.
 
