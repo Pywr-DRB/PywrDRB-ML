@@ -314,11 +314,15 @@ overall_best_hyperparameters1_df.to_csv(pn.models.get() / f"{subfolder}/overall_
 overall_best_hyperparameters2_df.to_csv(pn.models.get() / f"{subfolder}/overall_best_hyperparameters2.csv", index=False)
 
 r"""
+overall_best_hyperparameters1_df
+Out[8]:
                      0       1      2      3      4
 learning_rate    0.005   0.005   0.05   0.05   0.05
 early_stopping  50.000  50.000  50.00  50.00  50.00
 dropout_rate     0.100   0.300   0.10   0.30   0.00
 
+overall_best_hyperparameters2_df
+Out[9]:
                     0      1      2      3      4
 learning_rate    0.05   0.05   0.05   0.05   0.05
 early_stopping  50.00  50.00  50.00  20.00  50.00
