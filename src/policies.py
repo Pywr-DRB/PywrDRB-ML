@@ -1,4 +1,5 @@
 # A collection of thermal control policies for the thermal control system.
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import PolynomialFeatures
@@ -400,11 +401,11 @@ class RegressionPolicy(BasePolicy):
     def _compute_n_params(self):
         """
         Compute the total number of parameters based on the polynomial degree and input dimensions.
-        The number of parameters is given by the formula:
-        (degree + 1) * (n_dim + degree) // 2
+        The number of parameters is given by the binomial coefficient:
+        C(n_dim + degree, degree) = (n_dim + degree)! / (degree! * n_dim!)
         This accounts for all combinations of input dimensions up to the specified degree.
         """
-        return (self.degree + 1) * (self.n_dim + self.degree) // 2
+        return math.comb(self.n_dim + self.degree, self.degree)
 
     def _gen_param_names(self):
         """
@@ -459,6 +460,16 @@ class RegressionPolicy(BasePolicy):
 
         X = X.reshape(1, -1)
         X_poly = self.poly.fit_transform(X)
+        
+        # Check for dimension mismatch and provide helpful error message
+        if X_poly.shape[1] != len(self.params):
+            raise ValueError(
+                f"Dimension mismatch: polynomial features have {X_poly.shape[1]} terms "
+                f"but parameters have {len(self.params)} values. "
+                f"Expected {self.n_params} parameters for n_dim={self.n_dim}, degree={self.degree}. "
+                f"Consider reinitializing the policy with correct parameters."
+            )
+        
         y = float(X_poly @ self.params)
 
         # Force y to be in [0, 1]

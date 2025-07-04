@@ -35,6 +35,18 @@ if policy_type == "piecewise":
     from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_piecewise import eval_func, n_dim, n_steps
     from src.policies import GeneralizedPiecewiseLinearPolicy
     policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
+elif policy_type == "gaussian_rbf":
+    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_gaussian_rbf import eval_func, n_dim, n_basis
+    from src.policies import GaussianRBFPolicy
+    policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
+elif policy_type == "regression":
+    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_regression import eval_func, n_dim, degree
+    from src.policies import RegressionPolicy
+    policy = RegressionPolicy(n_dim=n_dim, degree=degree)
+elif policy_type == "cubic_rbf":
+    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_cubic_rbf import eval_func, n_dim, n_basis
+    from src.policies import CubicRBFPolicy
+    policy = CubicRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 
 # Random seed for Borg
 borg_seed = None
@@ -64,9 +76,9 @@ use_constr_names = False
 nvars = len(bounds)
 nobjs = len(obj_names)
 nconstrs = 0
-nfe = 10_000
-runtime_freq = 1000
-epsilon = 0.005 
+nfe = 50_000
+runtime_freq = 500
+epsilon = 0.01 
 islands = 1 # 1 = MW, >1 = MM
 
 borg_settings = {

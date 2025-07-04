@@ -23,12 +23,12 @@ pn = pathnavigator.create(root_dir)
 pn.chdir()
 from src.lstm_model import WaterTempLSTMModel
 from src.objectives import compute_reliability, compute_max_annual_accumulated_degree_days, compute_mean_thermal_bank_usage_ratio
-from src.policies import GeneralizedPiecewiseLinearPolicy
+from src.policies import RegressionPolicy
 
 # Global configuration variables for the piecewise linear policy
 # Policy parameters
 n_dim = 5  # Number of dimensions for the policy
-n_steps = 4  # Number of steps for the piecewise linear policy
+degree = 2  # Degree of the polynomial for the regression policy
 disable = True  # Set to True to disable tqdm progress bar
 
 #%% For debug
@@ -50,9 +50,10 @@ disable = True  # Set to True to disable tqdm progress bar
 #  -0.44558823529411756 207.97747830764695 0
 
 def eval_func(*params):
+    #%%
     database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
     # Initialize the thermal control policy with specific parameters
-    policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
+    policy = RegressionPolicy(n_dim=n_dim, degree=degree)
     #params = policy.gen_params(seed=42)[0]
     minmaxscalers = joblib.load(pn.stage1_thermal_ctrl_decoupled.get() / "minmaxscalers.gz")
     policy.set_params(*params)  # Generate random parameters for the policy

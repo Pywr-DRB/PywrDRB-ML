@@ -56,7 +56,7 @@ def compute_reliability(
 
     if return_distribution:
         return REL
-    return float(JRel)
+    return round(float(JRel), 4)
 
 
 def compute_max_annual_accumulated_degree_days(
@@ -100,7 +100,7 @@ def compute_max_annual_accumulated_degree_days(
 
     if return_distribution:
         return annual_sums.values
-    return float(JADD)
+    return round(float(JADD), 4)
 
 def compute_mean_thermal_bank_usage_ratio(
     df: pd.DataFrame, col: str = 'remained_bank_amounts', bank_size: float = 1620, return_distribution: bool = False, last_date_of_ctrl: tuple = (8, 31)
@@ -138,5 +138,5 @@ def compute_mean_thermal_bank_usage_ratio(
 
     if return_distribution:
         return df["ratios"].values
-    return float(JTBUR)
+    return round(float(JTBUR), 4)
 
