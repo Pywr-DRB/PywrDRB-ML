@@ -4,6 +4,15 @@ import pandas as pd
 import pathnavigator
 from tqdm import tqdm
 import numpy as np
+import torch
+
+# Set PyTorch to use single thread to avoid conflicts with MPI
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
+
+# Ensure deterministic behavior
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"

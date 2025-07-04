@@ -16,6 +16,13 @@ module load python/3.11.5
 # Activate Python virtual environment
 source ~/VEnvs/drb/bin/activate
 
+# Set environment variables for reproducible parallel execution
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+
 # Define arrays for policy types and borg seeds
 policy_types=("piecewise")  # Add your policy types here
 borg_seeds=(1 2 3 4 5)  # Add your borg seeds here
