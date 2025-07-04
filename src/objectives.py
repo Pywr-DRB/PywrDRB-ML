@@ -131,7 +131,7 @@ def compute_mean_thermal_bank_usage_ratio(
     """
     df = df.copy()
     df = df[(df.index.month == last_date_of_ctrl[0]) & (df.index.day == last_date_of_ctrl[1])]
-    df["ratios"] = df[col] / bank_size  # Normalize by bank size
+    df["ratios"] = 1 - df[col] / bank_size  # Normalize by bank size
 
     # Compute JTBUR
     JTBUR = np.mean(df["ratios"])
