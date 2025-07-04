@@ -30,9 +30,9 @@ from src.policies import GeneralizedPiecewiseLinearPolicy
 n_dim = 5  # Number of dimensions for the policy
 n_steps = 4  # Number of steps for the piecewise linear policy
 disable = True  # Set to True to disable tqdm progress bar
-database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
 
 def eval_func(*params):
+    database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
     # Initialize the thermal control policy with specific parameters
     policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
     #params = policy.gen_params(seed=42)[0]
