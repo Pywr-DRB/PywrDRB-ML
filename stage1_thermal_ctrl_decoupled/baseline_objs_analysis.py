@@ -21,11 +21,11 @@ database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=
 
 #%% No Control
 ml_model_noCtrl = WaterTempLSTMModel(
-    model1=pn.models.get() / r"TempLSTM1_comparison\TempLSTM1_Qc.yml",
-    model2=pn.models.get() / r"TempLSTM2_comparison\TempLSTM2_Qc.yml",
-    Tavg2Tmax_coefs=pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json",
+    model1=pn.models.get() / "TempLSTM/TempLSTM1.yml",
+    model2=pn.models.get() / "TempLSTM/TempLSTM2.yml",
+    Tavg2Tmax_coefs=pn.models.get() / "TempLSTM/Tavg2Tmax_coefs.json",
     debug=True,
-    thermal_mitigation_bank_size=1620 * 3,  # mgd-day
+    thermal_mitigation_bank_size=1620 * 3,  # mgd
     )
 ml_model_noCtrl.load_data(database)
 ml_model_noCtrl.update_until(date=pd.Timestamp('2024-01-01'))  # Update until the end of 2023
@@ -36,6 +36,21 @@ Jadd_noCtrl = compute_max_annual_accumulated_degree_days(df_noCtrl, col='T_L_mu'
 
 Jrel_noCtrl_arr = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='T_L_mu', threshold=20, return_distribution=True)
+
+#%%
+db = database[['QbcTmax_T_L']]
+db.loc[database['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
+for y in range(1979, 2024):
+    fig, ax = plt.subplots()
+    ax.plot(df_noCtrl.loc[f"{y}":f"{y}", "T_L_mu"], label="sim")
+    ax.plot(db.loc[f"{y}":f"{y}", "QbcTmax_T_L"], label="obs", c='k', ls="--", lw=1)
+    ax.axvspan(pd.Timestamp(f"{y}-06-01"), pd.Timestamp(f"{y}-08-31"),
+               color="gray", alpha=0.3)
+    ax.axhline(20, c="r", lw=1)
+    ax.axhline(24, c="r", lw=1)
+    ax.set_ylim([0, 30])
+    ax.legend()
+    plt.show()
 
 #%% Plot Histograms
 # Plot histogram for Jrel_noCtrl_arr
@@ -48,7 +63,7 @@ ax.grid(True, alpha=0.3)
 ax.axvline(Jrel_noCtrl, color='red', linestyle='--',
            label=f'Jrel: {Jrel_noCtrl:.4f}')
 ax.legend(loc = "upper left")
-ax.set_xlim([0.5, 1])
+ax.set_xlim([0, 1])
 plt.tight_layout()
 plt.show()
 
@@ -62,7 +77,7 @@ ax.grid(True, alpha=0.3)
 ax.axvline(Jadd_noCtrl, color='red', linestyle='--',
            label=f'Jadd: {Jadd_noCtrl:.4f}')
 ax.legend()
-ax.set_xlim([0, 230])
+ax.set_xlim([0, 270])
 plt.tight_layout()
 plt.show()
 
@@ -94,11 +109,11 @@ params = []
 dm_func = return_dps_func(*params)
 
 ml_model = WaterTempLSTMModel(
-    model1=pn.models.get() / r"TempLSTM1_comparison\TempLSTM1_Qc.yml",
-    model2=pn.models.get() / r"TempLSTM2_comparison\TempLSTM2_Qc.yml",
-    Tavg2Tmax_coefs=pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json",
+    model1=pn.models.get() / "TempLSTM/TempLSTM1.yml",
+    model2=pn.models.get() / "TempLSTM/TempLSTM2.yml",
+    Tavg2Tmax_coefs=pn.models.get() / "TempLSTM/Tavg2Tmax_coefs.json",
     debug=True,
-    thermal_mitigation_bank_size=1620,  # mgd
+    thermal_mitigation_bank_size=1620 * 3,  # mgd
     )
 ml_model.load_data(database)
 
@@ -157,7 +172,7 @@ ax.grid(True, alpha=0.3)
 ax.axvline(Jrel, color='red', linestyle='--',
            label=f'Jrel: {Jrel:.4f}')
 ax.legend(loc = "upper left")
-ax.set_xlim([0.5, 1])
+ax.set_xlim([0, 1])
 plt.tight_layout()
 plt.show()
 
@@ -171,7 +186,7 @@ ax.grid(True, alpha=0.3)
 ax.axvline(Jadd, color='red', linestyle='--',
            label=f'Jadd: {Jadd:.4f}')
 ax.legend()
-ax.set_xlim([0, 230])
+ax.set_xlim([0, 270])
 plt.tight_layout()
 plt.show()
 
