@@ -25,7 +25,7 @@ export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
 # Define arrays for policy types and borg seeds
 policy_types=("piecewise")  # Add your policy types here
-borg_seeds=(1 2 3 4 5)  # Add your borg seeds here
+borg_seeds=(1 2)  # Add your borg seeds here
 
 # Function to submit the job
 submit_job() {
@@ -45,8 +45,9 @@ submit_job() {
     echo "Borg seed: $borg_seed"
 
     # Run the script with MPI and time the execution
-    echo "Start stage1 thermal control optimization with JobID $SLURM_JOB_ID, policy: $policy_type, seed: $borg_seed"
-    time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled/borg_dps_stage1.py $SLURM_JOB_ID $policy_type $borg_seed &
+    echo "Start JobID $SLURM_JOB_ID, policy: $policy_type, seed: $borg_seed"
+    time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled/borg_dps_stage1.py $SLURM_JOB_ID $policy_type $borg_seed
+    #wait
     echo "Complete: $policy_type, seed: $borg_seed"
 }
 
@@ -54,7 +55,6 @@ submit_job() {
 for borg_seed in "${borg_seeds[@]}"; do
     for policy_type in "${policy_types[@]}"; do
         submit_job $policy_type $borg_seed
-        wait
     done
 done
 
