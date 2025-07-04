@@ -387,10 +387,12 @@ class bmi_lstm(Bmi):
         elif config_file is not None:
             seed = self.cfg_bmi.get("seed")
         if seed is not None:
-            print(f"Set torch seed to {seed}")
+            if disable_tqdm is not True:
+                print(f"Set torch seed to {seed}")
             torch.manual_seed(seed)
         else:
-            print("No torch seed is assigned")
+            if disable_tqdm is not True:
+                print("No torch seed is assigned")
 
         if root_dir is not None:
             self.cfg_bmi['root_dir'] = root_dir
@@ -399,6 +401,13 @@ class bmi_lstm(Bmi):
         self.get_training_configurations()
         self.get_data(train=train)
 
+        # Gather verbosity lvl from bmi-config for stdout printing, etc.
+        self.verbose = self.cfg_bmi['verbose']
+        self.results = None # For simple run
+        self.disable_tqdm = disable_tqdm
+        if disable_tqdm:
+            self.verbose = False
+        
         if train:
             print("Initialized model for training. Use <model_object_name>.train_model() to start the training")
 
@@ -432,12 +441,7 @@ class bmi_lstm(Bmi):
             # start of the simulation time
             self.t = self._start_time
 
-        # Gather verbosity lvl from bmi-config for stdout printing, etc.
-        self.verbose = self.cfg_bmi['verbose']
-        self.results = None # For simple run
-        self.disable_tqdm = disable_tqdm
-        if disable_tqdm:
-            self.verbose = False
+        
 
     def update(self):
         """Update the LSTM model for a single time step.
@@ -618,7 +622,7 @@ class bmi_lstm(Bmi):
         """
         cur_step = int(self.get_current_time())
         cur_date = self.get_current_date()
-        print(f"{cur_step}: {cur_date}")
+        #print(f"{cur_step}: {cur_date}")
 
         if time <= cur_step:
             raise ValueError(f"End time, {time}, must be larger than current time, {cur_step}")
@@ -1053,13 +1057,17 @@ class bmi_lstm(Bmi):
             A BMI-enabled model should not use long variable names internally. Instead, it should use convenient short names
             for internal processing.
         """
-        print('Initializing all forcings to 0...')
+        verbose = self.verbose
+        if verbose:
+            print('Initializing all forcings to 0...')
         for forcing_name in self.x_vars:
-            print('  forcing_name =', forcing_name)
+            if verbose:
+                print('  forcing_name =', forcing_name)
             setattr(self, forcing_name, 0)
         if self.delta_temp_layer:
             for forcing_name in self.delta_vars:
-                print('  forcing_name =', forcing_name)
+                if verbose:
+                    print('  forcing_name =', forcing_name)
                 setattr(self, forcing_name, 0)
 
     #------------------------------------------------------------

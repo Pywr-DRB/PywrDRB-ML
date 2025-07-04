@@ -1,11 +1,8 @@
 #%%
-import sys
 import joblib
 import pandas as pd
 import pathnavigator
 from tqdm import tqdm
-from copy import deepcopy
-import matplotlib.pyplot as plt
 import numpy as np
 
 if pathnavigator.os_name == 'Windows':
@@ -23,14 +20,14 @@ from src.policies import GeneralizedPiecewiseLinearPolicy
 # Policy parameters
 n_dim = 5  # Number of dimensions for the policy
 n_steps = 4  # Number of steps for the piecewise linear policy
+disable = True  # Set to True to disable tqdm progress bar
+database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
 
 def eval_func(*params):
     # Initialize the thermal control policy with specific parameters
     policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
     #params = policy.gen_params(seed=42)[0]
     minmaxscalers = joblib.load(pn.stage1_thermal_ctrl_decoupled.get() / "minmaxscalers.gz")
-    database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
-    disable = False  # Set to True to disable tqdm progress bar
     policy.set_params(*params)  # Generate random parameters for the policy
     def return_dps_func():#*params):
         # Define the function that will be used for the control algorithm
@@ -75,9 +72,9 @@ def eval_func(*params):
     dm_func = return_dps_func() #*params
 
     ml_model = WaterTempLSTMModel(
-        model1=pn.models.get() / r"TempLSTM\TempLSTM1.yml",
-        model2=pn.models.get() / r"TempLSTM\TempLSTM2.yml",
-        Tavg2Tmax_coefs=pn.models.get() / r"TempLSTM\Tavg2Tmax_coefs.json",
+        model1=pn.models.get() / "TempLSTM/TempLSTM1.yml",
+        model2=pn.models.get() / "TempLSTM/TempLSTM2.yml",
+        Tavg2Tmax_coefs=pn.models.get() / "TempLSTM/Tavg2Tmax_coefs.json",
         debug=True,
         thermal_mitigation_bank_size=1620 * 3,  # mgd
         )

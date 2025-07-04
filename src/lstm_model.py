@@ -26,7 +26,8 @@ class WaterTempLSTMModel():
                  Q_i_lstm_var_name="QbcTavg_Q_i",
                  cannonsville_storage_pct_lstm_var_name="bc_cannonsville_storage_pct",
                  thermal_mitigation_bank_size=1620,  # MGD-days ~= 2500 cfs-days
-                 debug=False
+                 debug=False,
+                 disable_tqdm=True
                  ):
         """
         Initialize the Water Temperature LSTM Model.
@@ -63,6 +64,8 @@ class WaterTempLSTMModel():
             The size of the thermal mitigation bank in mgd. Default is 1620.
         debug : bool, optional
             If True, enables debug mode for additional logging. Default is False.
+        disable_tqdm : bool, optional
+            If True, disables the tqdm progress bar and turn off the verbosity in lstm. Default is True.
         """
 
         ##### LSTM models
@@ -75,14 +78,14 @@ class WaterTempLSTMModel():
 
         # Predict the Cannonsville reservoir release temperature (T_C)
         lstm1 = bmi_lstm()
-        lstm1.initialize(config_file=model1, train=False, root_dir=pn.get())
+        lstm1.initialize(config_file=model1, train=False, root_dir=pn.get(), disable_tqdm=disable_tqdm)
         lstm1.mc_dropout = mc_dropout
         self.lstm1 = lstm1
 
 
         # Predict the water temperature for east branch (T_i)
         lstm2 = bmi_lstm()
-        lstm2.initialize(config_file=model2, train=False, root_dir=pn.get())
+        lstm2.initialize(config_file=model2, train=False, root_dir=pn.get(), disable_tqdm=disable_tqdm)
         lstm2.mc_dropout = mc_dropout
         self.lstm2 = lstm2
 
@@ -121,7 +124,7 @@ class WaterTempLSTMModel():
 
         update_until_(lstm=self.lstm1, start_date=start_date)
         update_until_(lstm=self.lstm2, start_date=start_date)
-        if debug:
+        if disable_tqdm is not True:
             print(f"Updated LSTM1 to {lstm1.get_current_date()} at time step {int(lstm1.get_current_time())}.")
             print(f"Updated LSTM2 to {lstm2.get_current_date()} at time step {int(lstm2.get_current_time())}.")
 

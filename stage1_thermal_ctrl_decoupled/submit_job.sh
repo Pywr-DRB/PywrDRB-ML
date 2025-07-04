@@ -18,7 +18,7 @@ source ~/VEnvs/drb/bin/activate
 
 # Define arrays for policy types and borg seeds
 policy_types=("piecewise")  # Add your policy types here
-borg_seeds=(1 2)  # Add your borg seeds here
+borg_seeds=(1 2 3 4 5)  # Add your borg seeds here
 
 # Function to submit the job
 submit_job() {
