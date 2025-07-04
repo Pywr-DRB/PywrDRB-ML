@@ -4,6 +4,7 @@ import joblib
 import pandas as pd
 import pathnavigator
 from tqdm import tqdm
+from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -18,17 +19,18 @@ from src.lstm_model import WaterTempLSTMModel
 from src.objectives import compute_reliability, compute_max_annual_accumulated_degree_days, compute_mean_thermal_bank_usage_ratio
 from src.policies import GeneralizedPiecewiseLinearPolicy
 
+# Global configuration variables for the piecewise linear policy
 # Policy parameters
 n_dim = 5  # Number of dimensions for the policy
 n_steps = 4  # Number of steps for the piecewise linear policy
-# Initialize the thermal control policy with specific parameters
-policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
-#params = policy.gen_params(seed=42)[0]
-minmaxscalers = joblib.load(pn.stage1_thermal_ctrl_decoupled.get() / "minmaxscalers.gz")
-database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
-disable = False  # Set to True to disable tqdm progress bar
 
 def eval_func(*params):
+    # Initialize the thermal control policy with specific parameters
+    policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
+    #params = policy.gen_params(seed=42)[0]
+    minmaxscalers = joblib.load(pn.stage1_thermal_ctrl_decoupled.get() / "minmaxscalers.gz")
+    database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
+    disable = False  # Set to True to disable tqdm progress bar
     policy.set_params(*params)  # Generate random parameters for the policy
     def return_dps_func():#*params):
         # Define the function that will be used for the control algorithm

@@ -1,12 +1,10 @@
 #%%
-import os
 import sys
-import joblib
-import pandas as pd
+import warnings
 import pathnavigator
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-import numpy as np
+
+# Suppress sklearn version warnings (as we pickle a newer version of sklearn than hopper)
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
@@ -16,17 +14,10 @@ else:
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 
-##### Set for parallel borg
-from borg import *
-Configuration.startMPI()
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
+# Add the root directory to Python path so we can import stage1_thermal_ctrl_decoupled module
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
-#inputs = None  # All ranks define 'inputs'
-if rank == 0:
-    pass
-#inputs = comm.bcast(inputs, root=0)
 
 ##### Load sys args ####################################################################
 # job ID
@@ -39,14 +30,25 @@ policy_type = None
 if len(sys.argv) > 2 and sys.argv[2] != "None":
     policy_type = sys.argv[2]
 
+policy = None
 if policy_type == "piecewise":
-    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_piecewise import eval_func, policy
+    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_piecewise import eval_func, n_dim, n_steps
+    from src.policies import GeneralizedPiecewiseLinearPolicy
+    policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
 
 # Random seed for Borg
 borg_seed = None
 if len(sys.argv) > 3 and sys.argv[3] != "None":
     borg_seed = int(sys.argv[3])  # Capture the seed from the command line
 
+
+##### Set for parallel borg ############################################################
+from stage1_thermal_ctrl_decoupled.borg import *
+
+Configuration.startMPI()
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
 #%% Load values from the policy
 bounds = policy.bounds
@@ -92,8 +94,8 @@ else:
     # For MMBorg, the filename should include one %d which gets replaced by the island index
     runtime_filename = pn.outputs.get(f"{exp_folder}/runtimes") / f"{job_id}_nfe{nfe}_seed{borg_seed}_%d.runtime"
 
-# Checkpoint
-newCheckpointFileBase_filename = pn.outputs.get(f"{exp_folder}/checkpoints") / f"{job_id}_nfe{nfe}_seed{borg_seed}"
+# Checkpoint (Still have errors)
+# newCheckpointFileBase_filename = pn.outputs.get(f"{exp_folder}/checkpoints") / f"{job_id}_nfe{nfe}_seed{borg_seed}"
 
 # Load previous checkpoint (the file must already exist)
 # oldCheckpointFile_filename = pn.outputs.dps_borg.get() / "dps_id{job_id}_nfe{nfe}_seed{borg_seed}.checkpoint"
@@ -106,7 +108,7 @@ solvempi_settings = {
     "runtime": runtime_filename,
     "allEvaluations": None,
     "frequency": runtime_freq,
-    "newCheckpointFileBase": newCheckpointFileBase_filename, # Output checkpoint
+    #"newCheckpointFileBase": newCheckpointFileBase_filename, # Output checkpoint
     #"oldCheckpointFile": oldCheckpointFile_filename, # Load checkpoint if uncommented
 }
 result = borg.solveMPI(**solvempi_settings)
