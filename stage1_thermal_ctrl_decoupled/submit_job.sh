@@ -40,6 +40,7 @@ submit_job() {
     # Run the script with MPI and time the execution
     echo "Start stage1 thermal control optimization with JobID $SLURM_JOB_ID, policy: $policy_type, seed: $borg_seed"
     time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled/borg_dps_stage1.py $SLURM_JOB_ID $policy_type $borg_seed &
+    echo "Complete: $policy_type, seed: $borg_seed"
 }
 
 # Loop over policy types and borg seeds to submit jobs
@@ -50,6 +51,4 @@ for borg_seed in "${borg_seeds[@]}"; do
     done
 done
 
-# Wait for all background jobs to complete
-wait
 echo "All optimization jobs completed!"
