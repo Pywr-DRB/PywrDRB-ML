@@ -1,0 +1,21 @@
+
+Borg settings
+=================
+numberOfVariables: 21
+numberOfObjectives: 3
+numberOfConstraints: 0
+function: <function eval_func at 0x14f62795bba0>
+epsilons: [0.01, 0.01, 0.01]
+bounds: [[0, 1], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0]]
+directions: None
+seed: 3
+
+Borg solveMPI settings
+=================
+islands: 1
+maxTime: None
+maxEvaluations: 50000
+initialization: None
+runtime: /home/fs01/cl2769/Github/PywrDRB-ML/outputs/stage1_RegressionPolicy_134717/runtimes/134717_nfe50000_seed3.runtime
+allEvaluations: None
+frequency: 500
