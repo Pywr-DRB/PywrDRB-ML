@@ -8,6 +8,8 @@ __pycache__/
 
 # CL
 outputs/
+!outputs/stage1_*/
+outputs/stage1_*/**/*.runtime
 logs/
 MOEAFramework-5.0/
 data/pywrdrb/*.hdf5
