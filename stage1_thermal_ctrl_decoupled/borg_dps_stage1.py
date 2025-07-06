@@ -76,7 +76,7 @@ use_constr_names = False
 nvars = len(bounds)
 nobjs = len(obj_names)
 nconstrs = 0
-nfe = 50_000
+nfe = 100_000
 runtime_freq = 500
 epsilon = 0.01 
 islands = 1 # 1 = MW, >1 = MM
