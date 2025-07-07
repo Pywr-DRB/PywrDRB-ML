@@ -37,7 +37,7 @@ def eval_func(*params):
     # Initialize the thermal control policy with specific parameters
     policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
     #params = policy.gen_params(seed=42)[0]
-    minmaxscalers = joblib.load(pn.stage1_thermal_ctrl_decoupled.get() / "minmaxscalers.gz")
+    minmaxscalers = joblib.load(pn.stage1_thermal_ctrl_decoupled_withNowcast.get() / "minmaxscalers.gz")
     policy.set_params(*params)  # Generate random parameters for the policy
     def return_dps_func():#*params):
         # Define the function that will be used for the control algorithm
@@ -51,23 +51,28 @@ def eval_func(*params):
 
             # Prepare the inputs
             # Nowcast/forecast
-            #ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
-            #forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
+            ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
+            forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
             #forecast_T_L_sd = ml_model.forecast_T_L_sd_arr[-1]
 
-            T_L_prev = ml_model.T_L_mu
-            Q_C = ml_model.Q_C[ml_model.t]
-            Q_i = ml_model.Q_i[ml_model.t]
-            cannonsville_storage_pct = ml_model.cannonsville_storage_pct[ml_model.t]
+            remained_bank_ratio = ml_model.remained_bank_amount/ml_model.thermal_mitigation_bank_size
+
+
+            #T_L_prev = ml_model.T_L_mu
+            #Q_C = ml_model.Q_C[ml_model.t]
+            #Q_i = ml_model.Q_i[ml_model.t]
+            #cannonsville_storage_pct = ml_model.cannonsville_storage_pct[ml_model.t]
             doc = ml_model.doc[ml_model.t]
 
+            df_t = pd.DataFrame(ml_model.records, index=ml_model.dates)
+            df_t = df_t.loc[f"{current_date.year}"]  # Get the data for the current year
+            Jadd_t = compute_max_annual_accumulated_degree_days(df_t, col='Tavg_L_mu', threshold=20, return_distribution=False)
 
             X = np.array([
+                minmaxscalers["T_L"].transform(pd.DataFrame([[forecast_T_L_mu]], columns=["T_L"]))[0][0],
+                remained_bank_ratio,
+                minmaxscalers["Jadd"].transform(pd.DataFrame([[Jadd_t]], columns=["Jadd"]))[0][0],
                 minmaxscalers["doc"].transform(pd.DataFrame([[doc]], columns=["doc"]))[0][0],
-                minmaxscalers["Q_C"].transform(pd.DataFrame([[Q_C]], columns=["Q_C"]))[0][0],
-                minmaxscalers["Q_i"].transform(pd.DataFrame([[Q_i]], columns=["Q_i"]))[0][0],
-                minmaxscalers["cannonsville_storage_pct"].transform(pd.DataFrame([[cannonsville_storage_pct]], columns=["cannonsville_storage_pct"]))[0][0],
-                minmaxscalers["T_L"].transform(pd.DataFrame([[T_L_prev]], columns=["T_L"]))[0][0],
                 ])
 
             # Make thermal release decision and record the thermal release
@@ -128,7 +133,7 @@ def eval_func(*params):
     df = pd.DataFrame(ml_model.records, index=ml_model.dates)
 
     Jrel = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
-    Jadd = compute_max_annual_accumulated_degree_days(df, col='T_L_mu', threshold=20, return_distribution=False)
+    Jadd = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
     Jtubr = compute_mean_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
 
     objs = [-Jrel, Jadd, Jtubr]

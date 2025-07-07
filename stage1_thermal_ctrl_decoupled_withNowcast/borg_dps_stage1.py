@@ -14,7 +14,7 @@ else:
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 
-# Add the root directory to Python path so we can import stage1_thermal_ctrl_decoupled module
+# Add the root directory to Python path so we can import stage1_thermal_ctrl_decoupled_withNowcast module
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
@@ -32,19 +32,19 @@ if len(sys.argv) > 2 and sys.argv[2] != "None":
 
 policy = None
 if policy_type == "piecewise":
-    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_piecewise import eval_func, n_dim, n_steps
+    from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_piecewise import eval_func, n_dim, n_steps
     from src.policies import GeneralizedPiecewiseLinearPolicy
     policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
 elif policy_type == "gaussian_rbf":
-    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_gaussian_rbf import eval_func, n_dim, n_basis
+    from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf import eval_func, n_dim, n_basis
     from src.policies import GaussianRBFPolicy
     policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 elif policy_type == "regression":
-    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_regression import eval_func, n_dim, degree
+    from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_regression import eval_func, n_dim, degree
     from src.policies import RegressionPolicy
     policy = RegressionPolicy(n_dim=n_dim, degree=degree)
 elif policy_type == "cubic_rbf":
-    from stage1_thermal_ctrl_decoupled.lstm_thermal_ctrl_cubic_rbf import eval_func, n_dim, n_basis
+    from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_cubic_rbf import eval_func, n_dim, n_basis
     from src.policies import CubicRBFPolicy
     policy = CubicRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 
@@ -55,7 +55,7 @@ if len(sys.argv) > 3 and sys.argv[3] != "None":
 
 
 ##### Set for parallel borg ############################################################
-from stage1_thermal_ctrl_decoupled.borg import *
+from stage1_thermal_ctrl_decoupled_withNowcast.borg import *
 
 Configuration.startMPI()
 from mpi4py import MPI
@@ -94,10 +94,10 @@ borg_settings = {
 borg = Borg(**borg_settings)
 
 ##### Parallel borg - solvempi #########################################################
-exp_folder = f"stage1_{policy.name}_{job_id}"
+exp_folder = f"stage1_nowcast_{policy.name}_{job_id}"
 pn.mkdir(f"outputs/{exp_folder}")
 pn.outputs.mkdir(f"{exp_folder}/runtimes")
-pn.outputs.mkdir(f"{exp_folder}/checkpoints")
+#pn.outputs.mkdir(f"{exp_folder}/checkpoints")
 
 # Runtime
 if islands == 1: # Master slave version

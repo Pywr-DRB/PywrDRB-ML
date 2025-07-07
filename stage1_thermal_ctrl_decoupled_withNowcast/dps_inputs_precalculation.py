@@ -29,13 +29,10 @@ ml_model_noCtrl.update_until(date=pd.Timestamp('2024-01-01'))  # Update until th
 df_noCtrl = pd.DataFrame(ml_model_noCtrl.records, index=ml_model_noCtrl.dates)
 
 Jrel_noCtrl = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
-Jadd_noCtrl = compute_max_annual_accumulated_degree_days(df_noCtrl, col='T_L_mu', threshold=20, return_distribution=False)
+Jadd_noCtrl = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
 
 Jrel_noCtrl_arr = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
-Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='T_L_mu', threshold=20, return_distribution=True)
-
-
-
+Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 
 
 db = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
@@ -57,4 +54,12 @@ for v in db.columns:
     db[v] = scaler.fit_transform(db[[v]])
     minmaxscalers[v] = scaler
 
-joblib.dump(minmaxscalers, pn.stage1_thermal_ctrl_decoupled.get() / "minmaxscalers.gz")
+scaler = MinMaxScaler()
+scaler.fit_transform(Jadd_noCtrl_arr.reshape(-1, 1))
+minmaxscalers["Jadd"] = scaler
+
+scaler = MinMaxScaler()
+scaler.fit_transform(Jrel_noCtrl_arr.reshape(-1, 1))
+minmaxscalers["Jrel"] = scaler
+
+joblib.dump(minmaxscalers, pn.stage1_thermal_ctrl_decoupled_withNowcast.get() / "minmaxscalers.gz")

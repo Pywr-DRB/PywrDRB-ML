@@ -145,7 +145,7 @@ def eval_func(*params):
     df = pd.DataFrame(ml_model.records, index=ml_model.dates)
 
     Jrel = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
-    Jadd = compute_max_annual_accumulated_degree_days(df, col='T_L_mu', threshold=20, return_distribution=False)
+    Jadd = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
     Jtubr = compute_mean_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
 
     objs = [-Jrel, Jadd, Jtubr]

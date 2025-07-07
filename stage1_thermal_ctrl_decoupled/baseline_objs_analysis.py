@@ -32,10 +32,10 @@ ml_model_noCtrl.update_until(date=pd.Timestamp('2024-01-01'))  # Update until th
 df_noCtrl = pd.DataFrame(ml_model_noCtrl.records, index=ml_model_noCtrl.dates)
 
 Jrel_noCtrl = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
-Jadd_noCtrl = compute_max_annual_accumulated_degree_days(df_noCtrl, col='T_L_mu', threshold=20, return_distribution=False)
+Jadd_noCtrl = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
 
 Jrel_noCtrl_arr = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
-Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='T_L_mu', threshold=20, return_distribution=True)
+Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 
 #%%
 db = database[['QbcTmax_T_L']]
@@ -156,12 +156,12 @@ ml_model.load_data(database)
 df = pd.DataFrame(ml_model.records, index=ml_model.dates)
 
 Jrel = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
-Jadd = compute_max_annual_accumulated_degree_days(df, col='T_L_mu', threshold=20, return_distribution=False)
+Jadd = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
 Jtubr = compute_mean_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
 
 
 Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
-Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='T_L_mu', threshold=20, return_distribution=True)
+Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 Jtubr_arr = compute_mean_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
 #%% Plot Histograms

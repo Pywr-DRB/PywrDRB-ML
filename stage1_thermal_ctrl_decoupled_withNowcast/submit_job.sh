@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=stage1               # Job name
-#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/stage1_%j.out   # Standard output log file with job ID
-#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/stage1_%j.err    # Standard error log file with job ID
+#SBATCH --job-name=stage1_nowcast               # Job name
+#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/stage1_nowcast_%j.out   # Standard output log file with job ID
+#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/stage1_nowcast_%j.err    # Standard error log file with job ID
 #SBATCH --nodes=8                           # Number of nodes to use
 #SBATCH --ntasks-per-node=40                # Number of tasks (processes) per node
 #SBATCH --exclusive                        # Use the node exclusively for this job
@@ -46,20 +46,20 @@ submit_job() {
 
     # Run the script with MPI and time the execution
     echo "Start JobID $SLURM_JOB_ID, policy: $policy_type, seed: $borg_seed"
-    time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled/borg_dps_stage1.py $SLURM_JOB_ID $policy_type $borg_seed
+    time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled_withNowcast/borg_dps_stage1.py $SLURM_JOB_ID $policy_type $borg_seed
     #wait
     echo "Complete: $policy_type, seed: $borg_seed"
 }
 
 # Parallel version
-parallel_jobs=4
+parallel_jobs=8
 tasks_per_job=$(( ($SLURM_NNODES * $SLURM_NTASKS_PER_NODE) / $parallel_jobs ))
 
 i=0
 for borg_seed in "${borg_seeds[@]}"; do
     for policy_type in "${policy_types[@]}"; do
         srun --exclusive -n $tasks_per_job \
-            python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled/borg_dps_stage1.py \
+            python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled_withNowcast/borg_dps_stage1.py \
             $SLURM_JOB_ID $policy_type $borg_seed &
 
         ((i++))

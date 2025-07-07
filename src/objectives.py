@@ -60,7 +60,7 @@ def compute_reliability(
 
 
 def compute_max_annual_accumulated_degree_days(
-    df: pd.DataFrame, col: str = 'Tavg_L_mu', threshold: float = 20, return_distribution: bool = False
+    df: pd.DataFrame, col: str = 'Tavg_L_mu', threshold: float = 20, only_summer_period: bool = True, return_distribution: bool = False
     ) -> float:
     """
     Compute JADD(θ): Maximum annual accumulated degree days.
@@ -88,6 +88,9 @@ def compute_max_annual_accumulated_degree_days(
     """
     df = df.copy()
     df['year'] = df.index.year
+
+    if only_summer_period:
+        df.loc[(df.index.month < 6) | (df.index.month > 8), col] = np.nan
 
     # Compute degree days for each observation
     df['degree_days'] = np.maximum(0, df[col] - threshold)
