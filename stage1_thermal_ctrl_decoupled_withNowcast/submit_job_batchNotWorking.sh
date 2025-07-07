@@ -25,7 +25,7 @@ export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
 # Define arrays for policy types and borg seeds
 policy_types=("piecewise" "gaussian_rbf" "regression" "cubic_rbf")  # Add your policy types here
-borg_seeds=(1 2 3)  # Add your borg seeds here
+borg_seeds=(1 2 3 4)  # Add your borg seeds here
 
 # Function to submit the job
 submit_job() {
@@ -51,11 +51,23 @@ submit_job() {
     echo "Complete: $policy_type, seed: $borg_seed"
 }
 
-# Loop over policy types and borg seeds to submit jobs
+# Parallel version
+parallel_jobs=8
+tasks_per_job=$(( ($SLURM_NNODES * $SLURM_NTASKS_PER_NODE) / $parallel_jobs ))
+
+i=0
 for borg_seed in "${borg_seeds[@]}"; do
     for policy_type in "${policy_types[@]}"; do
-        submit_job $policy_type $borg_seed
+        srun --exclusive -n $tasks_per_job \
+            python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled_withNowcast/borg_dps_stage1.py \
+            $SLURM_JOB_ID $policy_type $borg_seed &
+
+        ((i++))
+        if (( i % parallel_jobs == 0 )); then
+            wait  # Wait for current batch to finish
+        fi
     done
 done
+wait  # Final wait in case the last batch was not full
 
 echo "All optimization jobs completed!"

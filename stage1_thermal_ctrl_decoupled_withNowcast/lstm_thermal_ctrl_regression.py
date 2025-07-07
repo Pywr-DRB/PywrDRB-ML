@@ -27,7 +27,7 @@ from src.policies import RegressionPolicy
 
 # Global configuration variables for the regression policy
 # Policy parameters
-n_dim = 5  # Number of dimensions for the policy
+n_dim = 4  # Number of dimensions for the policy
 degree = 2  # Degree of the polynomial for the regression policy
 disable = True  # Set to True to disable tqdm progress bar
 

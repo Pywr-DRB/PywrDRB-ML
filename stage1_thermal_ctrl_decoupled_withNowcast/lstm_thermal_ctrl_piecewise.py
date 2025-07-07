@@ -27,7 +27,7 @@ from src.policies import GeneralizedPiecewiseLinearPolicy
 
 # Global configuration variables for the piecewise linear policy
 # Policy parameters
-n_dim = 5  # Number of dimensions for the policy
+n_dim = 4  # Number of dimensions for the policy
 n_steps = 4  # Number of steps for the piecewise linear policy
 disable = True  # Set to True to disable tqdm progress bar
 
