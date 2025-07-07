@@ -581,3 +581,306 @@ class WaterTempLSTMModel():
             se_pred = np.array([np.nan])
 
         return Tmax, se_pred
+
+class SalinityLSTMModel():
+    def __init__(self,
+                 model_salinity,
+                 start_date='1979-01-01', end_date='2023-12-31',
+                 Q_Trenton_lstm_var_name="Q_Trenton_bc",
+                 Q_Schuylkill_lstm_var_name="Q_Schuylkill_bc",
+                 debug=False,
+                 disable_tqdm=True
+                 ):
+        """
+        Initialize the Water Temperature LSTM Model.
+
+        Parameters
+        ----------
+        model_salinity : str or Path
+            Path to the salinity LSTM model configuration file.
+        start_date : str or datetime, optional
+            The start date for the model. Default is '1979-01-01'.
+        end_date : str or datetime, optional
+            The end date for the model. Default is '2023-12-31'.
+        Q_Trenton_lstm_var_name : str, optional
+            The variable name for the Trenton flow (Q_Trenton_bc). Default is "Q_Trenton_bc".
+        Q_Schuylkill_lstm_var_name : str, optional
+            The variable name for the Schuylkill flow (Q_Schuylkill_bc). Default is "Q_Schuylkill_bc".
+        debug : bool, optional
+            If True, enables debug mode for additional logging. Default is False.
+        disable_tqdm : bool, optional
+            If True, disables the tqdm progress bar and turn off the verbosity in lstm. Default is True.
+        """
+
+        ##### LSTM models
+        mc_dropout = False
+        # The main difference between the batch run and looping over seems to stem from
+        # MC dropout: a single dropout mask is used during the batch run, whereas a new
+        # mask is drawn at each step when looping through update(). When I manually
+        # disable MC dropout while using the trained model, the output results remain
+        # identical between the two approaches.
+
+        # Predict the salt front location
+        lstm = bmi_lstm()
+        lstm.initialize(config_file=model_salinity, train=False, root_dir=pn.get(), disable_tqdm=disable_tqdm)
+        lstm.mc_dropout = mc_dropout
+        self.lstm = lstm
+
+
+        ##### Dates and lengths
+        # Identify the start date of the LSTM models
+        dt_lstm = lstm.get_current_date()
+        # Get the start date, which the latest among LSTM1, LSTM2, and pywrdrb start dates
+        if start_date is not None:
+            dt = np.datetime64(start_date)
+        else:
+            dt = dt_lstm
+        start_date = min(max(dt_lstm, dt), dt)
+
+        # Advance the LSTM models to the beginning of the start date
+        def update_until_(lstm, start_date):
+            idx = np.where(lstm.dates_all == start_date)[1].item()
+            if idx == 0: # Already at the right time step.
+                return None
+            length = idx - int(lstm.get_current_time())
+            unscaled_data_arr = lstm.get_unscaled_values(lead_time=length-1)
+
+            for var in lstm.x_vars:
+                lstm.set_value(var, unscaled_data_arr[var])
+            lstm.update()
+            return None
+
+        update_until_(lstm=self.lstm, start_date=start_date)
+        if disable_tqdm is not True:
+            print(f"Updated LSTM to {lstm.get_current_date()} at time step {int(lstm.get_current_time())}.")
+
+        # Dates
+        self.start_date = start_date
+        self.end_date = np.datetime64(end_date)
+        self.dates = pd.date_range(start=self.start_date, end=self.end_date, freq='D')
+        self.current_date = self.start_date
+        self.length = int((self.end_date - self.start_date) / np.timedelta64(1, 'D')) + 1
+        self.t = 0
+
+        # Input data
+        self.X = np.nan
+
+        # Current predictions
+        self.sf_mu = np.nan
+        self.sf_sd = np.nan
+     
+        # Forecast predictions
+        self.forecast_sf_mu_arr = np.nan
+        self.forecast_sf_sd_arr = np.nan
+
+        # Coupling variables
+        self.Q_Trenton_lstm_var_name = Q_Trenton_lstm_var_name
+        self.Q_Schuylkill_lstm_var_name = Q_Schuylkill_lstm_var_name
+
+        # Debug mode
+        self.debug = debug
+        length = self.length
+        if debug:
+            self.records = {
+                "sf_mu": [np.nan] * length,
+                "sf_sd": [np.nan] * length,
+            }
+            self.forecast_records = {
+                "sf_mu": [np.nan] * length,
+                "sf_sd": [np.nan] * length
+            }
+
+    def load_data(self):
+        """
+        Load the data from the database & lstm internal data for the specified date range.
+        """
+
+        # Now we directly use the LSTM models to get the data
+        length = self.length
+        lstm = self.lstm
+        self.X = lstm.get_unscaled_values(lead_time=length-1).reset_index(drop=True) # A DataFrame
+        self.x_vars = list(lstm.x_vars)  # Store x_vars for later use
+        self.X = self.X[self.x_vars].values  # Ensure same order as LSTM x_vars are included
+
+    def update_until(self, t=None, date=None):
+        """
+        Update the LSTM models until the beginning of the specified time step or date.
+
+        Parameters
+        ----------
+        t : int, optional
+            The time step to update the models to. If None, updates to the next time step
+        date : str or datetime, optional
+            The date to update the models to. If None, updates to the next time step.
+        Returns
+        -------
+        tuple
+            The predicted T_L_mu and T_L_sd from the lstm model current date before
+            update the t-1 of the specified time step (t).
+        """
+        if t is not None:
+            if t >= self.length or t <= self.t:
+                raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X_1) + 1}.")
+        if date is not None:
+            if isinstance(date, str):
+                date = np.datetime64(date)
+            t = int((date - self.start_date) / np.timedelta64(1, 'D'))
+            if t >= len(self.X_1) + 1 or t <= self.t:
+                raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
+
+        length = t - self.t # Minimum 1 step
+        t = self.t
+
+        # Pandas DF takes t:t but array takes t:t+1
+        X = self.X[t:t+length, :]
+
+        lstm = self.lstm
+        for i, var in enumerate(self.x_vars):
+            lstm.set_value(var, X[:, i])
+        sf_mu, sf_sd = lstm.update()
+        if length == 1:
+            sf_mu, sf_sd = np.array([sf_mu]), np.array([sf_sd])
+
+        if self.debug:
+            records = self.records
+            records["sf_mu"][t:t+length] = sf_mu
+            records["sf_sd"][t:t+length] = sf_sd
+            
+        self.sf_mu = float(sf_mu[-1])
+        self.sf_sd = float(sf_sd[-1])
+
+        self.t += length
+        self.current_date += np.timedelta64(length, 'D')
+        return self.sf_mu, self.sf_sd
+
+    def update(self, t, Q_Trenton, Q_Schuylkill, asycronized_update=False):
+        """
+        Update the LSTM models to the specified time step.
+
+        Parameters
+        ----------
+        t : int
+            The time step to update the models to.
+        Q_Trenton : float
+            The Trenton flow (Q_Trenton_bc).
+        Q_Schuylkill : float
+            The Schuylkill flow (Q_Schuylkill_bc).
+
+        Returns
+        -------
+        tuple
+            The predicted T_L_mu and T_L_sd at the specified time step (t).
+        """
+        Q_Trenton_lstm_var_name = self.Q_Trenton_lstm_var_name
+        Q_Schuylkill_lstm_var_name = self.Q_Schuylkill_lstm_var_name
+
+        if Q_Trenton is not None:            
+            try:
+                self.X[t, self.x_vars.index(Q_Trenton_lstm_var_name)] = Q_Trenton
+            except ValueError:
+                if self.debug:
+                    print(f"Warning: '{Q_Trenton_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+            try:
+                if self.t == 0:
+                    Q_Trenton_7d = self.X[t, self.x_vars_1.index(Q_Trenton_lstm_var_name+"_7d_avg")]
+                else:
+                    Q_Trenton_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))]
+                    Q_Trenton_7d = (Q_Trenton_7d_t_1*6 + Q_Trenton) / 7
+                self.X[t, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))] = Q_Trenton_7d
+            except ValueError:
+                if self.debug:
+                    print(f"Warning: '{Q_Trenton_lstm_var_name+"_7d_avg"}' not found in lstm2.x_vars. Skipping update.")
+
+        if Q_Schuylkill is not None:
+            try:
+                self.X[t, self.x_vars.index(Q_Schuylkill_lstm_var_name)] = Q_Schuylkill
+            except ValueError:
+                if self.debug:
+                    print(f"Warning: '{Q_Schuylkill_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+            try:
+                if self.t == 0:
+                    Q_Schuylkill_7d = self.X[t, self.x_vars_1.index(Q_Schuylkill_lstm_var_name+"_7d_avg")]
+                else:
+                    Q_Schuylkill_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))]
+                    Q_Schuylkill_7d = (Q_Schuylkill_7d_t_1*6 + Q_Schuylkill) / 7
+                self.X[t, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))] = Q_Schuylkill_7d
+            except ValueError:
+                if self.debug:
+                    print(f"Warning: '{Q_Schuylkill_lstm_var_name+"_7d_avg"}' not found in lstm2.x_vars. Skipping update.")
+
+        if asycronized_update:
+            return None
+        else:
+            return self.update_until(t=t+1, date=None)
+
+    def forecast(self, t, Q_Trenton=None, Q_Schuylkill=None, lead_time=0):
+        """
+        Forecast the water temperature at Lordville for the specified lead time.
+
+        Parameters
+        ----------
+        t : int
+            The time step to forecast from.
+        Q_Trenton : float, optional
+            The Trenton flow (Q_Trenton_bc).
+        Q_Schuylkill : float, optional
+            The Schuylkill flow (Q_Schuylkill_bc).
+        lead_time : int, optional
+            The number of time steps to forecast ahead. Default is 0, which means nowcast
+            and returns the current prediction.
+        Returns
+        -------
+        None
+            The forecasted water temperature at Lordville is stored in the class attributes.
+        """
+        # Pandas DF takes t:t but array takes t:t+1
+        X = self.X[t:t+lead_time+1, :].copy()
+
+        Q_Trenton_lstm_var_name = self.Q_Trenton_lstm_var_name
+        Q_Schuylkill_lstm_var_name = self.Q_Schuylkill_lstm_var_name
+
+        if Q_Trenton is not None:
+            try:
+                X[0, self.x_vars.index(Q_Trenton_lstm_var_name)] = Q_Trenton
+            except ValueError:
+                print(f"Warning: '{Q_Trenton_lstm_var_name}' not found in lstm.x_vars. Skipping update.")
+            
+            if self.t == 0:
+                Q_Trenton_7d = X[0, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")]
+            else: ## We are here!!!!!!!!!!!!!
+                Q_Trenton_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))]
+                Q_Trenton_7d = (Q_Trenton_7d_t_1*6 + Q_Trenton) / 7
+            
+            try:
+                X[0, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")] = Q_Trenton_7d
+            except ValueError:
+                print(f"Warning: '{Q_Trenton_lstm_var_name+"_7d_avg"}' not found in lstm.x_vars. Skipping update.")
+
+        if Q_Schuylkill is not None:
+            try:
+                X[0, self.x_vars.index(Q_Schuylkill_lstm_var_name)] = Q_Schuylkill
+            except ValueError:
+                print(f"Warning: '{Q_Schuylkill_lstm_var_name}' not found in lstm.x_vars. Skipping update.")
+            Q_Schuylkill_7d = (self.Q_Schuylkill_7d[t-1]*6 + Q_Schuylkill) / 7
+            try:
+                X[0, self.x_vars.index(Q_Schuylkill_lstm_var_name+"_7d_avg")] = Q_Schuylkill_7d
+            except ValueError:
+                print(f"Warning: '{Q_Schuylkill_lstm_var_name+"_7d_avg"}' not found in lstm.x_vars. Skipping update.")
+
+        lstm = self.lstm
+        for i, var in enumerate(self.x_vars):
+            lstm.set_value(var, X[:, i])
+        forecast_sf_mu, forecast_sf_sd = lstm.forecast()
+
+        if self.debug:
+            forecast_records = self.forecast_records
+            forecast_records["Q_Trenton"][t] = Q_Trenton if Q_Trenton is not None else self.Q_Trenton[t]
+            forecast_records["Q_Schuylkill"][t] = Q_Schuylkill if Q_Schuylkill is not None else self.Q_Schuylkill[t]
+            forecast_records["Q_Trenton_7d"][t] = Q_Trenton_7d if Q_Trenton is not None else self.Q_Trenton_7d[t]
+            forecast_records["Q_Schuylkill_7d"][t] = Q_Schuylkill_7d if Q_Schuylkill is not None else self.Q_Schuylkill_7d[t]
+            forecast_records["sf_mu"][t] = forecast_sf_mu[-1]
+            forecast_records["sf_sd"][t] = forecast_sf_sd[-1]
+            
+        self.forecast_sf_mu_arr = forecast_sf_mu
+        self.forecast_sf_sd_arr = forecast_sf_sd
+        return None
