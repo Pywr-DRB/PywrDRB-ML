@@ -25,7 +25,7 @@ export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
 # Define arrays for policy types and borg seeds
 policy_types=("piecewise" "gaussian_rbf" "regression" "cubic_rbf")  # Add your policy types here
-borg_seeds=(1 2)  # Add your borg seeds here
+borg_seeds=(3 4)  # Add your borg seeds here
 
 # Function to submit the job
 submit_job() {
