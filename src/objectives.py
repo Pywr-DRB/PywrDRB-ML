@@ -60,7 +60,7 @@ def compute_reliability(
 
 
 def compute_max_annual_accumulated_degree_days(
-    df: pd.DataFrame, col: str = 'Tavg_L_mu', threshold: float = 20, only_summer_period: bool = True, return_distribution: bool = False
+    df: pd.DataFrame, col: str = 'Tavg_L_mu', threshold: float = 20, only_summer_period: bool = True, max_Jadd: float = 132.4373, return_distribution: bool = False
     ) -> float:
     """
     Compute JADD(θ): Maximum annual accumulated degree days.
@@ -103,7 +103,7 @@ def compute_max_annual_accumulated_degree_days(
 
     if return_distribution:
         return annual_sums.values
-    return round(float(JADD), 4)
+    return round(float(JADD/max_Jadd), 4)
 
 def compute_mean_thermal_bank_usage_ratio(
     df: pd.DataFrame, col: str = 'remained_bank_amounts', bank_size: float = 1620, return_distribution: bool = False, last_date_of_ctrl: tuple = (8, 31)

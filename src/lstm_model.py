@@ -208,8 +208,8 @@ class WaterTempLSTMModel():
         db = database[self.start_date:self.end_date]
         self.Q_C = db[self.Q_C_lstm_var_name].values
         self.Q_i = db[self.Q_i_lstm_var_name].values
-        
-        
+
+
         # For control purposes
         self.doc = db["doc"].values if "doc" in db.columns else None
         self.cannonsville_storage_pct = db[self.cannonsville_storage_pct_lstm_var_name].values
@@ -668,7 +668,7 @@ class SalinityLSTMModel():
         # Current predictions
         self.sf_mu = np.nan
         self.sf_sd = np.nan
-     
+
         # Forecast predictions
         self.forecast_sf_mu_arr = np.nan
         self.forecast_sf_sd_arr = np.nan
@@ -745,7 +745,7 @@ class SalinityLSTMModel():
             records = self.records
             records["sf_mu"][t:t+length] = sf_mu
             records["sf_sd"][t:t+length] = sf_sd
-            
+
         self.sf_mu = float(sf_mu[-1])
         self.sf_sd = float(sf_sd[-1])
 
@@ -774,7 +774,7 @@ class SalinityLSTMModel():
         Q_Trenton_lstm_var_name = self.Q_Trenton_lstm_var_name
         Q_Schuylkill_lstm_var_name = self.Q_Schuylkill_lstm_var_name
 
-        if Q_Trenton is not None:            
+        if Q_Trenton is not None:
             try:
                 self.X[t, self.x_vars.index(Q_Trenton_lstm_var_name)] = Q_Trenton
             except ValueError:
@@ -789,7 +789,7 @@ class SalinityLSTMModel():
                 self.X[t, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))] = Q_Trenton_7d
             except ValueError:
                 if self.debug:
-                    print(f"Warning: '{Q_Trenton_lstm_var_name+"_7d_avg"}' not found in lstm2.x_vars. Skipping update.")
+                    print(f"Warning: '{Q_Trenton_lstm_var_name}_7d_avg' not found in lstm2.x_vars. Skipping update.")
 
         if Q_Schuylkill is not None:
             try:
@@ -806,7 +806,7 @@ class SalinityLSTMModel():
                 self.X[t, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))] = Q_Schuylkill_7d
             except ValueError:
                 if self.debug:
-                    print(f"Warning: '{Q_Schuylkill_lstm_var_name+"_7d_avg"}' not found in lstm2.x_vars. Skipping update.")
+                    print(f"Warning: '{Q_Schuylkill_lstm_var_name}_7d_avg' not found in lstm2.x_vars. Skipping update.")
 
         if asycronized_update:
             return None
@@ -844,17 +844,17 @@ class SalinityLSTMModel():
                 X[0, self.x_vars.index(Q_Trenton_lstm_var_name)] = Q_Trenton
             except ValueError:
                 print(f"Warning: '{Q_Trenton_lstm_var_name}' not found in lstm.x_vars. Skipping update.")
-            
+
             if self.t == 0:
                 Q_Trenton_7d = X[0, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")]
             else: ## We are here!!!!!!!!!!!!!
                 Q_Trenton_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))]
                 Q_Trenton_7d = (Q_Trenton_7d_t_1*6 + Q_Trenton) / 7
-            
+
             try:
                 X[0, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")] = Q_Trenton_7d
             except ValueError:
-                print(f"Warning: '{Q_Trenton_lstm_var_name+"_7d_avg"}' not found in lstm.x_vars. Skipping update.")
+                print(f"Warning: '{Q_Trenton_lstm_var_name}_7d_avg' not found in lstm.x_vars. Skipping update.")
 
         if Q_Schuylkill is not None:
             try:
@@ -865,7 +865,7 @@ class SalinityLSTMModel():
             try:
                 X[0, self.x_vars.index(Q_Schuylkill_lstm_var_name+"_7d_avg")] = Q_Schuylkill_7d
             except ValueError:
-                print(f"Warning: '{Q_Schuylkill_lstm_var_name+"_7d_avg"}' not found in lstm.x_vars. Skipping update.")
+                print(f"Warning: '{Q_Schuylkill_lstm_var_name}_7d_avg' not found in lstm.x_vars. Skipping update.")
 
         lstm = self.lstm
         for i, var in enumerate(self.x_vars):
@@ -880,7 +880,7 @@ class SalinityLSTMModel():
             forecast_records["Q_Schuylkill_7d"][t] = Q_Schuylkill_7d if Q_Schuylkill is not None else self.Q_Schuylkill_7d[t]
             forecast_records["sf_mu"][t] = forecast_sf_mu[-1]
             forecast_records["sf_sd"][t] = forecast_sf_sd[-1]
-            
+
         self.forecast_sf_mu_arr = forecast_sf_mu
         self.forecast_sf_sd_arr = forecast_sf_sd
         return None

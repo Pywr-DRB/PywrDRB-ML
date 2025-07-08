@@ -215,15 +215,20 @@ mean_rmse = {}
 mean_rmse["saltfront"] = overall_performance_df.mean()["rmse"]
 
 r"""
+{'saltfront': np.float64(5.855963998878859)}
 
 """
 
 overall_best_hyperparameters_df = pd.concat(overall_best_hyperparameters, ignore_index=True, axis=1)
 
 r"""
+                    0      1      2      3      4
+learning_rate    0.05   0.05   0.05   0.05   0.05
+early_stopping  50.00  50.00  50.00  20.00  20.00
+dropout_rate     0.30   0.30   0.10   0.30   0.30
 
 """
 
-
+preds_test[["pred", "obs"]].plot()
 
 
