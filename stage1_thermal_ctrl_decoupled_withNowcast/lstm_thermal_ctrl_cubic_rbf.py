@@ -72,7 +72,7 @@ def eval_func(*params):
             X = np.array([
                 minmaxscalers["T_L"].transform(pd.DataFrame([[forecast_T_L_mu]], columns=["T_L"]))[0][0],
                 remained_bank_ratio,
-                minmaxscalers["Jadd"].transform(pd.DataFrame([[Jadd_t]], columns=["Jadd"]))[0][0],
+                Jadd_t,
                 minmaxscalers["doc"].transform(pd.DataFrame([[doc]], columns=["doc"]))[0][0],
                 ])
 
