@@ -684,6 +684,9 @@ class SalinityLSTMModel():
             self.records = {
                 "sf_mu": [np.nan] * length,
                 "sf_sd": [np.nan] * length,
+                "adj_ratio_Trenton": [np.nan] * length,
+                "adj_ratio_Montague": [np.nan] * length,
+                "drought_idx": [np.nan] * length,
             }
             self.forecast_records = {
                 "sf_mu": [np.nan] * length,
@@ -720,12 +723,12 @@ class SalinityLSTMModel():
         """
         if t is not None:
             if t >= self.length or t <= self.t:
-                raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X_1) + 1}.")
+                raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X) + 1}.")
         if date is not None:
             if isinstance(date, str):
                 date = np.datetime64(date)
             t = int((date - self.start_date) / np.timedelta64(1, 'D'))
-            if t >= len(self.X_1) + 1 or t <= self.t:
+            if t >= len(self.X) + 1 or t <= self.t:
                 raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
 
         length = t - self.t # Minimum 1 step
@@ -753,7 +756,7 @@ class SalinityLSTMModel():
         self.current_date += np.timedelta64(length, 'D')
         return self.sf_mu, self.sf_sd
 
-    def update(self, t, Q_Trenton, Q_Schuylkill, asycronized_update=False):
+    def update(self, t, Q_Trenton=None, Q_Schuylkill=None, asycronized_update=False):
         """
         Update the LSTM models to the specified time step.
 
@@ -782,7 +785,7 @@ class SalinityLSTMModel():
                     print(f"Warning: '{Q_Trenton_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
             try:
                 if self.t == 0:
-                    Q_Trenton_7d = self.X[t, self.x_vars_1.index(Q_Trenton_lstm_var_name+"_7d_avg")]
+                    Q_Trenton_7d = self.X[t, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")]
                 else:
                     Q_Trenton_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))]
                     Q_Trenton_7d = (Q_Trenton_7d_t_1*6 + Q_Trenton) / 7
@@ -799,7 +802,7 @@ class SalinityLSTMModel():
                     print(f"Warning: '{Q_Schuylkill_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
             try:
                 if self.t == 0:
-                    Q_Schuylkill_7d = self.X[t, self.x_vars_1.index(Q_Schuylkill_lstm_var_name+"_7d_avg")]
+                    Q_Schuylkill_7d = self.X[t, self.x_vars.index(Q_Schuylkill_lstm_var_name+"_7d_avg")]
                 else:
                     Q_Schuylkill_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))]
                     Q_Schuylkill_7d = (Q_Schuylkill_7d_t_1*6 + Q_Schuylkill) / 7
@@ -847,7 +850,7 @@ class SalinityLSTMModel():
 
             if self.t == 0:
                 Q_Trenton_7d = X[0, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")]
-            else: ## We are here!!!!!!!!!!!!!
+            else:
                 Q_Trenton_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))]
                 Q_Trenton_7d = (Q_Trenton_7d_t_1*6 + Q_Trenton) / 7
 
@@ -861,7 +864,10 @@ class SalinityLSTMModel():
                 X[0, self.x_vars.index(Q_Schuylkill_lstm_var_name)] = Q_Schuylkill
             except ValueError:
                 print(f"Warning: '{Q_Schuylkill_lstm_var_name}' not found in lstm.x_vars. Skipping update.")
-            Q_Schuylkill_7d = (self.Q_Schuylkill_7d[t-1]*6 + Q_Schuylkill) / 7
+            if self.t == 0:
+                Q_Schuylkill_7d = X[0, self.x_vars.index(Q_Schuylkill_lstm_var_name+"_7d_avg")]
+            else:
+                Q_Schuylkill_7d = (self.Q_Schuylkill_7d[t-1]*6 + Q_Schuylkill) / 7
             try:
                 X[0, self.x_vars.index(Q_Schuylkill_lstm_var_name+"_7d_avg")] = Q_Schuylkill_7d
             except ValueError:
@@ -874,10 +880,6 @@ class SalinityLSTMModel():
 
         if self.debug:
             forecast_records = self.forecast_records
-            forecast_records["Q_Trenton"][t] = Q_Trenton if Q_Trenton is not None else self.Q_Trenton[t]
-            forecast_records["Q_Schuylkill"][t] = Q_Schuylkill if Q_Schuylkill is not None else self.Q_Schuylkill[t]
-            forecast_records["Q_Trenton_7d"][t] = Q_Trenton_7d if Q_Trenton is not None else self.Q_Trenton_7d[t]
-            forecast_records["Q_Schuylkill_7d"][t] = Q_Schuylkill_7d if Q_Schuylkill is not None else self.Q_Schuylkill_7d[t]
             forecast_records["sf_mu"][t] = forecast_sf_mu[-1]
             forecast_records["sf_sd"][t] = forecast_sf_sd[-1]
 
