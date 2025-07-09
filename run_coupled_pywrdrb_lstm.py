@@ -11,6 +11,7 @@ pn.chdir()
 pn.mkdir("outputs/coupled_pywrdrb")
 pn.sc.add("wd", pn.get("outputs/coupled_pywrdrb"), overwrite=True)
 
+import time
 
 
 #%% Create coupled Pywr-DRB model
@@ -20,42 +21,42 @@ output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
 
 
 
-# temp_options = {
-#     "ml_model_type": "lstm",
-#     "PywrDRB_ML_plugin_path": str(pn.get()),
-#     "model1": str(pn.models.get() / r"TempLSTM1_comparison\TempLSTM1_Qc.yml"),
-#     "model2": str(pn.models.get() / r"TempLSTM2_comparison\TempLSTM2_Qc.yml"),
-#     "Tavg2Tmax_coefs": str(pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json"),
-#     "start_date": "1979-01-01",
-#     "end_date": "2023-12-31",
-#     "activate_thermal_control": False,
-#     "Q_C_lstm_var_name": "QbcTavg_Q_C",
-#     "Q_i_lstm_var_name": "QbcTavg_Q_i",
-#     "cannonsville_storage_pct_lstm_var_name": "bc_cannonsville_storage_pct",
-#     "thermal_mitigation_bank_size": 1620,  # mgd
-#     "asycronized_update": True,
-#     "debug": True
-#     }
-
-salinity_options = {
+temp_options = {
     "ml_model_type": "lstm",
-    "PywrDRB_ML_plugin_path": pn.get_str(),
-    "model_salinity": str(pn.models.get() / r"SalinityLSTM_comparison\SalinityLSTM_1d_7d_avg.yml"),
+    "PywrDRB_ML_plugin_path": str(pn.get()),
+    "model1": str(pn.models.get() / r"TempLSTM1_comparison\TempLSTM1_Qc.yml"),
+    "model2": str(pn.models.get() / r"TempLSTM2_comparison\TempLSTM2_Qc.yml"),
+    "Tavg2Tmax_coefs": str(pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json"),
     "start_date": "1979-01-01",
     "end_date": "2023-12-31",
-    "Q_Trenton_lstm_var_name": "Q_Trenton_bc",
-    "Q_Schuylkill_lstm_var_name": "Q_Schuylkill_bc",
-    "asycronized_update": False,
+    "activate_thermal_control": False,
+    "Q_C_lstm_var_name": "QbcTavg_Q_C",
+    "Q_i_lstm_var_name": "QbcTavg_Q_i",
+    "cannonsville_storage_pct_lstm_var_name": "bc_cannonsville_storage_pct",
+    "thermal_mitigation_bank_size": 1620,  # mgd
+    "asycronized_update": True,
     "debug": True
     }
+
+# salinity_options = {
+#     "ml_model_type": "lstm",
+#     "PywrDRB_ML_plugin_path": pn.get_str(),
+#     "model_salinity": str(pn.models.get() / r"SalinityLSTM_comparison\SalinityLSTM_1d_7d_avg.yml"),
+#     "start_date": "1979-01-01",
+#     "end_date": "2023-12-31",
+#     "Q_Trenton_lstm_var_name": "Q_Trenton_bc",
+#     "Q_Schuylkill_lstm_var_name": "Q_Schuylkill_bc",
+#     "asycronized_update": False,
+#     "debug": True
+#     }
 
 mb = pywrdrb.ModelBuilder(
     inflow_type=inflow_type,
     start_date="1978-01-01", # 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1960-01-01"
     end_date="2023-12-31",
     options={
-        #"temperature_model": temp_options,
-        "salinity_model": salinity_options,
+        "temperature_model": temp_options,
+        #"salinity_model": salinity_options,
         }
     )
 
@@ -87,27 +88,30 @@ recorder = pywrdrb.OutputRecorder(
 # temperature_model.control_algorithm = dps_func
 
 #%% Run the simulation
+start_time = time.time()
 stats = model.run()
 
 #%% Load the output data
-data = pywrdrb.Data()
-results_sets = [
-    #'temperature',
-    'salinity',
-    ]
-data.load_output(output_filenames=[output_filename], results_sets=results_sets)
+# data = pywrdrb.Data()
+# results_sets = [
+#     #'temperature',
+#     'salinity',
+#     ]
+# data.load_output(output_filenames=[output_filename], results_sets=results_sets)
 
-#df_temperature = data.temperature[inflow_type][0]
-df_salinity = data.salinity[inflow_type][0]
+# #df_temperature = data.temperature[inflow_type][0]
+# df_salinity = data.salinity[inflow_type][0]
 
 #%%
-ml_model = model.parameters["salinity_model"].ml_model
-df_ml_model = pd.DataFrame(ml_model.records)
+# ml_model = model.parameters["salinity_model"].ml_model
+# df_ml_model = pd.DataFrame(ml_model.records)
 #%% Asycronized update
 ml_model = model.parameters["temperature_model"].ml_model
 
 ml_model.update_until(date=ml_model.end_date)
 df_ml_model = pd.DataFrame(ml_model.records)
+end_time = time.time()
+print(f"Plotting completed in {end_time - start_time:.2f} seconds")
 #%% Load obs for plotting
 import matplotlib.pyplot as plt
 import numpy as np

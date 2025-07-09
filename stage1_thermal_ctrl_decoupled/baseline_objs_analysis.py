@@ -37,6 +37,11 @@ Jadd_noCtrl = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_
 Jrel_noCtrl_arr = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 
+# Jrel_noCtrl
+# Out[5]: 0.2375
+
+# Jadd_noCtrl
+# Out[6]: 1.0 (132.4373)
 #%%
 db = database[['QbcTmax_T_L']]
 db.loc[database['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
@@ -164,6 +169,14 @@ Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, on
 Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 Jtubr_arr = compute_mean_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
+# Jrel
+# Out[9]: 0.3185
+
+# Jadd
+# Out[10]: 0.916
+
+# Jtubr
+# Out[11]: 0.0734
 #%% Plot Histograms
 # Plot histogram for Jrel_noCtrl_arr
 fig, ax = plt.subplots()
