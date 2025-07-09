@@ -79,6 +79,19 @@ loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
 model_ids = ["TempLSTM1", "TempLSTM2"]
 lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%%
 df_metric_train = loop_to_eval_lstm_models(lstms, period="train", subfolder=subfolder, only_months=None, mode="TempLSTM")
 

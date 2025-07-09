@@ -8,7 +8,8 @@ spatial_idx_name: seg_id_nat
 time_idx_name: date
 seq_len: 365
 offset: 1.0
-x_vars: [Q_Trenton_bc, Q_Schuylkill_bc, doy]
+x_vars: [Q_Trenton_bc, Q_Schuylkill_bc, Q_Trenton_bc_7d_avg, Q_Schuylkill_bc_7d_avg,
+  doy]
 y_vars: [saltfront]
 y_vars_src: [saltfront_src]
 delta_temp_layer: false
@@ -34,10 +35,10 @@ head_hidden_units: 16
 head_n_distr: 1
 weight_loss: true
 weight_threshold: 80
-weight_value: 10
+weight_value: 5
 mc_dropout: true
 recurrent_dropout_rate: 0.3
-dropout_rate: 0.1
+dropout_rate: 0.3
 model_type: lstm
 n_en_gridmet: 1
 gpu: false

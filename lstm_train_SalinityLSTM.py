@@ -1,26 +1,26 @@
 import pathnavigator
 from copy import deepcopy
 
-if pathnavigator.os_name == 'Windows':  
+if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
-    
+
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, return_sim_obs_pair
+from src.prep_data import data_prep
 
 # from src.model_builder import config_template
-
 config_template = {
     'input_data_file': "data/database/SalinityLSTM_database.csv",
     'x_vars': [],
     'y_vars': [],
     'y_vars_src': [],
     'lag_days': 1,
-    'min_date': '1963-10-01',
+    'min_date': '1979-01-01',
     'max_date': '2023-12-31',
-    'start_date_train': '1963-10-01',
+    'start_date_train': '1979-01-01',
     'end_date_train': '2023-12-31',
     'start_date_val': '2017-01-01',
     'end_date_val': '2017-12-31',
@@ -37,56 +37,36 @@ config_template = {
     'head_hidden_units': 16,
     'head_n_distr': 1,
     'weight_loss': True,
-    'weight_threshold': 20,
-    'weight_value': 2,
+    'weight_threshold': 80,
+    'weight_value': 5,
     'mc_dropout': True,
     'recurrent_dropout_rate': 0.3,
-    'dropout_rate': 0.1,
+    'dropout_rate': 0.30,
     'seq_len': 365,
     'offset': 1.0,
-    'seed': 4
+    'seed': 4,
     }
-
 lstm_settings = {
-    "x_vars": ["Q_Trenton_bc", "Q_Schuylkill_bc", "doy"],
+    "model_id": "SalinityLSTM",
+    "x_vars": ["Q_Trenton_bc", "Q_Schuylkill_bc", "Q_Trenton_bc_7d_avg", "Q_Schuylkill_bc_7d_avg", "doy"],
     "y_vars": ["saltfront"],
     "y_vars_src": ["saltfront_src"],
     }
 
-# lstm_lag1_settings = {
-#     "x_vars": ["01463500_bc", "01474500_bc", "saltfront", "doy"],
-#     "y_vars": ["saltfront"],
-#     "y_vars_src": ["saltfront_src"],
-#     }
-
 #%%
-subfolder = None # "SalinityLSTM"
+subfolder = "SalinityLSTM"
 lstm_config = deepcopy(config_template)
 lstm_config.update(lstm_settings)
-lstm_config_file = make_lstm_model(model_id="SalinityLSTM", subfolder=subfolder, **lstm_config)
-
-# Have gap in saltfront
-# lstm_config = deepcopy(config_template)
-# lstm_config.update(lstm_lag1_settings)
-# lstm_lag1_config_file = make_lstm_model(model_id="LSTM_bc_lag1", subfolder=subfolder, **lstm_config)
+lstm_config_file = make_lstm_model(subfolder=subfolder, **lstm_config)
+_ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new splits; write to new datafile
 
 #%%
-from src.prep_data import data_prep
-df = data_prep(lstm_config_file, root_dir)
-#df = data_prep(lstm_lag1_config_file, root_dir)
-
-#%%
-subfolder = None #"SalinityLSTM"
 model_ids = ["SalinityLSTM"]
 loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
+lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, mode="SalinityLSTM", disable=False)
 
 #%%
-subfolder = None #"SalinityLSTM"
-model_ids = ["SalinityLSTM"] #, "LSTM_bc_lag1"]
-lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
-
-#%%
-df_metric_train = loop_to_eval_lstm_models(lstms, period="train", only_months=None, mode="SalinityLSTM", disable=False)
+df_metric_train = loop_to_eval_lstm_models(model_ids, subfolder=subfolder, period="train", only_months=None, mode="SalinityLSTM")
 
 #%%
 import matplotlib.pyplot as plt
