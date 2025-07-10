@@ -6,7 +6,7 @@
 # Get job ID from command line argument
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <job_id>"
-    echo "Example: $0 134717"
+    echo "Example: $0 134795111"
     exit 1
 fi
 
