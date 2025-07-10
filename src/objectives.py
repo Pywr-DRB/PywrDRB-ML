@@ -105,6 +105,44 @@ def compute_max_annual_accumulated_degree_days(
         return annual_sums.values
     return round(float(JADD/max_Jadd), 4)
 
+def compute_max_thermal_bank_usage_ratio(
+    df: pd.DataFrame, col: str = 'remained_bank_amounts', bank_size: float = 1620, return_distribution: bool = False, last_date_of_ctrl: tuple = (8, 31)
+    ) -> float:
+    """
+    Compute JTBUR(θ): Average annual thermal mitigation bank usage ratio.
+
+    Based on the formula:
+    JTBUR = max{tburyr}
+    TBUR = {tburyr | yr ∈ years}
+    tburyr = Σt∈{t | year(t)=yr,t∈[0,T]} ut
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing thermal bank usage data
+    col : str, default='ratios'
+        Column name for remained bank amounts
+    bank_size : float, default=1620
+        Size of the thermal mitigation bank (e.g., 1620 MGD)
+    return_distribution : bool, default=False
+        If True, return the distribution of ratios instead of the average
+
+    Returns
+    -------
+    float
+        JTBUR average annual thermal mitigation bank usage ratio
+    """
+    df = df.copy()
+    df = df[(df.index.month == last_date_of_ctrl[0]) & (df.index.day == last_date_of_ctrl[1])]
+    df["ratios"] = 1 - df[col] / bank_size  # Normalize by bank size
+
+    # Compute JTBUR
+    JTBUR = np.max(df["ratios"])
+
+    if return_distribution:
+        return df["ratios"].values
+    return round(float(JTBUR), 4)
+
 def compute_mean_thermal_bank_usage_ratio(
     df: pd.DataFrame, col: str = 'remained_bank_amounts', bank_size: float = 1620, return_distribution: bool = False, last_date_of_ctrl: tuple = (8, 31)
     ) -> float:
