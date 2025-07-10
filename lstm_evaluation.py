@@ -175,17 +175,17 @@ obs = db_SalinityLSTM.copy()
 obs.loc[obs['saltfront_src'] != "obs", 'saltfront'] = np.nan
 obs = obs['saltfront'].values
 sim, obs = clt.dropna_any(sim, obs)
-clt.plots.rmse_over_obs_bins_in_barplot(ax, obs, sim, bins=(36, 90, 5), color="mediumpurple")
+clt.plots.rmse_over_obs_bins_in_barplot(ax, obs, sim, bins=(55, 90, 5), color="mediumpurple")
 ax.grid(True, axis='y', lw=0.3, ls="--")
 ax.set_ylabel(f"RMSE\n(Overall: {round(clt.metrics.rmse(sim, obs), 2)})")
 ax.set_xlabel("$Saltfront$ (RM)")
 
-ax_inset = inset_axes(ax, width="40%", height="40%", loc='upper right')
-clt.plots.rmse_over_obs_bins_in_barplot(ax_inset, obs, sim, bins=(80, 90, 5), color="mediumpurple")
-ax_inset.grid(True, axis='y', lw=0.3, ls="--")
-ax_inset.set_ylim(0, 2.5)
-ax_inset.set_ylabel("")
-ax_inset.set_xlabel("")
+# ax_inset = inset_axes(ax, width="40%", height="40%", loc='upper right')
+# clt.plots.rmse_over_obs_bins_in_barplot(ax_inset, obs, sim, bins=(80, 90, 5), color="mediumpurple")
+# ax_inset.grid(True, axis='y', lw=0.3, ls="--")
+# ax_inset.set_ylim(0, 2.5)
+# ax_inset.set_ylabel("")
+# ax_inset.set_xlabel("")
 
 ax = axes[1, 1]
 sim = ml_model_salt.records["sf_mu"]

@@ -69,6 +69,10 @@ recorder = pywrdrb.OutputRecorder(
 stats = model.run()
 
 #%% Load the output data
+# inflow_type = 'pub_nhmv10_BC_withObsScaled'
+# model_filename = str(pn.sc.wd / f"{inflow_type}.json")
+# output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
+
 data = pywrdrb.Data()
 results_sets = [
     'temperature',
@@ -149,21 +153,29 @@ df.loc[df["nyc_zone"] == 4, "zone"] = "drought watch"
 df.loc[df["nyc_zone"] == 3, "zone"] = "drought warning"
 df.loc[df["nyc_zone"] == 2, "zone"] = "normal"
 
+mask = (df["zone"] == "flood") & (df.index.month.isin([6, 7, 8]))
+df.loc[mask, "zone"] = "flood (Jun, Jul, Aug)"
+df.loc[~mask & (df["zone"] == "flood"), "zone"] = "flood (other months)"
+
 df["zone"] = pd.Categorical(df["zone"], categories=[
-    "drought emergency", "drought watch", "drought warning", "normal", "flood"
+    "drought emergency", "drought watch", "drought warning", "normal", "flood (other months)", "flood (Jun, Jul, Aug)"
 ])
+df["date"] = df.index
 
 # Define custom color map
 zone_color_map = {
     "drought emergency": "#8B0000",  # dark red
     "drought watch": "#FF0000",      # red
-    "drought warning": "mistyrose", #"#FFA07A",    # light red (light salmon)
-    "normal": "#D3D3D3",             # light gray
-    "flood": "royalblue"             # royal blue
+    "drought warning": "mistyrose", #"#FFA07A",    # light red (light salmon) "salmon", #
+    "normal": "#D3D3D3",             # light gray "darkgrey", #
+    #"flood": "royalblue",             # royal blue
+    "flood (other months)": "royalblue",
+    "flood (Jun, Jul, Aug)": "blue",
 }
 
 # Reorder DataFrame to control z-order
-zorder_order = ["normal","drought warning","flood","drought watch","drought emergency"]
+#zorder_order = ["normal","drought warning","flood","drought watch","drought emergency"]
+zorder_order = ["drought warning","normal","flood (other months)", "flood (Jun, Jul, Aug)", "drought watch","drought emergency"]
 df = df.set_index("zone").loc[zorder_order].reset_index()
 
 # Map zone to colors
@@ -191,16 +203,53 @@ sc = ax_joint.scatter(
 )
 
 # KDE plots
-sns.kdeplot(df["Salt front (RM)"], ax=ax_marg_x, fill=True, color="mediumpurple")
-sns.kdeplot(df["Water Tmax (degC)"], ax=ax_marg_y, fill=True, color="salmon", vertical=True)
+df_kde = df[df["zone"] == "normal"]
+sns.kdeplot(df_kde["Salt front (RM)"], ax=ax_marg_x, fill=True, color="darkgrey")
+sns.kdeplot(y=df_kde.loc[df_kde["date"].dt.month.isin([6, 7, 8]), "Water Tmax (degC)"], ax=ax_marg_y, fill=True, color="darkgrey")
 
-# Remove spines and ticks from KDE plots
-for ax in [ax_marg_x, ax_marg_y]:
-    ax.axis("off")
+df_kde = df[df["zone"] == "drought warning"]
+sns.kdeplot(df_kde["Salt front (RM)"], ax=ax_marg_x, fill=True, color="salmon")
+sns.kdeplot(y=df_kde.loc[df_kde["date"].dt.month.isin([6, 7, 8]), "Water Tmax (degC)"], ax=ax_marg_y, fill=True, color="salmon")
+
+# Add arrow and annotation for thermal control period
+ax_marg_y.annotate(
+    "Thermal control\nperiod only\n(Jun, Jul, Aug)",
+    xy=(0.15, 19),  # Point on the KDE plot (x is KDE density, y is temperature)
+    xytext=(0.3, 5),  # Text position (further right and lower)
+    xycoords='data',
+    fontsize=11,
+    ha='center',
+    va='center',
+    bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8, edgecolor=None),
+    arrowprops=dict(arrowstyle='->', color='black', lw=1.2, connectionstyle="arc3,rad=0.1")
+)
+
+#sns.kdeplot(df_kde["Salt front (RM)"], ax=ax_marg_x, fill=True, color="mediumpurple")
+#sns.kdeplot(df_kde["Water Tmax (degC)"], ax=ax_marg_y, fill=True, color="salmon", vertical=True)
+
+# Clean up marginal plots while keeping ticks
+ax_marg_x.spines['top'].set_visible(False)
+ax_marg_x.spines['right'].set_visible(False)
+ax_marg_x.spines['left'].set_visible(False)
+ax_marg_x.set_ylabel('')
+ax_marg_x.set_yticks([])
+ax_marg_x.tick_params(labeltop=False)
+ax_marg_x.axis("off")
+
+ax_marg_y.spines['top'].set_visible(False)
+ax_marg_y.spines['right'].set_visible(False)
+ax_marg_y.spines['bottom'].set_visible(False)
+ax_marg_y.set_xlabel('')
+ax_marg_y.set_xticks([])
+ax_marg_y.tick_params(labelright=False)
+ax_marg_y.axis("off")
 
 # Label main plot
 ax_joint.set_xlabel("$Saltfront$ (RM)", fontsize=14)
 ax_joint.set_ylabel("$T_{max}$ (°C)", fontsize=14)
+
+# (not working) Set ticks to point inward for the main plot with enhanced visibility
+ax_joint.tick_params(direction='in', length=6, width=1, colors='black')
 
 # Optional: add legend manually
 from matplotlib.patches import Patch
@@ -212,7 +261,13 @@ ax_joint.axvline(82.9, color="grey", linestyle=":")
 ax_joint.axvline(87, color="grey", linestyle=":")
 ax_joint.axvline(92.5, color="grey", linestyle=":")
 
-ax_joint.set_xlim([55, 90])
+# Add rotated text labels for vertical lines
+ax_joint.text(82.3, 27, "82.9", rotation=90, ha='center', va='bottom', fontsize=11, color='grey')
+ax_joint.text(86.4, 27, "87.0", rotation=90, ha='center', va='bottom', fontsize=11, color='grey')
+ax_joint.text(91.9, 27, "92.5", rotation=90, ha='center', va='bottom', fontsize=11, color='grey')
+ax_joint.text(57, 24.1, "24.0", rotation=0, ha='center', va='bottom', fontsize=11, color='grey')
+
+ax_joint.set_xlim([55, 93])
 ax_joint.set_ylim([-0.5, 30])
 plt.tight_layout()
 clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "tmax_and_saltfront_dynamics.jpg")
