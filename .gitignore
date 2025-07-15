@@ -7,8 +7,7 @@ __pycache__/
 *.so
 
 # CL
-outputs/
-!outputs/stage1_*/
+outputs/coupled_pywrdrb*/**/*.hdf5
 outputs/stage1_*/**/*.runtime
 logs/
 MOEAFramework-5.0/

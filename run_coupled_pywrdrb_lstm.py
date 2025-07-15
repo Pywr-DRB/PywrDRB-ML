@@ -50,13 +50,14 @@ temp_options = {
 #     "debug": True
 #     }
 
+# 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1960-01-01"
 mb = pywrdrb.ModelBuilder(
     inflow_type=inflow_type,
-    start_date="1978-01-01", # 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1960-01-01"
+    start_date="1978-01-01", 
     end_date="2023-12-31",
     options={
         "temperature_model": temp_options,
-        #"salinity_model": salinity_options,
+        "salinity_model": salinity_options,
         }
     )
 

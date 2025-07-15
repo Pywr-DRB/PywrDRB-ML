@@ -78,8 +78,8 @@ nobjs = len(obj_names)
 nconstrs = 0
 nfe = 60_000
 runtime_freq = 500
-epsilon = 0.01 
-islands = 1 # 1 = MW, >1 = MM
+epsilon = 0.01
+islands = 1  # 1 = MW, >1 = MM
 
 borg_settings = {
     "numberOfVariables": nvars,
