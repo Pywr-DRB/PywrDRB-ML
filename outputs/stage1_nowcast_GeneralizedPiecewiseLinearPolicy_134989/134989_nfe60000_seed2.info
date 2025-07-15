@@ -1,0 +1,21 @@
+
+Borg settings
+=================
+numberOfVariables: 36
+numberOfObjectives: 3
+numberOfConstraints: 0
+function: <function eval_func at 0x14f8d872bf60>
+epsilons: [0.01, 0.01, 0.01]
+bounds: [[0.01, 1], [0.01, 1], [0.01, 1], [0.01, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0.01, 1], [0.01, 1], [0.01, 1], [0.01, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0.01, 1], [0.01, 1], [0.01, 1], [0.01, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0.01, 1], [0.01, 1], [0.01, 1], [0.01, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]
+directions: None
+seed: 2
+
+Borg solveMPI settings
+=================
+islands: 1
+maxTime: None
+maxEvaluations: 60000
+initialization: None
+runtime: /home/fs01/cl2769/Github/PywrDRB-ML/outputs/stage1_nowcast_GeneralizedPiecewiseLinearPolicy_134989/runtimes/134989_nfe60000_seed2.runtime
+allEvaluations: None
+frequency: 500

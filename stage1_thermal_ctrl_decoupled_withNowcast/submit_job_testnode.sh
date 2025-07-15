@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=stage1_nowcast               # Job name
-#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/stage1_nowcast_%j.out   # Standard output log file with job ID
-#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/stage1_nowcast_%j.err    # Standard error log file with job ID
+#SBATCH --job-name=n4               # Job name
+#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/n4_%j.out   # Standard output log file with job ID
+#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/n4_%j.err    # Standard error log file with job ID
 #SBATCH --nodes=4                           # Number of nodes to use
 #SBATCH --ntasks-per-node=40                # Number of tasks (processes) per node
 #SBATCH --exclusive                        # Use the node exclusively for this job
@@ -24,8 +24,8 @@ export OPENBLAS_NUM_THREADS=1
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
 # Define arrays for policy types and borg seeds
-policy_types=("piecewise" "gaussian_rbf" "regression" "cubic_rbf")  # Add your policy types here
-borg_seeds=(3 4)  # Add your borg seeds here
+policy_types=("piecewise")  # Add your policy types here "gaussian_rbf" "regression" "cubic_rbf"
+borg_seeds=(7)  # Add your borg seeds here
 
 # Function to submit the job
 submit_job() {
