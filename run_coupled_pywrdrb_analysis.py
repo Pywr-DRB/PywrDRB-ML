@@ -69,9 +69,9 @@ recorder = pywrdrb.OutputRecorder(
 stats = model.run()
 
 #%% Load the output data
-# inflow_type = 'pub_nhmv10_BC_withObsScaled'
-# model_filename = str(pn.sc.wd / f"{inflow_type}.json")
-# output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
+inflow_type = 'pub_nhmv10_BC_withObsScaled'
+model_filename = str(pn.sc.wd / f"{inflow_type}.json")
+output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
 
 data = pywrdrb.Data()
 results_sets = [
@@ -194,13 +194,30 @@ ax_marg_x = fig.add_subplot(gs[0, 0:-1], sharex=ax_joint)
 ax_marg_y = fig.add_subplot(gs[1:-1, -1], sharey=ax_joint)
 
 # Scatter plot
-sc = ax_joint.scatter(
+
+# Observed
+sc_obs = ax_joint.scatter(
+    df["obs_saltfront"],
+    df["obs_T_C"],
+    c=zone_colors,
+    marker='+',
+    s=10,
+    alpha=0.6,
+    linewidths=0.5,
+    label='Observed'
+)
+
+# Simulated
+sc_sim = ax_joint.scatter(
     df["Salt front (RM)"],
     df["Water Tmax (degC)"],
     c=zone_colors,
     s=10,
-    alpha=0.6
+    alpha=0.6,
+    marker='o',
+    label='Simulated'
 )
+
 
 # KDE plots
 df_kde = df[df["zone"] == "normal"]
@@ -214,8 +231,8 @@ sns.kdeplot(y=df_kde.loc[df_kde["date"].dt.month.isin([6, 7, 8]), "Water Tmax (d
 # Add arrow and annotation for thermal control period
 ax_marg_y.annotate(
     "Thermal control\nperiod only\n(Jun, Jul, Aug)",
-    xy=(0.15, 19),  # Point on the KDE plot (x is KDE density, y is temperature)
-    xytext=(0.3, 5),  # Text position (further right and lower)
+    xy=(0.18, 23.5),  # Point on the KDE plot (x is KDE density, y is temperature)
+    xytext=(0.6, 27),  # Text position (further right and lower)
     xycoords='data',
     fontsize=11,
     ha='center',
@@ -254,7 +271,18 @@ ax_joint.tick_params(direction='in', length=6, width=1, colors='black')
 # Optional: add legend manually
 from matplotlib.patches import Patch
 legend_elements = [Patch(facecolor=color, label=label) for label, color in zone_color_map.items()]
-ax_joint.legend(handles=legend_elements, title="Zone", frameon=False, loc="center left", bbox_to_anchor=(1.15, 0.5), fontsize=12)
+zone_legend = ax_joint.legend(handles=legend_elements, title="Reservoir operation zone", frameon=False, loc="center left", bbox_to_anchor=(1.15, 0.5), fontsize=12)
+
+# Add marker legend
+from matplotlib.lines import Line2D
+marker_legend_elements = [
+    Line2D([0], [0], marker='+', color='w', markeredgecolor='black', markeredgewidth=1.5, markersize=8, label='Observed'),
+    Line2D([0], [0], marker='o', color='w', markerfacecolor='black', markersize=6, label='Simulated                  ')
+]
+marker_legend = ax_joint.legend(handles=marker_legend_elements, title="Data type", frameon=False, loc="center left", bbox_to_anchor=(1.15, 0.15), fontsize=12)
+
+# Add the zone legend back since the marker legend overwrites it
+ax_joint.add_artist(zone_legend)
 
 ax_joint.axhline(24, color="grey", linestyle="-")
 ax_joint.axvline(82.9, color="grey", linestyle=":")

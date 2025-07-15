@@ -5,6 +5,7 @@ import pathnavigator
 from copy import deepcopy
 import clt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import matplotlib.pyplot as plt
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
@@ -20,7 +21,7 @@ from src.lstm_model import WaterTempLSTMModel, SalinityLSTMModel
 db_TempLSTM = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01':'2023-12-31']
 db_SalinityLSTM = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01':'2023-12-31']
 
-
+#%%
 ml_model_temp = WaterTempLSTMModel(
     model1=pn.models.get() / "TempLSTM/TempLSTM1.yml",
     model2=pn.models.get() / "TempLSTM/TempLSTM2.yml",
@@ -54,7 +55,6 @@ ml_model_salt.load_data()
 ml_model_salt.update_until(date=pd.Timestamp('2024-01-01'))
 
 #%% Plot LSTM feature importance in three subplots
-import matplotlib.pyplot as plt
 
 # Create feature name mapping dictionary
 feature_name_mapping = {
@@ -138,7 +138,7 @@ clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "feature_importance.jp
 plt.show()
 
 #%% RSME barplot and timeseries
-fig, axes = plt.subplots(nrows=2, ncols=2)
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(6.5,5))
 
 ax = axes[0, 0]
 sim = ml_model_temp.records["T_L_mu"]
@@ -158,16 +158,18 @@ obs = db_TempLSTM.copy()
 obs.loc[obs['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
 obs = obs['QbcTmax_T_L'].values
 df = pd.DataFrame({"obs": obs, "sim": sim}, index=ml_model_temp.dates)
-df = df.loc["2019", :]
+year = 2019
+df = df.loc[f"{year}-01-01":f"{year}-12-31", :]
 ax.plot(df["obs"], ls='None', marker='o', color="k", alpha=0.2, ms=3, label="obs")
 ax.plot(df["sim"], color='salmon', lw=1, label="sim")
 ax.grid(True, axis='y', lw=0.3, ls="--")
 ax.legend(frameon=False)
-ticks = ax.get_xticks()
-ax.set_xticks(ticks[::3])
+custom_ticks = pd.to_datetime([f"{year}-01-01", f"{year}-04-01", f"{year}-07-01", f"{year}-10-01", f"{year}-12-31"])
+ax.set_xticks(custom_ticks)
+ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])  # show only month/day
 ax.set_xlim([df.index[0], df.index[-1]])
 ax.set_ylabel("$T_{max}$ (°C)")
-ax.set_xlabel("Date")
+ax.set_xlabel(f"Date ({year})")
 
 ax = axes[0, 1]
 sim = ml_model_salt.records["sf_mu"]
@@ -193,19 +195,22 @@ obs = db_SalinityLSTM.copy()
 obs.loc[obs['saltfront_src'] != "obs", 'saltfront'] = np.nan
 obs = obs['saltfront'].values
 df = pd.DataFrame({"obs": obs, "sim": sim}, index=ml_model_salt.dates)
-df = df.loc["2019", :]
+year = 2007
+df = df.loc[f"{year}-01-01":f"{year}-12-31", :]
 ax.plot(df["obs"], ls='None', marker='o', color="k", alpha=0.2, ms=3, label="obs")
 ax.plot(df["sim"], color='mediumpurple', lw=1, label="sim")
 ax.grid(True, axis='y', lw=0.3, ls="--")
 ax.legend(frameon=False)
-ticks = ax.get_xticks()
-ax.set_xticks(ticks[::3])
+custom_ticks = pd.to_datetime([f"{year}-01-01", f"{year}-04-01", f"{year}-07-01", f"{year}-10-01", f"{year}-12-31"])
+ax.set_xticks(custom_ticks)
+ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])  # show only month/day
+
 ax.set_xlim([df.index[0], df.index[-1]])
 ax.set_ylabel("$Saltfront$ (RM)")
-ax.set_xlabel("Date")
+ax.set_xlabel(f"Date ({year})")
 
 plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg")
+clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg", dpi=500)
 plt.show()
 
 

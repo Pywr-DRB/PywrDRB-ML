@@ -141,38 +141,38 @@ df_highlight["-Jrel"] = [-0.2375, -0.3185]
 df_highlight["Jadd"] = [132.4373, 0.916*132.4373]
 df_highlight["label"] = ["no_ctrl", "rule_based"]
 
-for policy in ['GeneralizedPiecewiseLinearPolicy', 'RegressionPolicy', 'GaussianRBFPolicy', 'CubicRBFPolicy']:
-    #policy = "GaussianRBFPolicy"
-    job_id = "134717"
+# for policy in ['GeneralizedPiecewiseLinearPolicy', 'RegressionPolicy', 'GaussianRBFPolicy', 'CubicRBFPolicy']:
+#     #policy = "GaussianRBFPolicy"
+#     job_id = "134717"
 
-    df_ref = clt.borg.read_ref(pn.outputs.get(f"stage1_{policy}_{job_id}/borg.ref"))
-    df_ref = df_ref[['obj3', 'obj1', 'obj2']]
-    df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
-    #df_ref["Jrel"] *= -1
-    df_ref["Jtubr"] *= 3
-    df_ref["label"] = df_ref.index
-    #df_ref["label"][0] = 1
+#     df_ref = clt.borg.read_ref(pn.outputs.get(f"stage1_{policy}_{job_id}/borg.ref"))
+#     df_ref = df_ref[['obj3', 'obj1', 'obj2']]
+#     df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
+#     #df_ref["Jrel"] *= -1
+#     df_ref["Jtubr"] *= 3
+#     df_ref["label"] = df_ref.index
+#     #df_ref["label"][0] = 1
 
-    df_ref = pd.concat([df_ref, df_highlight])
+#     df_ref = pd.concat([df_ref, df_highlight])
 
-    dict_kde_dfs = {
-        0: df_ref[df_ref['Jtubr'] <= 1],
-        1: df_ref[(df_ref['Jtubr'] > 1) & (df_ref['Jtubr'] <= 2)],
-        2: df_ref[df_ref['Jtubr'] > 2],
-        }
+#     dict_kde_dfs = {
+#         0: df_ref[df_ref['Jtubr'] <= 1],
+#         1: df_ref[(df_ref['Jtubr'] > 1) & (df_ref['Jtubr'] <= 2)],
+#         2: df_ref[df_ref['Jtubr'] > 2],
+#         }
 
-    df = df_ref
-    fig, ax = plt.subplots()
-    plot_parallel_coords_with_kde(
-        ax, df, columns=["Jtubr", "-Jrel", "Jadd"], dict_kde_dfs=dict_kde_dfs,
-        soln_labels=df_highlight["label"].to_list(),
-        objmins=None, objmaxs=None,
-        axes_labels=["Jtubr", "-Jrel", "Jadd"],
-        ideal_direction='bottom', fontsize=10, kde_scale=0.05
-        )
-    ax.set_title(policy)
-    plt.tight_layout()
-    plt.show()
+#     df = df_ref
+#     fig, ax = plt.subplots()
+#     plot_parallel_coords_with_kde(
+#         ax, df, columns=["Jtubr", "-Jrel", "Jadd"], dict_kde_dfs=dict_kde_dfs,
+#         soln_labels=df_highlight["label"].to_list(),
+#         objmins=None, objmaxs=None,
+#         axes_labels=["Jtubr", "-Jrel", "Jadd"],
+#         ideal_direction='bottom', fontsize=10, kde_scale=0.05
+#         )
+#     ax.set_title(policy)
+#     plt.tight_layout()
+#     plt.show()
 #%% New 111
 
 import pathnavigator

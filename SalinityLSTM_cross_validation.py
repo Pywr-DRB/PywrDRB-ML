@@ -109,6 +109,7 @@ for outer_fold in tqdm(crossval_folds):
         _ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new splits; write to new datafile
 
 #%%
+import time
 def run_inner_loop(inner_folds, hyperparameter_df, SalinityLSTM):
 
     # Initialize best hyperparameters and best rmse
@@ -122,7 +123,7 @@ def run_inner_loop(inner_folds, hyperparameter_df, SalinityLSTM):
         config_file = pn.models.get(f"{subfolder}/cfg/{SalinityLSTM}_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml")
         # Try different hyperparameter combinations
         for index, row in hyperparameter_df.iterrows():
-
+            time.sleep(2)
             with open(config_file, 'r') as stream:
                 cur_config = yaml.safe_load(stream)
 
@@ -131,6 +132,7 @@ def run_inner_loop(inner_folds, hyperparameter_df, SalinityLSTM):
             cur_config['learn_rate_fine'] = float(row['learning_rate'])
             cur_config['learn_rate_pre'] = float(row['learning_rate'])
             cur_config['dropout_rate'] = float(row['dropout_rate'])
+            cur_config['seed'] = float(row['seed'])
 
             # write out temporary config file with current hyperparametrs
             cur_cfg_out_file = pn.models.get(f"{subfolder}/tmp") / f"{SalinityLSTM}_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
@@ -138,10 +140,16 @@ def run_inner_loop(inner_folds, hyperparameter_df, SalinityLSTM):
                 yaml.dump(cur_config, f, default_flow_style=False, indent=4)
 
             # Start a model
-            cur_model_train = bmi_lstm()
-            # Initialize a model instance for training by setting train = True
-            cur_model_train.initialize(config_file = cur_cfg_out_file, train = True, disable_tqdm = True)
-            cur_model_train.train_model()
+            try:
+                cur_model_train = bmi_lstm()
+                # Initialize a model instance for training by setting train = True
+                cur_model_train.initialize(config_file = cur_cfg_out_file, train = True, disable_tqdm = True)
+                cur_model_train.train_model()
+            except:
+                cur_model_train = bmi_lstm()
+                # Initialize a model instance for training by setting train = True
+                cur_model_train.initialize(config_file = cur_cfg_out_file, train = True, disable_tqdm = True)
+                cur_model_train.train_model()
 
             # Evaluate model on inner validation data
             preds_val = pd.read_parquet(cur_model_train.val_preds_file, engine='pyarrow')
@@ -173,14 +181,16 @@ db = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"), index_col=0,
 db.loc[db['saltfront_src'] != "obs", "saltfront"] = np.nan
 
 # Hyperparameters to tune
-learning_rate = [0.005, 0.05] #[0.005, 0.05]
+learning_rate = [0.05] #[0.005, 0.05]
 early_stopping = [20, 50] #[20, 50]
-dropout_rate = [0, 0.1, 0.3]
+dropout_rate = [0.1, 0.3]
+seed = [4, 5, 6, 7, 8]
+
 # Create a product of the hyperparameter sets
-hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate))
+hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed))
 
 # Create a df from the hyperparameter combos
-hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate'])
+hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate', 'seed'])
 
 # hyperparamter tuning and evaluation
 overall_performance = []
@@ -215,6 +225,9 @@ mean_rmse = {}
 mean_rmse["saltfront"] = overall_performance_df.mean()["rmse"]
 
 r"""
+mean_rmse
+Out[4]: {'saltfront': np.float64(3.9069758472890355)}
+
 New
 {'saltfront': np.float64(6.413435422525216)}
 
@@ -226,6 +239,14 @@ Previous with obs < 54
 overall_best_hyperparameters_df = pd.concat(overall_best_hyperparameters, ignore_index=True, axis=1)
 
 r"""
+overall_best_hyperparameters_df
+Out[5]:
+                    0      1      2      3      4
+learning_rate    0.05   0.05   0.05   0.05   0.05
+early_stopping  50.00  50.00  50.00  50.00  50.00
+dropout_rate     0.30   0.30   0.30   0.30   0.30
+seed             4.00   4.00   4.00   4.00   4.00
+
 New
                     0      1      2      3      4
 learning_rate    0.05   0.05   0.05   0.05   0.05

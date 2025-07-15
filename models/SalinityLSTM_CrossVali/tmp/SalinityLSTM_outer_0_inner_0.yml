@@ -39,7 +39,7 @@ pre_train: true
 produce_ensembles: false
 recurrent_dropout_rate: 0.3
 root_dir: None
-seed: 4
+seed: 8.0
 seq_len: 365
 spatial_idx_name: seg_id_nat
 start_date_test:
