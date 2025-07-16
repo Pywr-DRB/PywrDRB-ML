@@ -53,26 +53,18 @@ def eval_func(*params):
             # Nowcast/forecast
             ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
             forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
-            #forecast_T_L_sd = ml_model.forecast_T_L_sd_arr[-1]
+            forecast_T_C_mu = ml_model.forecast_T_C_mu_arr[-1]
+            #forecast_T_i_mu = ml_model.forecast_T_i_mu_arr[-1]
 
             remained_bank_ratio = ml_model.remained_bank_amount/ml_model.thermal_mitigation_bank_size
 
-
-            #T_L_prev = ml_model.T_L_mu
-            #Q_C = ml_model.Q_C[ml_model.t]
-            #Q_i = ml_model.Q_i[ml_model.t]
-            #cannonsville_storage_pct = ml_model.cannonsville_storage_pct[ml_model.t]
-            doc = ml_model.doc[ml_model.t]
-
-            df_t = pd.DataFrame(ml_model.records, index=ml_model.dates)
-            df_t = df_t.loc[f"{current_date.year}"]  # Get the data for the current year
-            Jadd_t = compute_max_annual_accumulated_degree_days(df_t, col='Tavg_L_mu', threshold=20, return_distribution=False)
+            T_L_past3days = np.mean(ml_model.records["T_L_mu"][ml_model.t-3:ml_model.t])
 
             X = np.array([
                 minmaxscalers["T_L"].transform(pd.DataFrame([[forecast_T_L_mu]], columns=["T_L"]))[0][0],
+                minmaxscalers["T_L"].transform(pd.DataFrame([[T_L_past3days]], columns=["T_L"]))[0][0],
+                minmaxscalers["T_C"].transform(pd.DataFrame([[forecast_T_C_mu]], columns=["T_C"]))[0][0],
                 remained_bank_ratio,
-                Jadd_t,
-                minmaxscalers["doc"].transform(pd.DataFrame([[doc]], columns=["doc"]))[0][0],
                 ])
 
             # Make thermal release decision and record the thermal release
@@ -129,7 +121,6 @@ def eval_func(*params):
     # Update the model until the end of the simulation period
     ml_model.update_until(date="2024-01-01")
 
-    #%%
     df = pd.DataFrame(ml_model.records, index=ml_model.dates)
 
     Jrel = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
@@ -138,6 +129,12 @@ def eval_func(*params):
 
     objs = [-Jrel, Jadd, Jtubr]
     return (objs, )
+
+#%% Debugging
+# disable = False
+# policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
+# params = policy.gen_params(seed=42)[0]
+# objs = eval_func(*params)[0]
 
 # Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 # Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='T_L_mu', threshold=20, return_distribution=True)

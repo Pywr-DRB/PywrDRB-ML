@@ -30,6 +30,7 @@ ml_model_noCtrl = WaterTempLSTMModel(
 ml_model_noCtrl.load_data(database)
 ml_model_noCtrl.update_until(date=pd.Timestamp('2024-01-01'))  # Update until the end of 2023
 df_noCtrl = pd.DataFrame(ml_model_noCtrl.records, index=ml_model_noCtrl.dates)
+df_noCtrl.to_csv(pn.data.baseline_ctrl_lstm.get() / "df_noCtrl.csv")
 
 Jrel_noCtrl = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
 Jadd_noCtrl = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
@@ -43,50 +44,19 @@ Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tav
 # Jadd_noCtrl
 # Out[6]: 1.0 (132.4373)
 #%%
-db = database[['QbcTmax_T_L']]
-db.loc[database['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
-for y in range(1979, 2024):
-    fig, ax = plt.subplots()
-    ax.plot(df_noCtrl.loc[f"{y}":f"{y}", "T_L_mu"], label="sim")
-    ax.plot(db.loc[f"{y}":f"{y}", "QbcTmax_T_L"], label="obs", c='k', ls="--", lw=1)
-    ax.axvspan(pd.Timestamp(f"{y}-06-01"), pd.Timestamp(f"{y}-08-31"),
-               color="gray", alpha=0.3)
-    ax.axhline(20, c="r", lw=1)
-    ax.axhline(24, c="r", lw=1)
-    ax.set_ylim([0, 30])
-    ax.legend()
-    plt.show()
-
-#%% Plot Histograms
-# Plot histogram for Jrel_noCtrl_arr
-fig, ax = plt.subplots()
-ax.hist(Jrel_noCtrl_arr, bins=30, alpha=0.7, color='blue', edgecolor='black')
-ax.set_xlabel('JRel Values')
-ax.set_ylabel('Frequency')
-ax.set_title('Distribution of JRel (No Control)')
-ax.grid(True, alpha=0.3)
-ax.axvline(Jrel_noCtrl, color='red', linestyle='--',
-           label=f'Jrel: {Jrel_noCtrl:.4f}')
-ax.legend(loc = "upper left")
-ax.set_xlim([0, 1])
-plt.tight_layout()
-plt.show()
-
-# Plot histogram for Jadd_noCtrl_arr
-fig, ax = plt.subplots()
-ax.hist(Jadd_noCtrl_arr, bins=30, alpha=0.7, color='green', edgecolor='black')
-ax.set_xlabel('JADD Values')
-ax.set_ylabel('Frequency')
-ax.set_title('Distribution of JADD (No Control)')
-ax.grid(True, alpha=0.3)
-ax.axvline(Jadd_noCtrl, color='red', linestyle='--',
-           label=f'Jadd: {Jadd_noCtrl:.4f}')
-ax.legend()
-ax.set_xlim([0, 270])
-plt.tight_layout()
-plt.show()
-
-
+# db = database[['QbcTmax_T_L']]
+# db.loc[database['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
+# for y in range(1979, 2024):
+#     fig, ax = plt.subplots()
+#     ax.plot(df_noCtrl.loc[f"{y}":f"{y}", "T_L_mu"], label="sim")
+#     ax.plot(db.loc[f"{y}":f"{y}", "QbcTmax_T_L"], label="obs", c='k', ls="--", lw=1)
+#     ax.axvspan(pd.Timestamp(f"{y}-06-01"), pd.Timestamp(f"{y}-08-31"),
+#                color="gray", alpha=0.3)
+#     ax.axhline(20, c="r", lw=1)
+#     ax.axhline(24, c="r", lw=1)
+#     ax.set_ylim([0, 30])
+#     ax.legend()
+#     plt.show()
 #%% Rule-Based Control
 from src.policies import RuleBasedPolicy
 def return_dps_func(*params):
@@ -157,8 +127,8 @@ for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
 ml_model.update_until(date="2024-01-01")
 
 #%%
-ml_model.load_data(database)
 df = pd.DataFrame(ml_model.records, index=ml_model.dates)
+df.to_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv")
 
 Jrel = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
 Jadd = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
@@ -170,37 +140,135 @@ Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', thres
 Jtubr_arr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
 # Jrel
-# Out[9]: 0.3185
+# Out[5]: 0.3185
 
 # Jadd
-# Out[10]: 0.916
+# Out[6]: 0.916
 
 # Jtubr
-# Out[11]: 0.0734
-#%% Plot Histograms
-# Plot histogram for Jrel_noCtrl_arr
+# Out[7]: 0.2942
+
+#%% Historical thermal releases
+database["rel_thermal"] = database["rel_thermal"].fillna(0)
+def return_dps_func(*params):
+    # Define the function that will be used for the control algorithm
+    def dps_func(model, Q_C, Q_i, cannonsville_storage_pct, current_date):
+        # Retrieve the ml_model from the model
+        ml_model = model#.ml_model      # Need .ml_model when using the coupled model.
+        # Reset the bank amount at the beginning of June
+        if current_date.day == 1 and current_date.month == 6:
+            ml_model.remained_bank_amount = ml_model.thermal_mitigation_bank_size
+        ml_model.update_until(date=current_date)
+        # Complete the preparation for thermal control
+        thermal_release = database.loc[current_date, "rel_thermal"]
+        thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
+        return thermal_release
+    return dps_func
+
+# Prepare the decision-making function with parameters
+params = []
+dm_func = return_dps_func(*params)
+
+ml_model = WaterTempLSTMModel(
+    model1=pn.models.get() / "TempLSTM/TempLSTM1.yml",
+    model2=pn.models.get() / "TempLSTM/TempLSTM2.yml",
+    Tavg2Tmax_coefs=pn.models.get() / "TempLSTM/Tavg2Tmax_coefs.json",
+    debug=True,
+    thermal_mitigation_bank_size=1620 * 3,  # mgd
+    )
+ml_model.load_data(database)
+
+dates = pd.date_range(start="1979-01-01", end="2023-12-31", freq='D')
+for date in tqdm(dates, desc="Running historic thermal release", disable=disable):
+    Q_C = None  # Placeholder for controlled release
+    Q_i = None  # Placeholder for inflow
+    cannonsville_storage_pct = None  # Placeholder for storage percentage
+
+    if date.month in [6, 7, 8]:
+        thermal_release = dm_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, date)
+    else:
+        thermal_release = 0
+
+    # Update data in the ml_model for the next step(s) model update.
+    t = ml_model.t
+    ml_model.Q_C[t] += thermal_release
+    Q_C = ml_model.Q_C[t]
+    try:
+        ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.Q_C_lstm_var_name)] = Q_C
+    except ValueError:
+        if ml_model.debug:
+            print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+    try:
+        ml_model.X_2[t, ml_model.x_vars_2.index(ml_model.Q_C_lstm_var_name)] = Q_C
+    except ValueError:
+        if ml_model.debug:
+            print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm2.x_vars. Skipping update.")
+
+    # Record
+    ml_model.remained_bank_amount -= thermal_release
+    ml_model.records["thermal_releases"][ml_model.t] = thermal_release
+    ml_model.records["remained_bank_amounts"][ml_model.t] = ml_model.remained_bank_amount
+
+# Update the model until the end of the simulation period
+ml_model.update_until(date="2024-01-01")
+
+#%%
+df_hist = pd.DataFrame(ml_model.records, index=ml_model.dates).loc["2010": ,:]
+df_hist.to_csv(pn.data.baseline_ctrl_lstm.get() / "df_hist.csv")
+
+Jrel_hist = compute_reliability(df_hist, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
+Jadd_hist = compute_max_annual_accumulated_degree_days(df_hist, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
+Jtubr_hist = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
+
+
+Jrel_hist_arr = compute_reliability(df_hist, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
+Jadd_hist_arr = compute_max_annual_accumulated_degree_days(df_hist, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
+Jtubr_hist_arr = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
+
+# Jrel_hist
+# Out[7]: 0.3583
+
+# Jadd_hist
+# Out[8]: 0.764
+
+# Jtubr_hist
+# Out[9]: 0.4994
+
 fig, ax = plt.subplots()
-ax.hist(Jrel_arr, bins=30, alpha=0.7, color='blue', edgecolor='black')
+database.groupby(database.index.year).sum().loc[2005:2024, ["rel_thermal"]].plot(kind='bar', legend=False, ax=ax)
+ax.axhline(1620, c="k")
+ax.set_xlabel("Year")
+ax.set_ylabel("Thermal release (MG)")
+plt.tight_layout()
+plt.show()
+#%% Plot Histograms
+# Plot histogram for Jrel
+fig, ax = plt.subplots()
+ax.hist(Jrel_noCtrl_arr, bins=30, alpha=0.7, edgecolor='black', label='No ctrl')
+ax.hist(Jrel_arr, bins=30, alpha=0.7, edgecolor='black', label='Rule-based ctrl')
+ax.hist(Jrel_hist_arr, bins=30, alpha=0.7, edgecolor='black', label='Historical ctrl')
 ax.set_xlabel('JRel Values')
 ax.set_ylabel('Frequency')
-ax.set_title('Distribution of JRel (No Control)')
 ax.grid(True, alpha=0.3)
-ax.axvline(Jrel, color='red', linestyle='--',
-           label=f'Jrel: {Jrel:.4f}')
-ax.legend(loc = "upper left")
+ax.axvline(Jrel_noCtrl, color='red', linestyle='--', label=f'Jrel (no ctrl): {Jrel_noCtrl:.4f}')
+ax.axvline(Jrel, color='red', linestyle=':', label=f'Jrel (rule-based): {Jrel:.4f}     ')
+ax.axvline(Jrel_hist, color='red', linestyle='-.', label=f'Jrel (historical): {Jrel_hist:.4f}')
+ax.legend(loc = "upper right", frameon=False)
 ax.set_xlim([0, 1])
 plt.tight_layout()
 plt.show()
-
+#%%
 # Plot histogram for Jadd_noCtrl_arr
 fig, ax = plt.subplots()
-ax.hist(Jadd_arr, bins=30, alpha=0.7, color='green', edgecolor='black')
+ax.hist(Jadd_noCtrl_arr, bins=30, alpha=0.7, edgecolor='black', label='No ctrl')
+ax.hist(Jadd_arr, bins=30, alpha=0.7, edgecolor='black', label='Rule-based ctrl')
+ax.hist(Jadd_hist_arr, bins=30, alpha=0.7, edgecolor='black', label='Historical ctrl')
 ax.set_xlabel('JADD Values')
 ax.set_ylabel('Frequency')
-ax.set_title('Distribution of JADD (No Control)')
 ax.grid(True, alpha=0.3)
-ax.axvline(Jadd, color='red', linestyle='--',
-           label=f'Jadd: {Jadd:.4f}')
+ax.axvline(Jadd_noCtrl*132.4373, color='red', linestyle='--', label=f'Jadd (no ctrl): {Jadd_noCtrl*132.4373:.1f}')
+ax.axvline(Jadd*132.4373, color='red', linestyle=':', label=f'Jadd (rule-based): {Jadd*132.4373:.1f}     ')
+ax.axvline(Jadd_hist*132.4373, color='red', linestyle='-.', label=f'Jadd (historical): {Jadd_hist*132.4373:.1f}')
 ax.legend()
 ax.set_xlim([0, 270])
 plt.tight_layout()

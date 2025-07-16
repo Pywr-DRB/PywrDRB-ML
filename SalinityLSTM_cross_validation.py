@@ -221,6 +221,13 @@ for outer_fold in tqdm(crossval_folds, desc="Outer"):
 overall_performance_df = pd.concat(overall_performance, ignore_index=True)
 overall_performance_df.to_csv(pn.models.get() / f"{subfolder}/overall_performance.csv", index=False)
 
+#         rmse  rmse_top10  rmse_bot10  ...  kge_bot10  kge_bot90  n_obs
+# 0   3.906976    1.030119    2.363419  ...   0.574805   0.792522  280.0
+# 1   3.859088    4.479472    5.736272  ...   0.217296   0.712041  155.0
+# 2   5.363141    3.161560    5.555426  ...  -0.213395   0.815666  148.0
+# 3   4.324603    3.733841    5.475837  ...  -0.256571   0.408306  191.0
+# 4  15.854393   22.205081    3.433953  ...   0.495067  -2.301952  261.0
+
 mean_rmse = {}
 mean_rmse["saltfront"] = overall_performance_df.mean()["rmse"]
 

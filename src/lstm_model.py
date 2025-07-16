@@ -156,6 +156,12 @@ class WaterTempLSTMModel():
         # Forecast predictions
         self.forecast_T_L_mu_arr = np.nan
         self.forecast_T_L_sd_arr = np.nan
+        self.forecast_Tavg_L_mu_arr = np.nan
+        self.forecast_Tavg_L_sd_arr = np.nan
+        self.forecast_T_C_mu_arr = np.nan
+        self.forecast_T_C_sd_arr = np.nan
+        self.forecast_T_i_mu_arr = np.nan
+        self.forecast_T_i_sd_arr = np.nan
 
         # Thermal control variables
         self.thermal_mitigation_bank_size = thermal_mitigation_bank_size
@@ -471,6 +477,14 @@ class WaterTempLSTMModel():
 
         self.forecast_T_L_mu_arr = forecast_T_L_mu
         self.forecast_T_L_sd_arr = forecast_T_L_sd
+        self.forecast_Tavg_L_mu_arr = forecast_Tavg_L_mu
+        self.forecast_Tavg_L_sd_arr = forecast_Tavg_L_sd
+        self.forecast_T_C_mu_arr = forecast_T_C_mu
+        self.forecast_T_C_sd_arr = forecast_T_C_sd
+        self.forecast_T_i_mu_arr = forecast_T_i_mu
+        self.forecast_T_i_sd_arr = forecast_T_i_sd
+        
+        
         return None
 
     @staticmethod
