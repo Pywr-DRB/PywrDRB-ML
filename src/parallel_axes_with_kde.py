@@ -12,7 +12,13 @@ def plot_parallel_coords_with_kde(
         fontsize=10, kde_scale=0.12,
         cmap_kdes={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'},
         cmap_lines={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'},
-        cmap_highlights={'no_ctrl': 'k', 'rule_based': '#E41A1C', 'historic\n(2010-2023)': "blue", "RBF (utilize\n1620 mgd\nbank size)": "lime"}
+        cmap_highlights={
+            'no_ctrl': 'k', 'rule_based': '#E41A1C',
+            'historic\n(2010-2023)': "blue",
+            "RBF (utilize\n1620 mgd\nbank size)": "lime",
+            "RBF-1\n(Jtubr=1.00)": "lime",
+            "RBF-2\n(Jtubr=0.98)": "aquamarine"
+            }
         ):
     # General layout settings
     df_subset = df.loc[:, columns].copy()   # Select only the specified columns
@@ -96,7 +102,7 @@ def plot_parallel_coords_with_kde(
     # Highlight selected solutions
     if soln_labels is not None:
         for soln_label in soln_labels:
-            c = cmap_highlights.get(soln_label, 'k')
+            c = cmap_highlights.get(soln_label, "lime")
             soln_data = df_subset.loc[df['label'] == soln_label]
             xx, yy = [], []
             for j in range(num_axes - 1):
@@ -141,15 +147,19 @@ pn.chdir()
 import clt
 
 df_highlight = pd.DataFrame()
-df_highlight["Jtubr"] = [0, 0.2942*3, 0.4994*3, 1.0]
-df_highlight["-Jrel"] = [-0.2375, -0.3185, -0.3583, -0.4434]
-df_highlight["Jadd"] = [1, 0.916, 0.764, 0.8037]
-df_highlight["label"] = ["no_ctrl", "rule_based", "historic\n(2010-2023)", "RBF (utilize\n1620 mgd\nbank size)"]
-
-
+# df_highlight["Jtubr"] = [0, 0.2942*3, 0.4994*3, 1.0]
+# df_highlight["-Jrel"] = [-0.2375, -0.3185, -0.3583, -0.4434]
+# df_highlight["Jadd"] = [1, 0.916, 0.764, 0.8037]
+df_highlight["Jtubr"] = [0, 0.2942*3, 0.4994*3, 1.0023, 0.9813]
+df_highlight["-Jrel"] = [-0.2375, -0.3185, -0.3583, -0.456, -0.3561]
+df_highlight["Jadd"] = [1, 0.916, 0.764, 0.8904, 0.7558]
+df_highlight["label"] = ["no_ctrl", "rule_based", "historic\n(2010-2023)",
+                         "RBF-1\n(Jtubr=1.00)",
+                         "RBF-2\n(Jtubr=0.98)",]
+# 155 24
 for policy in ["GaussianRBFPolicy"]:#, "RegressionPolicy", "CubicRBFPolicy"]:#, "GeneralizedPiecewiseLinearPolicy"]:
     #policy = "GaussianRBFPolicy"
-    job_id = "134989"
+    job_id = "135218"
 
     df_ref = clt.borg.read_ref(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}/borg.ref"))
     df_ref = df_ref[['obj3', 'obj1', 'obj2']]
@@ -184,13 +194,13 @@ for policy in ["GaussianRBFPolicy"]:#, "RegressionPolicy", "CubicRBFPolicy"]:#, 
     plt.show()
 
 #%% Compare thermal release
-sol_idx = 195
+sol_idx = 24#, 155155 #
 df_ref = clt.borg.read_ref(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}/borg.ref"))
 params = df_ref.iloc[sol_idx, :-3]
 
 import joblib
 from src.lstm_model import WaterTempLSTMModel
-from src.objectives import compute_reliability, compute_max_annual_accumulated_degree_days, compute_max_thermal_bank_usage_ratio
+from src.objectives import compute_reliability, compute_max_annual_accumulated_degree_days, compute_max_thermal_bank_usage_ratio, compute_mean_thermal_bank_usage_ratio
 from tqdm import tqdm
 from src.policies import GaussianRBFPolicy
 n_dim = 4  # Number of dimensions for the policy
@@ -217,26 +227,18 @@ def eval_func(*params):
             # Nowcast/forecast
             ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
             forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
-            #forecast_T_L_sd = ml_model.forecast_T_L_sd_arr[-1]
+            forecast_T_C_mu = ml_model.forecast_T_C_mu_arr[-1]
+            #forecast_T_i_mu = ml_model.forecast_T_i_mu_arr[-1]
 
             remained_bank_ratio = ml_model.remained_bank_amount/ml_model.thermal_mitigation_bank_size
 
-
-            #T_L_prev = ml_model.T_L_mu
-            #Q_C = ml_model.Q_C[ml_model.t]
-            #Q_i = ml_model.Q_i[ml_model.t]
-            #cannonsville_storage_pct = ml_model.cannonsville_storage_pct[ml_model.t]
-            doc = ml_model.doc[ml_model.t]
-
-            df_t = pd.DataFrame(ml_model.records, index=ml_model.dates)
-            df_t = df_t.loc[f"{current_date.year}"]  # Get the data for the current year
-            Jadd_t = compute_max_annual_accumulated_degree_days(df_t, col='Tavg_L_mu', threshold=20, return_distribution=False)
+            T_L_past3days = np.mean(ml_model.records["T_L_mu"][ml_model.t-3:ml_model.t])
 
             X = np.array([
                 minmaxscalers["T_L"].transform(pd.DataFrame([[forecast_T_L_mu]], columns=["T_L"]))[0][0],
+                minmaxscalers["T_L"].transform(pd.DataFrame([[T_L_past3days]], columns=["T_L"]))[0][0],
+                minmaxscalers["T_C"].transform(pd.DataFrame([[forecast_T_C_mu]], columns=["T_C"]))[0][0],
                 remained_bank_ratio,
-                Jadd_t,
-                minmaxscalers["doc"].transform(pd.DataFrame([[doc]], columns=["doc"]))[0][0],
                 ])
             ml_model.X_dps.append(X)
             # Make thermal release decision and record the thermal release
@@ -300,18 +302,35 @@ ml_model, df_rbf = eval_func(*params)
 Jrel = compute_reliability(df_rbf, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
 Jadd = compute_max_annual_accumulated_degree_days(df_rbf, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
 Jtubr = compute_max_thermal_bank_usage_ratio(df_rbf, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
+Jtubr_avg = compute_mean_thermal_bank_usage_ratio(df_rbf, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
 
-objs = [-Jrel, Jadd, Jtubr]
+objs = [Jtubr*3, -Jrel, Jadd, Jtubr_avg*3]
+# 24 (better Jadd): Out[95]: [0.9813, -0.356, 0.7558, 0.9606]
+# 115 (better Jrel):         [1.0023, -0.456, 0.8904, 0.1869]
 #%% Analyze X
-X = pd.DataFrame(ml_model.X_dps, columns=["T_forecast", "remained_bank_ratio", "Jadd_t", "doc"])
+X = pd.DataFrame(ml_model.X_dps, columns=["forecast_T_L_mu", "T_L_past3days", "forecast_T_C_mu", "remained_bank_ratio"])
 X["thermal_release"] = df_rbf.loc[df_rbf.index.month.isin([6, 7, 8]), "thermal_releases"].values/300
-X.iloc[-92*5:, :].plot()
 
-df = pd.DataFrame(X, columns=[""])
+# Select the last 92*5 rows
+X_subset = X.iloc[-92*5:, :]
+
+# Plot using fig and ax
+fig, ax = plt.subplots(figsize=(6, 4))
+X_subset.plot(ax=ax)
+
+# Move the legend outside of the plot
+ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5), frameon=False)
+ax.set_title("Feature Trends Over Last 5 Summers")
+ax.set_xlabel("Index")
+ax.set_ylabel("Normalized Values")
+
+plt.tight_layout()
+plt.show()
 
 
 
-#%%
+
+#%% Plot thermal releases
 df_res = pd.DataFrame(index=df_rbf.index)
 df_rulebased = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv", parse_dates=True, index_col=[0])
 df_noCtrl = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_noCtrl.csv", parse_dates=True, index_col=[0])
@@ -319,8 +338,121 @@ df_noCtrl = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_noCtrl.csv", pars
 df_res["historical"] = database["rel_thermal"]
 df_res["rule_based"] = df_rulebased["thermal_releases"]
 df_res["rbf"] = df_rbf["thermal_releases"]
-df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
 
+df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
+df_res["Tmax (rule_based)"] = df_rulebased["T_L_mu"]
+df_res["Tmax (rbf)"] = df_rbf["T_L_mu"]
+#df_res["Tmax (obs)"] = df_noCtrl["T_L_mu"]
+
+#%%
+yr = 2023
+for yr in range(1979, 2023):
+    df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
+
+    # Create 2-row subplot with height ratio 1:3
+    fig, axes = plt.subplots(
+        2, 1, figsize=(6, 5),
+        gridspec_kw={"height_ratios": [1, 3], "hspace": 0},  # 1. Remove vertical space
+        sharex=True
+    )
+
+    # ----------------- Top subplot -----------------
+    ax1 = axes[0]
+    ax1.plot(df_["Tmax (no_ctrl)"], ls="-", color='red', label="Tmax (no_ctrl)")
+    ax1.plot(df_["Tmax (rule_based)"], ls="-", color='chocolate', label="Tmax (rule_based)")
+    ax1.plot(df_["Tmax (rbf)"], ls="-", color='dodgerblue', label="Tmax (rbf)")
+    ax1.axhline(24, lw=1, c="k", ls=":")
+    ax1.set_ylabel("$T_{max}$ (°C)")
+    ax1.grid(True, axis='y', lw=0.3, ls="--")
+    ax1.tick_params(axis='x', direction='in')  # 2. Inward x-ticks
+    ax1.set_ylim([18, 27])
+    ax1.set_yticks([20, 24])
+
+    # ----------------- Bottom subplot -----------------
+    ax2 = axes[1]
+    # 4. historical as markers
+    # Filter non-zero values
+    non_zero_mask = df_["historical"] != 0
+    x_vals = df_.index[non_zero_mask]
+    y_vals = df_["historical"][non_zero_mask]
+
+    # Plot only non-zero historical values with stem
+    if not x_vals.empty:
+        # Plot actual non-zero stems
+        markerline, stemlines, baseline = ax2.stem(
+            x_vals, y_vals,
+            linefmt="k-", markerfmt="ko", basefmt=" ", label="historical"
+        )
+        plt.setp(stemlines, lw=1, zorder=0)
+        plt.setp(markerline, ms=4, zorder=0)
+        plt.setp(baseline, visible=False)
+    else:
+        # Add a dummy invisible point just to include legend entry
+        ax2.plot([], [], marker='o', color='k', linestyle='None', label="historical")
+
+    # 5. rbf and rule_based as bars
+    ax2.bar(df_.index, df_["rbf"], width=1.0, color='dodgerblue', label="rbf", alpha=0.6, zorder=4)
+    ax2.bar(df_.index, df_["rule_based"], width=1.0, color='chocolate', label="rule_based", alpha=0.6, zorder=2)
+
+    ax2.grid(True, axis='y', lw=0.3, ls="--")
+    ax2.set_ylabel("Thermal release (mgd)")
+    ax2.set_xlabel(f"Date (Year={yr})")
+
+    # Custom xticks
+    custom_ticks = pd.to_datetime([
+        f"{yr}-06-01", f"{yr}-06-15", f"{yr}-07-01", f"{yr}-07-15",
+        f"{yr}-08-01", f"{yr}-08-15", f"{yr}-09-01"
+    ])
+    ax2.set_xticks(custom_ticks)
+    ax2.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
+
+    ax2.set_ylim([0, 300])
+
+    # 3. Combine legends and place outside
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    fig.legend(
+        handles1 + handles2,
+        labels1 + labels2,
+        loc='center left',
+        bbox_to_anchor=(0.85, 0.5),
+        frameon=False
+    )
+
+    plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for external legend
+    plt.show()
+#%%
+yr = 2019
+# Slice the DataFrame
+df_ = df_res.loc[f"{yr}-5-20":f"{yr}-9-10", :]
+
+# Create 2-row subplot with height ratio 1:3
+fig, axes = plt.subplots(
+    2, 1, figsize=(8, 5), gridspec_kw={"height_ratios": [1, 3]}, sharex=True
+)
+
+ax = axes[0]
+# Top subplot: Tmax (no_ctrl)
+ax.plot(df_["Tmax (no_ctrl)"], ls="-", color='grey', label="Tmax (no_ctrl)")
+ax.axhline(24, lw=1, c="k", ls=":")
+ax.set_ylabel("$T_{max}$ (°C)")
+ax.legend(frameon=False)
+ax.grid(True, axis='y', lw=0.3, ls="--")
+
+ax = axes[1]
+# Bottom subplot: Thermal releases
+ax.plot(df_["historical"], color='k', lw=2, ls="-", label="historical")
+ax.plot(df_["rbf"], color='salmon', lw=2, label="rbf")
+ax.plot(df_["rule_based"], color='dodgerblue', lw=2, label="rule_based")
+ax.grid(True, axis='y', lw=0.3, ls="--")
+
+custom_ticks = pd.to_datetime([f"{yr}-06-01", f"{yr}-06-15", f"{yr}-07-01", f"{yr}-07-15", f"{yr}-08-01", f"{yr}-08-15", f"{yr}-09-01"])
+ax.set_xticks(custom_ticks)
+ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])  # show only month/day
+
+ax.set_ylabel("Thermal release (mgd)")
+ax.set_xlabel(f"Date (Year={yr})")
+#%%
 yr = 2019
 for yr in range(2006, 2023):
     df_ = df_res.loc[f"{yr}-5-20":f"{yr}-9-10", :]

@@ -233,7 +233,7 @@ mean_rmse["saltfront"] = overall_performance_df.mean()["rmse"]
 
 r"""
 mean_rmse
-Out[4]: {'saltfront': np.float64(3.9069758472890355)}
+{'saltfront': np.float64(6.66164026073678)}
 
 New
 {'saltfront': np.float64(6.413435422525216)}
@@ -250,9 +250,9 @@ overall_best_hyperparameters_df
 Out[5]:
                     0      1      2      3      4
 learning_rate    0.05   0.05   0.05   0.05   0.05
-early_stopping  50.00  50.00  50.00  50.00  50.00
-dropout_rate     0.30   0.30   0.30   0.30   0.30
-seed             4.00   4.00   4.00   4.00   4.00
+early_stopping  50.00  50.00  20.00  50.00  50.00
+dropout_rate     0.30   0.10   0.30   0.30   0.10
+seed             4.00   8.00   7.00   8.00   7.00
 
 New
                     0      1      2      3      4

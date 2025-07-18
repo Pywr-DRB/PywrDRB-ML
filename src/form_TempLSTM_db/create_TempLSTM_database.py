@@ -69,6 +69,7 @@ def create_TempLSTM_database(pn, start="1979-01-01", end="2024-12-31", filename=
     # Load thermal release
     df_res = pd.read_excel(pn.data.get("reservoir_release_sep_thermal_ctrl_mgd_manually_picked.xlsx"), parse_dates=True, index_col="date")[start:end]
     df_all["rel_thermal"] = df_res["thermal_release"]
+    df_all["rel_thermal_org"] = df_res["thermal_release_org"]
     
     # Required by Jake's LSTM prep
     df_all["seg_id_nat"] = 1573
