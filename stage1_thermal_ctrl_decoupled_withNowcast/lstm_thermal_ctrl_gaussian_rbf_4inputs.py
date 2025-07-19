@@ -27,7 +27,7 @@ from src.policies import GaussianRBFPolicy
 
 # Global configuration variables for the Gaussian RBF policy
 # Policy parameters
-n_dim = 3  # Number of dimensions for the policy
+n_dim = 4  # Number of dimensions for the policy
 n_basis = 2  # Number of basis functions for the Gaussian RBF policy
 disable = True  # Set to True to disable tqdm progress bar
 
@@ -58,11 +58,11 @@ def eval_func(*params):
 
             remained_bank_ratio = ml_model.remained_bank_amount/ml_model.thermal_mitigation_bank_size
 
-            #T_L_past3days = np.mean(ml_model.records["T_L_mu"][ml_model.t-3:ml_model.t])
+            T_L_past3days = np.mean(ml_model.records["T_L_mu"][ml_model.t-3:ml_model.t])
 
             X = np.array([
                 minmaxscalers["T_L"].transform(pd.DataFrame([[forecast_T_L_mu]], columns=["T_L"]))[0][0],
-                #minmaxscalers["T_L"].transform(pd.DataFrame([[T_L_past3days]], columns=["T_L"]))[0][0],
+                minmaxscalers["T_L"].transform(pd.DataFrame([[T_L_past3days]], columns=["T_L"]))[0][0],
                 minmaxscalers["T_C"].transform(pd.DataFrame([[forecast_T_C_mu]], columns=["T_C"]))[0][0],
                 remained_bank_ratio,
                 ])

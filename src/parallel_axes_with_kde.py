@@ -327,9 +327,14 @@ ax.set_ylabel("Normalized Values")
 plt.tight_layout()
 plt.show()
 
-
-
-
+#%% Plot annual historical releases
+database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
+db = database[["rel_thermal", "rel_thermal_org"]]['2008-01-01': '2023-12-31']
+fig, ax = plt.subplots(figsize=(5, 4))
+db.groupby(db.index.year).sum().plot(kind="bar", ax=ax)
+ax.axhline(1620, c="k", lw=1)
+plt.tight_layout()
+plt.show()
 #%% Plot thermal releases
 df_res = pd.DataFrame(index=df_rbf.index)
 df_rulebased = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv", parse_dates=True, index_col=[0])
@@ -343,6 +348,7 @@ df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
 df_res["Tmax (rule_based)"] = df_rulebased["T_L_mu"]
 df_res["Tmax (rbf)"] = df_rbf["T_L_mu"]
 #df_res["Tmax (obs)"] = df_noCtrl["T_L_mu"]
+
 
 #%%
 yr = 2023
