@@ -252,8 +252,8 @@ class WaterTempLSTMModel():
             if t >= self.length or t <= self.t:
                 raise ValueError(f"Invalid time step {t}. Must be between current time step {self.t + 1} and {len(self.X_1) + 1}.")
         if date is not None:
-            if isinstance(date, str):
-                date = np.datetime64(date)
+            #if isinstance(date, str):
+            date = np.datetime64(date)
             t = int((date - self.start_date) / np.timedelta64(1, 'D'))
             if t >= len(self.X_1) + 1 or t <= self.t:
                 raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
@@ -300,6 +300,7 @@ class WaterTempLSTMModel():
             records = self.records
             records["Q_C"][t:t+length] = Q_C_
             records["Q_i"][t:t+length] = Q_i_
+            records["cannonsville_storage_pct"][t:t+length] = self.cannonsville_storage_pct[t:t+length]
             records["T_C_mu"][t:t+length] = T_C_mu
             records["T_C_sd"][t:t+length] = T_C_sd
             records["T_i_mu"][t:t+length] = T_i_mu
@@ -483,8 +484,8 @@ class WaterTempLSTMModel():
         self.forecast_T_C_sd_arr = forecast_T_C_sd
         self.forecast_T_i_mu_arr = forecast_T_i_mu
         self.forecast_T_i_sd_arr = forecast_T_i_sd
-        
-        
+
+
         return None
 
     @staticmethod

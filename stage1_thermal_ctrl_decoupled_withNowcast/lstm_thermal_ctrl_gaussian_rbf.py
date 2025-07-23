@@ -54,15 +54,11 @@ def eval_func(*params):
             ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
             forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
             forecast_T_C_mu = ml_model.forecast_T_C_mu_arr[-1]
-            #forecast_T_i_mu = ml_model.forecast_T_i_mu_arr[-1]
 
             remained_bank_ratio = ml_model.remained_bank_amount/ml_model.thermal_mitigation_bank_size
 
-            #T_L_past3days = np.mean(ml_model.records["T_L_mu"][ml_model.t-3:ml_model.t])
-
             X = np.array([
                 minmaxscalers["T_L"].transform(pd.DataFrame([[forecast_T_L_mu]], columns=["T_L"]))[0][0],
-                #minmaxscalers["T_L"].transform(pd.DataFrame([[T_L_past3days]], columns=["T_L"]))[0][0],
                 minmaxscalers["T_C"].transform(pd.DataFrame([[forecast_T_C_mu]], columns=["T_C"]))[0][0],
                 remained_bank_ratio,
                 ])

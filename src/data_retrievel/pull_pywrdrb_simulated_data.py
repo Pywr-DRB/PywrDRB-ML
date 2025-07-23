@@ -1,7 +1,7 @@
 import pandas as pd
 import pathnavigator
 
-if pathnavigator.os_name == 'Windows':  
+if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
@@ -13,14 +13,14 @@ import pywrdrb
 
 r"""
 Need to recheck wrf bias
-For now I still use obs storage 
+For now I still use obs storage
 We can consider using hybrid nwm
 """
 #%%
 inflow_type = 'pub_nhmv10_BC_withObsScaled'
 
 mb = pywrdrb.ModelBuilder(
-    inflow_type=inflow_type, 
+    inflow_type=inflow_type,
     start_date="1978-01-01", # 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1945-01-01",
     end_date="2023-12-31"
     )
@@ -41,6 +41,9 @@ recorder = pywrdrb.OutputRecorder(
 stats = model.run()
 
 #%%
+inflow_type = 'pub_nhmv10_BC_withObsScaled'
+output_filename = str(pn.data.pywrdrb.get() / f"{inflow_type}.hdf5")
+
 data = pywrdrb.Data()
 results_sets = ['major_flow', 'res_storage', 'res_release', 'inflow', 'max_flow_catchmentConsumption']
 data.load_output(output_filenames=[output_filename], results_sets=results_sets)
@@ -54,9 +57,9 @@ df_consumption = data.max_flow_catchmentConsumption[inflow_type][0]
 #%%
 df = pd.DataFrame()
 # Q_C
-df["flow_01425000"] = df_major_flow["01425000"] 
+df["flow_01425000"] = df_major_flow["01425000"]
 # Q_i
-df["flow_01417000"] = df_major_flow["01417000"] 
+df["flow_01417000"] = df_major_flow["01417000"]
 df["inflow_delLordville"] = df_inflow["delLordville"]
 df["consumption_delLordville"] = df_consumption["delLordville"]
 # Q_L
@@ -66,8 +69,8 @@ df["flow_delTrenton"] = df_major_flow["delTrenton"]
 df["flow_outletSchuylkill"] = df_major_flow["outletSchuylkill"]
 
 # Storage
-df["cannonsville_storage"] = df_res_storage["cannonsville"] 
-df["pepacton_storage"] = df_res_storage["pepacton"] 
+df["cannonsville_storage"] = df_res_storage["cannonsville"]
+df["pepacton_storage"] = df_res_storage["pepacton"]
 df["cannonsville_storage_pct"] = df_res_storage["cannonsville"] / 95700 * 100
 df["pepacton_storage_pct"] = df_res_storage["pepacton"] / 140200 * 100
 
@@ -81,6 +84,7 @@ dff["Q_i"] = df["flow_01417000"] + df["inflow_delLordville"] - df["consumption_d
 dff["Q_L"] = df["flow_lordville"]
 dff["Q_C + Q_i"] = dff["Q_C"] + dff["Q_i"]
 dff["Diff"] = dff["Q_C + Q_i"] - dff["Q_L"]
+dff["cannonsville_storage_pct"] = df["cannonsville_storage_pct"]
 
 assert all(dff["Diff"].abs() < 0.2), "Water inbalance"
 
