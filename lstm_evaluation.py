@@ -177,7 +177,7 @@ obs = db_SalinityLSTM.copy()
 obs.loc[obs['saltfront_src'] != "obs", 'saltfront'] = np.nan
 obs = obs['saltfront'].values
 sim, obs = clt.dropna_any(sim, obs)
-clt.plots.rmse_over_obs_bins_in_barplot(ax, obs, sim, bins=(55, 90, 5), color="mediumpurple")
+clt.plots.rmse_over_obs_bins_in_barplot(ax, obs, sim, bins=(60, 90, 5), color="mediumpurple")
 ax.grid(True, axis='y', lw=0.3, ls="--")
 ax.set_ylabel(f"RMSE\n(Overall: {round(clt.metrics.rmse(sim, obs), 2)})")
 ax.set_xlabel("$Saltfront$ (RM)")
@@ -206,6 +206,7 @@ ax.set_xticks(custom_ticks)
 ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])  # show only month/day
 
 ax.set_xlim([df.index[0], df.index[-1]])
+ax.set_ylim([60, 88])
 ax.set_ylabel("$Saltfront$ (RM)")
 ax.set_xlabel(f"Date ({year})")
 

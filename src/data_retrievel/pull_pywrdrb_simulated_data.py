@@ -16,7 +16,8 @@ Need to recheck wrf bias
 For now I still use obs storage
 We can consider using hybrid nwm
 """
-#%%
+#%% For main dps experiment
+###########################
 inflow_type = 'pub_nhmv10_BC_withObsScaled'
 
 mb = pywrdrb.ModelBuilder(
@@ -112,3 +113,65 @@ plt.tight_layout()
 plt.show()
 
 """
+
+#%% For 1945 - 2023 simulation
+###########################
+inflow_type = 'pub_nhmv10_BC_withObsScaled'
+
+mb = pywrdrb.ModelBuilder(
+    inflow_type=inflow_type,
+    start_date="1945-01-01", # 1 year of warmup to avoid the influence from initial reservoir storage. Org: "1945-01-01",
+    end_date="2023-12-31"
+    )
+
+# Make a model
+mb.make_model()
+
+name =  f"{inflow_type}_1945"
+model_filename = str(pn.data.pywrdrb.get() / f"{name}.json")
+mb.write_model(model_filename)
+
+model = pywrdrb.Model.load(str(model_filename))
+output_filename = str(pn.data.pywrdrb.get() /f"{name}.hdf5")
+recorder = pywrdrb.OutputRecorder(
+    model=model,
+    output_filename=output_filename,
+    parameters=[p for p in model.parameters if p.name]
+)
+stats = model.run()
+
+# Data loader
+output_filename = str(pn.data.pywrdrb.get() / f"{name}.hdf5")
+
+data = pywrdrb.Data()
+results_sets = ['major_flow', 'res_storage', 'res_release', 'inflow', 'max_flow_catchmentConsumption']
+data.load_output(output_filenames=[output_filename], results_sets=results_sets)
+
+df_res_release = data.res_release[name][0]
+df_major_flow = data.major_flow[name][0]
+df_res_storage = data.res_storage[name][0]
+df_inflow = data.inflow[name][0]
+df_consumption = data.max_flow_catchmentConsumption[name][0]
+
+# Form output df
+df = pd.DataFrame()
+# Q_C
+df["flow_01425000"] = df_major_flow["01425000"]
+# Q_i
+df["flow_01417000"] = df_major_flow["01417000"]
+df["inflow_delLordville"] = df_inflow["delLordville"]
+df["consumption_delLordville"] = df_consumption["delLordville"]
+# Q_L
+df["flow_lordville"] = df_major_flow["delLordville"]
+# Salinity
+df["flow_delTrenton"] = df_major_flow["delTrenton"]
+df["flow_outletSchuylkill"] = df_major_flow["outletSchuylkill"]
+
+# Storage
+df["cannonsville_storage"] = df_res_storage["cannonsville"]
+df["pepacton_storage"] = df_res_storage["pepacton"]
+df["cannonsville_storage_pct"] = df_res_storage["cannonsville"] / 95700 * 100
+df["pepacton_storage_pct"] = df_res_storage["pepacton"] / 140200 * 100
+
+df.index.name = "date"
+df.to_csv(pn.data.raw.get() / f"pywrdrb_{inflow_type}_flow_and_storage_1945.csv") # mgd / mg
