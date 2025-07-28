@@ -31,8 +31,8 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
     df_salinity_obs.loc[mask, "saltfront_src"] = "lstm"
 
     # ignore saltfront below 54 rm (I don't think this really help. Just block the output during the simulation would be better)
-    # mask = df_salinity_obs["saltfront"] < 54
-    # df_salinity_obs.loc[mask, "saltfront_src"] = df_salinity_obs.loc[mask, "saltfront_src"] + "_(<54)"
+    mask = df_salinity_obs["saltfront"] < 54
+    df_salinity_obs.loc[mask, "saltfront_src"] = df_salinity_obs.loc[mask, "saltfront_src"] + "_(<54)"
 
     df_all = pd.concat(
         [df_salinity_obs, df_salinity_flow_bc],

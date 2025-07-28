@@ -123,7 +123,6 @@ def run_inner_loop(inner_folds, hyperparameter_df, SalinityLSTM):
         config_file = pn.models.get(f"{subfolder}/cfg/{SalinityLSTM}_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml")
         # Try different hyperparameter combinations
         for index, row in hyperparameter_df.iterrows():
-            time.sleep(2)
             with open(config_file, 'r') as stream:
                 cur_config = yaml.safe_load(stream)
 
@@ -144,16 +143,24 @@ def run_inner_loop(inner_folds, hyperparameter_df, SalinityLSTM):
                 cur_model_train = bmi_lstm()
                 # Initialize a model instance for training by setting train = True
                 cur_model_train.initialize(config_file = cur_cfg_out_file, train = True, disable_tqdm = True)
+                time.sleep(1)
                 cur_model_train.train_model()
             except:
                 cur_model_train = bmi_lstm()
                 # Initialize a model instance for training by setting train = True
                 cur_model_train.initialize(config_file = cur_cfg_out_file, train = True, disable_tqdm = True)
+                time.sleep(1)
                 cur_model_train.train_model()
 
             # Evaluate model on inner validation data
             preds_val = pd.read_parquet(cur_model_train.val_preds_file, engine='pyarrow')
             preds_val = preds_val.rename(columns={"mean": "pred"})
+            
+            # Clean up any partially created model
+            try:
+                del cur_model_train
+            except:
+                pass
 
             metrics = calc_metrics(preds_val)
 
@@ -181,10 +188,10 @@ db = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"), index_col=0,
 db.loc[db['saltfront_src'] != "obs", "saltfront"] = np.nan
 
 # Hyperparameters to tune
-learning_rate = [0.05] #[0.005, 0.05]
+learning_rate = [0.005, 0.05] #[0.005, 0.05]
 early_stopping = [20, 50] #[20, 50]
-dropout_rate = [0.1, 0.3]
-seed = [4, 5, 6, 7, 8]
+dropout_rate = [0, 0.1, 0.3]
+seed = [4, 2, 5]
 
 # Create a product of the hyperparameter sets
 hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed))

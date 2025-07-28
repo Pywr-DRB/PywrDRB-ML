@@ -32,7 +32,7 @@ ml_model_temp = WaterTempLSTMModel(
 
 
 ml_model_salt = SalinityLSTMModel(
-    model_salinity=pn.models.get() / r"SalinityLSTM_comparison\SalinityLSTM_1d_7d_avg.yml",
+    model_salinity=pn.models.get() / r"SalinityLSTM\SalinityLSTM.yml",
     start_date='1979-01-01', end_date='2023-12-31',
     Q_Trenton_lstm_var_name="Q_Trenton_bc",
     Q_Schuylkill_lstm_var_name="Q_Schuylkill_bc",
@@ -55,7 +55,6 @@ ml_model_salt.load_data()
 ml_model_salt.update_until(date=pd.Timestamp('2024-01-01'))
 
 #%% Plot LSTM feature importance in three subplots
-
 # Create feature name mapping dictionary
 feature_name_mapping = {
     # Temperature features

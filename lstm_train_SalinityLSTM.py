@@ -62,43 +62,43 @@ _ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new spl
 
 #%%
 model_ids = ["SalinityLSTM"]
-loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
+loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False, overwrite=True)
 lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, mode="SalinityLSTM", disable=False)
 
 #%%
 df_metric_train = loop_to_eval_lstm_models(model_ids, subfolder=subfolder, period="train", only_months=None, mode="SalinityLSTM")
 
-#%%
-import matplotlib.pyplot as plt
-import clt
-pairs = return_sim_obs_pair(lstms, period="train", only_months=None, mode="SalinityLSTM", disable=False)
+# #%%
+# import matplotlib.pyplot as plt
+# import clt
+# pairs = return_sim_obs_pair(lstms, period="train", only_months=None, mode="SalinityLSTM", disable=False)
 
-#%%
-sim, obs = pairs['SalinityLSTM']
-sim, obs = clt.dropna_any(sim, obs)
-fig, ax = plt.subplots()
-clt.plots.scatter(ax, x=obs, y=sim, s=1, alpha=0.5,)
-# ax.scatter(x=obs, y=sim, s=1, alpha=0.5)
-# clt.ax.add_45_degree_ref_line(ax)
-# clt.ax.add_linear_regr_line(ax, sim, obs,)
-ax.set_xlabel("Observed (RM)")
-ax.set_ylabel("Predicted (RM)")
-ax.legend()
-plt.tight_layout()
-plt.show()
+# #%%
+# sim, obs = pairs['SalinityLSTM']
+# sim, obs = clt.dropna_any(sim, obs)
+# fig, ax = plt.subplots()
+# clt.plots.scatter(ax, x=obs, y=sim, s=1, alpha=0.5,)
+# # ax.scatter(x=obs, y=sim, s=1, alpha=0.5)
+# # clt.ax.add_45_degree_ref_line(ax)
+# # clt.ax.add_linear_regr_line(ax, sim, obs,)
+# ax.set_xlabel("Observed (RM)")
+# ax.set_ylabel("Predicted (RM)")
+# ax.legend()
+# plt.tight_layout()
+# plt.show()
 
-#%%
-sim, obs = pairs['SalinityLSTM']
-for y in range(1964, 2024):
-    fig, ax = plt.subplots()
-    ax.plot(obs[f"{y}":f"{y}"], c="k", alpha=0.8, label="Observed")
-    ax.plot(sim[f"{y}":f"{y}"], c="b", alpha=0.8, label="Predicted")
-    ax.set_ylim([40, 100])
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Salt front location (RM)")
-    ax.legend()
-    plt.tight_layout()
-    plt.show()
+# #%%
+# sim, obs = pairs['SalinityLSTM']
+# for y in range(1964, 2024):
+#     fig, ax = plt.subplots()
+#     ax.plot(obs[f"{y}":f"{y}"], c="k", alpha=0.8, label="Observed")
+#     ax.plot(sim[f"{y}":f"{y}"], c="b", alpha=0.8, label="Predicted")
+#     ax.set_ylim([40, 100])
+#     ax.set_xlabel("Date")
+#     ax.set_ylabel("Salt front location (RM)")
+#     ax.legend()
+#     plt.tight_layout()
+#     plt.show()
 
 
 

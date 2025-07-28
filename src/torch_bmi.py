@@ -407,7 +407,7 @@ class bmi_lstm(Bmi):
         self.disable_tqdm = disable_tqdm
         if disable_tqdm:
             self.verbose = False
-        
+
         if train:
             print("Initialized model for training. Use <model_object_name>.train_model() to start the training")
 
@@ -1020,7 +1020,18 @@ class bmi_lstm(Bmi):
                                          'mean': pred_all['mu'].detach().numpy()[0,:,0],
                                          'sd': pred_all['sigma'].detach().numpy()[0,:,0],
                                          'obs': self.obs_all[0,:,0]})
-            df_all_preds.to_parquet(path = self.all_dates_preds_file)
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    df_all_preds.to_parquet(path = self.all_dates_preds_file)
+                    break
+                except Exception as e:
+                    wait_time = (3 ** (attempt+1))
+                    print(f"saving failed, retrying in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                else:
+                    raise e
+
             df_val_preds = pd.DataFrame({'date': self.dates_val[0,:,0],
                                          'mean': pred_val['mu'].detach().numpy()[0,:,0],
                                          'sd': pred_val['sigma'].detach().numpy()[0,:,0],

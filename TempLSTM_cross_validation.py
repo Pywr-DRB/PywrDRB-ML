@@ -135,6 +135,7 @@ for outer_fold in tqdm(crossval_folds):
         _ = data_prep(lstm2_config_file, root_dir) # prepare the dataset based on new splits; write to new datafile
 
 #%%
+import time
 def run_inner_loop(inner_folds, hyperparameter_df, TempLSTM):
 
     # Initialize best hyperparameters and best rmse
@@ -148,7 +149,7 @@ def run_inner_loop(inner_folds, hyperparameter_df, TempLSTM):
         config_file = pn.models.get(f"{subfolder}/cfg/{TempLSTM}_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml")
         # Try different hyperparameter combinations
         for index, row in hyperparameter_df.iterrows():
-
+            time.sleep(2)
             with open(config_file, 'r') as stream:
                 cur_config = yaml.safe_load(stream)
 
@@ -157,6 +158,7 @@ def run_inner_loop(inner_folds, hyperparameter_df, TempLSTM):
             cur_config['learn_rate_fine'] = float(row['learning_rate'])
             cur_config['learn_rate_pre'] = float(row['learning_rate'])
             cur_config['dropout_rate'] = float(row['dropout_rate'])
+            cur_config['seed'] = float(row['seed'])
 
             # write out temporary config file with current hyperparametrs
             cur_cfg_out_file = pn.models.get(f"{subfolder}/tmp") / f"{TempLSTM}_outer_{outer_fold['outer_fold']}_inner_{inner_fold['inner_fold']}.yml"
@@ -166,7 +168,7 @@ def run_inner_loop(inner_folds, hyperparameter_df, TempLSTM):
             # Start a model
             cur_model_train = bmi_lstm()
             # Initialize a model instance for training by setting train = True
-            cur_model_train.initialize(config_file = cur_cfg_out_file, train = True, disable_tqdm = True)
+            cur_model_train.initialize(config_file = cur_cfg_out_file, train = True, disable_tqdm = True, root_dir=pn.get())
             cur_model_train.train_model()
 
             # Evaluate model on inner validation data
@@ -208,11 +210,13 @@ with open(pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json", "r") as file:
 learning_rate = [0.005, 0.05] #[0.005, 0.05]
 early_stopping = [20, 50] #[20, 50]
 dropout_rate = [0, 0.1, 0.3]
+seed = [4, 2, 5]
+
 # Create a product of the hyperparameter sets
-hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate))
+hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed))
 
 # Create a df from the hyperparameter combos
-hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate'])
+hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate', 'seed'])
 
 # hyperparamter tuning and evaluation
 overall_performance1 = []
@@ -243,7 +247,7 @@ for outer_fold in tqdm(crossval_folds, desc="Outer"):
 
     # LSTM1
     best_model1 = bmi_lstm()
-    best_model1.initialize(config_file = best_cfg_out_file1, train = True, disable_tqdm = True)
+    best_model1.initialize(config_file = best_cfg_out_file1, train = True, disable_tqdm = True, root_dir=pn.get())
     best_model1.train_model()
     preds_test1 = pd.read_parquet(best_model1.test_preds_file, engine='pyarrow')
     preds_test1 = preds_test1.rename(columns={"mean": "pred"})
@@ -252,7 +256,7 @@ for outer_fold in tqdm(crossval_folds, desc="Outer"):
 
     # LSTM2
     best_model2 = bmi_lstm()
-    best_model2.initialize(config_file = best_cfg_out_file2, train = True, disable_tqdm = True)
+    best_model2.initialize(config_file = best_cfg_out_file2, train = True, disable_tqdm = True, root_dir=pn.get())
     best_model2.train_model()
     preds_test2 = pd.read_parquet(best_model2.test_preds_file, engine='pyarrow')
     preds_test2 = preds_test2.rename(columns={"mean": "pred"})

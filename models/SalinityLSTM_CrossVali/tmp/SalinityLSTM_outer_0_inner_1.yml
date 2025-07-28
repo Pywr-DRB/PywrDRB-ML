@@ -3,7 +3,7 @@ da_localization: false
 data_file: models/SalinityLSTM_CrossVali/SalinityLSTM_outer_0_inner_1/data_SalinityLSTM_outer_0_inner_1.npz
 delta_temp_layer: false
 delta_temp_vars: []
-dropout_rate: 0.3
+dropout_rate: 0.1
 early_stopping_patience: 50
 end_date_test:
 - '1988-10-18'
@@ -23,8 +23,8 @@ head_n_distr: 1
 hidden_units: 16
 input_data_file: data/database/SalinityLSTM_database.csv
 lag_days: 1
-learn_rate_fine: 0.05
-learn_rate_pre: 0.05
+learn_rate_fine: 0.005
+learn_rate_pre: 0.005
 max_date: '2023-12-31'
 mc_dropout: true
 min_date: '1979-01-01'
@@ -40,7 +40,7 @@ pre_train: true
 produce_ensembles: false
 recurrent_dropout_rate: 0.3
 root_dir: None
-seed: 8.0
+seed: 2.0
 seq_len: 365
 spatial_idx_name: seg_id_nat
 start_date_test:

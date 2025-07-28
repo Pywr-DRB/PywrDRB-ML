@@ -61,7 +61,7 @@ lstm2_settings = {
     "y_vars": ["QbcTavg_T_i"],
     "y_vars_src": ["tavg_water_src"],
     }
-#%%
+#%% Create config file
 subfolder = "TempLSTM"
 lstm1_config = deepcopy(config_template)
 lstm1_config.update(lstm1_settings)
@@ -71,59 +71,45 @@ lstm2_config.update(lstm2_settings)
 lstm1_config_file = make_lstm_model(subfolder=subfolder, **lstm1_config)
 lstm2_config_file = make_lstm_model(subfolder=subfolder, **lstm2_config)
 
-#%%
+#%% Train model and output simple run results
 model_ids = ["TempLSTM1", "TempLSTM2"]
 loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
-
-#%%
-model_ids = ["TempLSTM1", "TempLSTM2"]
 lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#%%
 df_metric_train = loop_to_eval_lstm_models(lstms, period="train", subfolder=subfolder, only_months=None, mode="TempLSTM")
 
-#%%
-df_metric = eval_TempLSTM(
-    lstm1=lstms["TempLSTM1"],
-    lstm2=lstms["TempLSTM2"],
-    period="all", only_months=None, disable=False
-    )
 
 
-df_metric_summer = eval_TempLSTM(
-    lstm1=lstms["TempLSTM1"],
-    lstm2=lstms["TempLSTM2"],
-    period="all", only_months=[6,7,8], disable=False
-    )
 
-#%%
-import clt
-df_obs, df_sim = return_sim_obs_pair_for_T_L(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"])
 
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(figsize=(4, 4))
-x = df_obs["T_L"]
-y = df_sim["T_L"]
-x, y = clt.utils.dropna_any(x, y)
-clt.plots.scatter(ax, x=x, y=y, s=2)
-ax.set_xlabel("Observed Tmax at Lordville")
-ax.set_ylabel("Predicted Tmax at Lordville")
-ax.legend()
-plt.tight_layout()
-plt.show()
+# #%%
+# df_metric = eval_TempLSTM(
+#     lstm1=lstms["TempLSTM1"],
+#     lstm2=lstms["TempLSTM2"],
+#     period="all", only_months=None, disable=False
+#     )
+
+
+# df_metric_summer = eval_TempLSTM(
+#     lstm1=lstms["TempLSTM1"],
+#     lstm2=lstms["TempLSTM2"],
+#     period="all", only_months=[6,7,8], disable=False
+#     )
+
+# #%%
+# import clt
+# df_obs, df_sim = return_sim_obs_pair_for_T_L(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"])
+
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots(figsize=(4, 4))
+# x = df_obs["T_L"]
+# y = df_sim["T_L"]
+# x, y = clt.utils.dropna_any(x, y)
+# clt.plots.scatter(ax, x=x, y=y, s=2)
+# ax.set_xlabel("Observed Tmax at Lordville")
+# ax.set_ylabel("Predicted Tmax at Lordville")
+# ax.legend()
+# plt.tight_layout()
+# plt.show()
 
 
 

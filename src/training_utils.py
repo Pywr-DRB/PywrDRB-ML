@@ -764,10 +764,10 @@ def train_loop(epoch_index,
                umal_n_taus_train,
                umal_tau_min,
                umal_tau_max,
-               weight_loss, 
-               weight_threshold, 
+               weight_loss,
+               weight_threshold,
                weight_value,
-               device = 'cpu', 
+               device = 'cpu',
                disable_tqdm = False):
     """
     @param epoch_index: [int] Epoch number
@@ -798,8 +798,8 @@ def train_loop(epoch_index,
             else:
                 if weight_loss:
                     loss = loss_function(trainy, output, weights)
-                else: 
-                    loss = loss_function(trainy, output) 
+                else:
+                    loss = loss_function(trainy, output)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 3)
             optimizer.step()
@@ -819,8 +819,8 @@ def val_loop(dataloader,
              umal_n_taus_train,
              umal_tau_min,
              umal_tau_max,
-             weight_loss, 
-             weight_threshold, 
+             weight_loss,
+             weight_threshold,
              weight_value,
              device = 'cpu'):
     """
@@ -847,8 +847,8 @@ def val_loop(dataloader,
         else:
             if weight_loss:
                 loss = loss_function(testy, output, weights)
-            else: 
-                loss = loss_function(testy, output) 
+            else:
+                loss = loss_function(testy, output)
         val_loss.append(loss.item())
     mval_loss = np.mean(val_loss)
     print(f"Valid loss: {mval_loss:.2f}")
@@ -873,8 +873,8 @@ def train_torch(model,
                 umal_n_taus_train,
                 umal_tau_min,
                 umal_tau_max,
-                weight_loss, 
-                weight_threshold, 
+                weight_loss,
+                weight_threshold,
                 weight_value,
                 early_stopping_patience=False,
                 x_val = None,
@@ -935,7 +935,7 @@ def train_torch(model,
 
     if x_delta_train is not None:
         x_delta_train = x_delta_train.to(device)
-    if x_delta_val is not None: 
+    if x_delta_val is not None:
         x_delta_val = x_delta_val.to(device)
 
 
@@ -953,7 +953,7 @@ def train_torch(model,
 
         val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=shuffle, pin_memory=True)
 
-    # TODO: add in delta support for data loaders 
+    # TODO: add in delta support for data loaders
 
     val_time = []
     train_time = []
@@ -969,7 +969,7 @@ def train_torch(model,
         model.train()
         epoch_loss = train_loop(i, train_loader, h_train, c_train, weighting_matrix_train,
                                 head, model, loss_function, optimizer, umal_extend_batch,
-                                umal_n_taus_train, umal_tau_min, umal_tau_max, 
+                                umal_n_taus_train, umal_tau_min, umal_tau_max,
                                 weight_loss, weight_threshold, weight_value, device, disable_tqdm)
         train_time.append(time.time() - t1)
         train_log = pd.concat([train_log,pd.DataFrame([[i, epoch_loss, np.nan,time.time()-t1,np.nan]],columns=log_cols,index=[i])])
@@ -984,7 +984,24 @@ def train_torch(model,
                                       weight_loss, weight_threshold, weight_value, device)
 
             if epoch_val_loss < best_loss:
-                torch.save(model.state_dict(), weights_file)
+                try:
+                    torch.save(model.state_dict(), weights_file)
+                except:
+                    max_retries = 10
+                    for attempt in range(max_retries):
+                        try:
+                            print(f"saving failed, retrying in 2 sec")
+                            time.sleep(2)
+                            torch.save(model.state_dict(), weights_file)
+                            break
+                        except RuntimeError as e:
+                            if attempt < max_retries - 1:
+                                wait_time = (2 ** (attempt+1))
+                                print(f"saving failed, retrying in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                                time.sleep(wait_time)
+                            else:
+                                raise e
+
                 best_loss = epoch_val_loss
                 epochs_since_best = 0
             else:
