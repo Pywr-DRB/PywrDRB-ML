@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pathnavigator
 import clt
-if pathnavigator.os_name == 'Windows':  
+if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
@@ -13,8 +13,6 @@ pn.data.mkdir("decomposed_Ti_Qi")
 #mode = "LinearInterpolated" # Simply use linear interpolation to fill gaps
 #mode = "Dwallin"            # Use dwallin to fill gaps mixed with linear interpolation
 mode = "TempLSTMGapFiller"  # Use trained lstm to fill all gaps
-
-
 
 start = "1978-01-01" #"1945-01-01"
 end = "2024-12-31"
@@ -27,12 +25,12 @@ df_res = pd.read_excel(pn.data.get("reservoir_release_sep_thermal_ctrl_mgd_manua
 df_res = clt.utils.re_datetime_index(df_res, start, end, fill_value=0)
 if mode=="Dwallin":
     df_dwallin_pred = clt.io.read_parquet(pn.data.raw.get("dwallin_stream_preds.parquet"))
-    df_dwallin_pred['date'] = pd.to_datetime(df_dwallin_pred['date'])  
+    df_dwallin_pred['date'] = pd.to_datetime(df_dwallin_pred['date'])
     df_dwallin_pred.set_index('date', inplace=True)
     df_dwallin_pred = df_dwallin_pred.pivot(columns='seg_id_nat', values='dwallin_temp_c')
     df_dwallin_pred = df_dwallin_pred[[1566, 1573]]
     df_dwallin_pred.columns = ["tavg_water_cannonsville", "tavg_water_lordville"]
-    
+
 if mode=="TempLSTMGapFiller":
     df_lstm_simed = pd.read_csv(pn.data.raw.get() / "lstm_simed_T_degC.csv", parse_dates=True, index_col=["date"])
 
@@ -43,7 +41,7 @@ def remove_long_linear_interpolations(df, value_col, src_col, thres=3, cutoff_da
     # to start as dwallin
     new_index = pd.date_range(start="1982-04-01", end=df.index.max(), freq="D")
     df = df.reindex(new_index)
-    
+
     # Only apply to dates before cutoff
     mask_date = df.index < pd.to_datetime(cutoff_date)
     is_interp = (df[src_col] == "linear_interpolation") & mask_date
@@ -79,7 +77,7 @@ if mode=="TempLSTMGapFiller":
     df_lordville.loc[df_lordville["tavg_water_lordville_src"]!="obs", "tavg_water_lordville_src"] = "lstm"
     df_lordville.loc[df_lordville["tmmx_water_lordville_src"]!="obs", "tmmx_water_lordville"] = df_lstm_simed.loc[df_lordville["tmmx_water_lordville_src"]!="obs", "T_L"]
     df_lordville.loc[df_lordville["tmmx_water_lordville_src"]!="obs", "tmmx_water_lordville_src"] = "lstm"
-    
+
     new_index = pd.date_range(start=df_lstm_simed.index.min(), end=df_cannonsville.index.max(), freq="D")
     df_cannonsville = df_cannonsville.reindex(new_index)
     df_cannonsville.loc[df_cannonsville["tavg_water_cannonsville_src"]!="obs", "tavg_water_cannonsville"] = df_lstm_simed.loc[df_cannonsville["tavg_water_cannonsville_src"]!="obs", "T_C"]
@@ -92,8 +90,8 @@ if mode=="TempLSTMGapFiller":
 # plt.show()
 
 df_Qobs = pd.DataFrame(index=rng)
-df_Qobs["Q_C"] = df_cannonsville["discharge_cannonsville"]  
-df_Qobs["Q_L"] = df_lordville["discharge_lordville"] 
+df_Qobs["Q_C"] = df_cannonsville["discharge_cannonsville"]
+df_Qobs["Q_L"] = df_lordville["discharge_lordville"]
 
 df_bc_Q = pd.DataFrame(index=rng)
 df_bc_Q["Q_C"] = df_bc["flow_01425000"]
@@ -118,14 +116,14 @@ def infer_Qi_Ti(df_Q, df_T):
     """
     df_Q = df_Q.copy()
     df_T = df_T.copy()
-    
+
     # Infer Q_i
     if "Q_i" not in df_Q:
         df_Q["Q_i"] = df_Q["Q_L"] - df_Q["Q_C"]
     else:
         print("Q_i is already given.")
     df_Q = df_Q[['Q_i', 'Q_C', 'Q_L']]
-    
+
     # Infer T_i
     df_T["T_i"] = (df_T["T_L"]*df_Q["Q_L"] - df_T["T_C"]*df_Q["Q_C"])/df_Q["Q_i"]
     df_T = df_T[['T_i', 'T_C', 'T_L']]
@@ -139,7 +137,7 @@ def update_to_rm_thermal_release_effect(df_sim, df_obv, df_res):
     df_obv["Q_Cnotr"] = df_obv["Q_C"] - df_res["thermal_release"]
     df_obv["Q_Lnotr"] = df_obv["Q_L"] - df_res["thermal_release"]
     df_obv["T_Lnotr"] = (df_obv["T_C"]*df_obv["Q_Cnotr"] + df_obv["T_i"]*df_obv["Q_i"])/df_obv["Q_Lnotr"]
-    
+
     mask = df_res[df_res["thermal_release"] > 0].index
     df_sim.loc[mask, "T_L"] = df_obv.loc[mask, "T_Lnotr"]
     df_sim["T_i"] = (df_sim["T_L"]*df_sim["Q_L"] - df_sim["T_C"]*df_sim["Q_C"])/df_sim["Q_i"]
@@ -172,17 +170,17 @@ def plot_QT(df, start="2010-01-01", end="2010-12-31", title=""):
     ax.set_ylabel("Q")
     ax.set_title(title)
     ax.legend(ncols=3, frameon=False, loc="upper left")
-    
+
     ax = axes[1]
     df[['T_i', 'T_C', 'T_L']].plot(ax=ax, alpha=alpha, lw=lw)
     ax.set_ylabel("T")
     ax.legend(ncols=3, frameon=False, loc="upper left")
-    
+
     # ax = axes[2]
     # df[['QT_i', 'QT_C', 'QT_L']].plot(ax=ax, alpha=alpha, lw=lw)
     # ax.set_ylabel("QT")
     # ax.legend(ncols=3, frameon=False, loc="upper left")
-    
+
     plt.xlabel("Date")
     plt.tight_layout()
     plt.show()

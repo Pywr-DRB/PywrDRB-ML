@@ -1,17 +1,15 @@
 import pathnavigator
 from copy import deepcopy
 
-if pathnavigator.os_name == 'Windows':  
+if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
-    
+
 pn = pathnavigator.create(root_dir)
 pn.add_to_sys_path()
 pn.chdir()
 from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, eval_TempLSTM, return_sim_obs_pair_for_T_L, return_T_L
-
-# from src.model_builder import config_template
 
 config_template = {
     'input_data_file': "data/database/TempLSTM_database.csv",
@@ -105,35 +103,35 @@ df_metric_train = loop_to_eval_lstm_models(lstms, period="train", only_months=No
 
 #%%
 df_metric = eval_TempLSTM(
-    lstm1=lstms["TempLSTM1"], 
+    lstm1=lstms["TempLSTM1"],
     lstm2=lstms["TempLSTM2"],
     period="all", only_months=None, disable=False
     )
 
 
 df_metric_summer = eval_TempLSTM(
-    lstm1=lstms["TempLSTM1"], 
+    lstm1=lstms["TempLSTM1"],
     lstm2=lstms["TempLSTM2"],
     period="all", only_months=[6,7,8], disable=False
     )
 
 with open(pn.models.get(f"{subfolder}") / "eval_metrics.txt", 'w') as f:
     f.write(f"subfolder: {subfolder}\n")
-    
+
     f.write("=== df_metric ===\n")
     df_metric.to_csv(f, sep='\t', index=True)
-    
+
     f.write("\n\n=== df_metric_summer ===\n")
     df_metric_summer.to_csv(f, sep='\t', index=True)
-    
+
     f.write("\n\n=== lstm1_config ===\n")
     for key, value in lstm1_config.items():
         f.write(f"{key}: {value}\n")
-        
+
     f.write("\n\n=== lstm2_config ===\n")
     for key, value in lstm2_config.items():
         f.write(f"{key}: {value}\n")
-        
+
 #%%
 # Output to data to rerun db formation
 df_lstm_simed = return_T_L(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"], map_to_Tmax=True)

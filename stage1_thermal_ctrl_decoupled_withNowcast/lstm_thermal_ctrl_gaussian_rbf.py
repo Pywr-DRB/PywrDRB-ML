@@ -87,7 +87,7 @@ def eval_func(*params):
     for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
         Q_C = None  # Placeholder for controlled release
         Q_i = None  # Placeholder for inflow
-        cannonsville_storage_pct = None  # Placeholder for storage percentage
+        cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t-1]  # Placeholder for storage percentage
 
         if date.month in [6, 7, 8]:
             thermal_release = dm_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, date)
@@ -97,12 +97,19 @@ def eval_func(*params):
         # Update data in the ml_model for the next step(s) model update.
         t = ml_model.t
         ml_model.Q_C[t] += thermal_release
+        ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
         Q_C = ml_model.Q_C[t]
+        cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t]
         try:
             ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.Q_C_lstm_var_name)] = Q_C
         except ValueError:
             if ml_model.debug:
                 print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+        try:
+            ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.cannonsville_storage_pct_lstm_var_name)] = cannonsville_storage_pct
+        except ValueError:
+            if ml_model.debug:
+                print(f"Warning: '{ml_model.cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
         try:
             ml_model.X_2[t, ml_model.x_vars_2.index(ml_model.Q_C_lstm_var_name)] = Q_C
         except ValueError:

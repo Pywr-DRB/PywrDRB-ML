@@ -46,7 +46,7 @@ plt.show()
 #%%
 from src.objectives import compute_reliability, compute_max_annual_accumulated_degree_days, compute_max_thermal_bank_usage_ratio, compute_mean_thermal_bank_usage_ratio
 
-bank_size = 1620 #*3
+bank_size = 1620*3
 
 temp_dict = {
     "RBF-1": pd.read_csv(pn.outputs.get("stage1_nowcast_GaussianRBFPolicy_135322") / "df_pywrdrb_temp_RBF1_159.csv", parse_dates=True, index_col=[0]),
@@ -76,12 +76,12 @@ Jadd_dict = {
     }
 
 Jtubr_dict = {
-    "RBF-1": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-1"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31)),
-    "RBF-2": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-2"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31)),
-    "RBF-3": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-3"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31)),
-    "RBF-4": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-4"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31)),
-    "no_ctrl": compute_max_thermal_bank_usage_ratio(temp_dict["no_ctrl"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31)),
-    "rule_based": compute_max_thermal_bank_usage_ratio(temp_dict["rule_based"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31)),
+    "RBF-1": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-1"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))*3,
+    "RBF-2": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-2"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))*3,
+    "RBF-3": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-3"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))*3,
+    "RBF-4": compute_max_thermal_bank_usage_ratio(temp_dict["RBF-4"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))*3,
+    "no_ctrl": compute_max_thermal_bank_usage_ratio(temp_dict["no_ctrl"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))*3,
+    "rule_based": compute_max_thermal_bank_usage_ratio(temp_dict["rule_based"], col='remained_bank_amounts', bank_size=bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))*3,
     }
 
 #%%
@@ -93,6 +93,7 @@ fig, ax = plt.subplots(figsize=(5, 4))
 styles = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
 lws = [3.5, 3, 2.5, 2, 1.5, 1]
 for i, (label, arr) in enumerate(Jrel_dict.items()):
+    arr = arr[arr<1]
     sorted_data = np.sort(arr)
     cdf = np.linspace(0, 1, len(sorted_data))
 
@@ -102,26 +103,6 @@ for i, (label, arr) in enumerate(Jrel_dict.items()):
 #ax.set_xlim([60, 87])
 ax.set_ylim([0, 1])
 ax.set_xlabel("Jrel")
-ax.set_ylabel("Empirical CDF")
-ax.grid(True)
-ax.legend()
-plt.tight_layout()
-plt.show()
-
-fig, ax = plt.subplots(figsize=(5, 4))
-
-styles = ["-", "--", "-.", ":", (0, (3, 1, 1, 1))]
-lws = [3.5, 3, 2.5, 2, 1.5, 1]
-for i, (label, arr) in enumerate(Jrel_dict.items()):
-    sorted_data = np.sort(arr)
-    cdf = np.linspace(0, 1, len(sorted_data))
-
-    #ax.plot(sorted_data, cdf, label=label)
-    ax.plot(sorted_data, cdf, label=label, linestyle=styles[i % len(styles)], lw=lws[i], alpha=0.7)
-
-#ax.set_xlim([60, 87])
-ax.set_ylim([0, 1])
-ax.set_xlabel("Jadd")
 ax.set_ylabel("Empirical CDF")
 ax.grid(True)
 ax.legend()
