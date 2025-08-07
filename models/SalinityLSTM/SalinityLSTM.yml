@@ -38,7 +38,7 @@ weight_threshold: 80
 weight_value: 5
 mc_dropout: true
 recurrent_dropout_rate: 0.3
-dropout_rate: 0.3
+dropout_rate: 0
 model_type: lstm
 n_en_gridmet: 1
 gpu: false
@@ -59,4 +59,4 @@ c_sd: 0.06
 produce_ensembles: false
 n_samples: 100
 n_segs: 1
-seed: 4
+seed: 2

@@ -41,10 +41,10 @@ config_template = {
     'weight_value': 5,
     'mc_dropout': True,
     'recurrent_dropout_rate': 0.3,
-    'dropout_rate': 0.30,
+    'dropout_rate': 0, #0.30,
     'seq_len': 365,
     'offset': 1.0,
-    'seed': 4,
+    'seed': 2,
     }
 lstm_settings = {
     "model_id": "SalinityLSTM",
@@ -63,11 +63,15 @@ _ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new spl
 #%%
 model_ids = ["SalinityLSTM"]
 loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False, overwrite=True)
-lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, mode="SalinityLSTM", disable=False)
+lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, mode="SalinityLSTM", disable=False, overwrite=True)
 
 #%%
 df_metric_train = loop_to_eval_lstm_models(model_ids, subfolder=subfolder, period="train", only_months=None, mode="SalinityLSTM")
-
+r"""
+                 nrmse         r        r2      rmse
+model_id
+SalinityLSTM  0.084535  0.884838  0.777871  3.014507
+"""
 # #%%
 # import matplotlib.pyplot as plt
 # import clt
