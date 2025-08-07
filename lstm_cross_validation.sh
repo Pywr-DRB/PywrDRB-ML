@@ -2,8 +2,8 @@
 #SBATCH --job-name=cvali               # Job name
 #SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/cvali_%j.out   # Standard output log file with job ID
 #SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/cvali_%j.err    # Standard error log file with job ID
-#SBATCH --nodes=1                           # Number of nodes to use
-#SBATCH --ntasks-per-node=10                # Number of tasks (processes) per node
+#SBATCH --nodes=2                           # Number of nodes to use
+#SBATCH --ntasks-per-node=20                # Number of tasks (processes) per node
 #SBATCH --exclusive                        # Use the node exclusively for this job
 #SBATCH --mail-type=END                    # Send email at job end
 #SBATCH --mail-user=cl2769@cornell.edu     # Email for notifications
@@ -25,6 +25,7 @@ export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
 n_processors=$(($SLURM_NNODES * $SLURM_NTASKS_PER_NODE))
 echo "Start JobID $SLURM_JOB_ID"
-time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/TempLSTM_cross_validation.py 
+#time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/TempLSTM_cross_validation.py 
+time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/lstm_cross_validation.py 
 #wait
 echo "Complete"
