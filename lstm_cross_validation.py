@@ -25,12 +25,12 @@ if pathnavigator.os_name == 'Windows':
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
     # Set PyTorch to use single thread to avoid conflicts with MPI
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
+    #torch.set_num_threads(1)
+    #torch.set_num_interop_threads(1)
 
     # Ensure deterministic behavior
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    #torch.backends.cudnn.deterministic = True
+    #torch.backends.cudnn.benchmark = False
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 
