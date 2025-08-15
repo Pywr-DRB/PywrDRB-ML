@@ -76,7 +76,7 @@ use_constr_names = False
 nvars = len(bounds)
 nobjs = len(obj_names)
 nconstrs = 0
-nfe = 60_000
+nfe = 100_000
 runtime_freq = 500
 epsilon = 0.01
 islands = 1  # 1 = MW, >1 = MM
@@ -143,7 +143,7 @@ if result is not None:
             headers += constr_names
         else:
             headers += [f"constr{i+1}" for i in range(nconstrs)]
-        
+
         file.write(",".join(headers) + "\n")
         result.display(out=file, separator=",")
 
@@ -168,7 +168,7 @@ if result is not None:
         file.write(f"//NFE={nfe}\n") # if using check point or multi island, the NFE may not be correct.
         result.display(out=file, separator=" ")
         file.write("#\n")
-    
+
     # Write the dictionary to a file in a readable format
     with open(pn.outputs.get(exp_folder) / f"{job_id}_nfe{nfe}_seed{borg_seed}.info", 'w') as file:
         file.write("\nBorg settings\n")
@@ -184,6 +184,6 @@ if result is not None:
         print(f"Master: Completed {job_id}_nfe{nfe}_seed{borg_seed}")
     elif islands > 1:
         print(f"Multi-master controller: Completed {job_id}_nfe{nfe}_seed{borg_seed}")
-        
+
 ##### End MPI #########################################################################
 Configuration.stopMPI()

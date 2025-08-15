@@ -87,6 +87,7 @@ def eval_func(*params):
     for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
         Q_C = None  # Placeholder for controlled release
         Q_i = None  # Placeholder for inflow
+        t = ml_model.t
         cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t-1]  # Placeholder for storage percentage
 
         if date.month in [6, 7, 8]:
@@ -95,7 +96,6 @@ def eval_func(*params):
             thermal_release = 0
 
         # Update data in the ml_model for the next step(s) model update.
-        t = ml_model.t
         ml_model.Q_C[t] += thermal_release
         ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
         Q_C = ml_model.Q_C[t]

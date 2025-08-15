@@ -31,11 +31,8 @@ config_template = {
     'end_date_test': '2017-12-31',
     'pre_train': True,
     'fine_tune': True,
-    'learn_rate_pre': 0.05,
-    'learn_rate_fine': 0.05,
     'n_epochs_pre': 50,
     'n_epochs_fine': 350,
-    'early_stopping_patience': 50,
     'hidden_units': 16,
     'head_hidden_units': 16,
     'head_n_distr': 1,
@@ -44,22 +41,29 @@ config_template = {
     'weight_value': 2,
     'mc_dropout': True,
     'recurrent_dropout_rate': 0.3,
-    'dropout_rate': 0,
     'seq_len': 365,
     'offset': 1.0,
-    'seed': 4,
+    'seed': 2,
     }
 lstm1_settings = {
     "model_id": "TempLSTM1",
     "x_vars": ["tmmn", "tmmx", "pr", "srad", "bc_cannonsville_storage_pct", "doy", "QbcTavg_Q_C"],
     "y_vars": ["QbcTavg_T_C"],
     "y_vars_src": ["tavg_water_cannonsville_src"],
+    'learn_rate_pre': 0.05,
+    'learn_rate_fine': 0.05,
+    'early_stopping_patience': 20,
+    'dropout_rate': 0.1,
     }
 lstm2_settings = {
     "model_id": "TempLSTM2",
     "x_vars": ["tmmn", "tmmx", "pr", "srad", "QbcTavg_Q_i", "doy", "QbcTavg_Q_C"],
     "y_vars": ["QbcTavg_T_i"],
     "y_vars_src": ["tavg_water_src"],
+    'learn_rate_pre': 0.05,
+    'learn_rate_fine': 0.05,
+    'early_stopping_patience': 50,
+    'dropout_rate': 0,
     }
 #%% Create config file
 subfolder = "TempLSTM"
@@ -73,8 +77,8 @@ lstm2_config_file = make_lstm_model(subfolder=subfolder, **lstm2_config)
 
 #%% Train model and output simple run results
 model_ids = ["TempLSTM1", "TempLSTM2"]
-loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
-lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
+loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False, overwrite=True)
+lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False, overwrite=True)
 df_metric_train = loop_to_eval_lstm_models(lstms, period="train", subfolder=subfolder, only_months=None, mode="TempLSTM")
 
 

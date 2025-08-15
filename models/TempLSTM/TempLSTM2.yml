@@ -58,4 +58,4 @@ c_sd: 0.06
 produce_ensembles: false
 n_samples: 100
 n_segs: 1
-seed: 4
+seed: 2

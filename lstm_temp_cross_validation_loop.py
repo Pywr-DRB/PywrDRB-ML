@@ -31,6 +31,7 @@ from src.torch_bmi import bmi_lstm
 from src.prep_data import data_prep
 from src.crossval_utils import calc_crossval_splits
 from src.model_builder import make_lstm_model
+from src.torch_eval_functions import calc_metrics
 
 # It need 365 as a training seuence length
 date_range = pd.date_range(start='1980-01-01', end='2023-12-31', freq='D').to_list()
@@ -136,7 +137,7 @@ for outer_fold in tqdm(crossval_folds):
             lstm_config_file = make_lstm_model(subfolder=subfolder, yml_subsubfolder="cfg", **cur_config)
             _ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new splits; write to new datafile
             model1_ids.append(model_id)
-            
+
 model2_ids = []
 for outer_fold in tqdm(crossval_folds):
     test_starts = outer_fold['outer_test_start_dates']
@@ -179,6 +180,84 @@ for model_id in tqdm(model2_ids):
     cur_model_train = bmi_lstm()
     cur_model_train.initialize(config_file=config_file, train=True, disable_tqdm=True, root_dir=pn.get())
     cur_model_train.train_model()
+
+#%%
+results = []
+for outer_fold in tqdm(crossval_folds):
+    for inner_fold in outer_fold['inner_folds']:
+        for index, row in hyperparameter_df.iterrows():
+            model_id = f"TempLSTM1_O{outer_fold['outer_fold']}_I{inner_fold['inner_fold']}_lr_{row['learning_rate']:.3f}_es_{row['early_stopping']:.0f}_dr_{row['dropout_rate']:.1f}_s_{row['seed']:.0f}"
+
+            val_preds_file = pn.models.get(f"{subfolder}/{model_id}/{model_id}_val_preds.parquet")
+            test_preds_file = pn.models.get(f"{subfolder}/{model_id}/{model_id}_test_preds.parquet")
+
+            preds_val = pd.read_parquet(val_preds_file, engine='pyarrow')
+            preds_val = preds_val.rename(columns={"mean": "pred"})
+            rmse_val = calc_metrics(preds_val)['rmse']
+
+            preds_test = pd.read_parquet(test_preds_file, engine='pyarrow')
+            preds_test = preds_test.rename(columns={"mean": "pred"})
+            rmse_test = calc_metrics(preds_test)['rmse']
+
+            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), rmse_val, rmse_test]
+            results.append(res)
+
+cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "vali_rmse", "test_rmse"]
+df = pd.DataFrame(results, columns=cols)
+
+best_per_outer = df.loc[df.groupby("outer")["vali_rmse"].idxmin()]
+r"""
+	outer	inner	early_stopping	learning_rate	dropout_rate	seed	vali_rmse	test_rmse
+162	0	3	20	0.005	0.0	4.0	1.509933352470398	1.70497653489212
+424	1	3	50	0.05	0.0	2.0	1.2163923978805542	1.9550134387221456
+634	2	3	20	0.05	0.1	2.0	1.4946320056915283	2.433284023372551
+689	3	0	20	0.05	0.1	5.0	1.2764697074890137	2.827990411059694
+877	4	0	50	0.005	0.1	2.0	1.4531627893447876	1.7428076653034343
+
+=> 20 0.05 0.1 2
+"""
+cross_vali_rmse = best_per_outer["test_rmse"].mean()
+# => 2.1328144146699892
+
+
+#%%
+results = []
+for outer_fold in tqdm(crossval_folds):
+    for inner_fold in outer_fold['inner_folds']:
+        for index, row in hyperparameter_df.iterrows():
+            model_id = f"TempLSTM2_O{outer_fold['outer_fold']}_I{inner_fold['inner_fold']}_lr_{row['learning_rate']:.3f}_es_{row['early_stopping']:.0f}_dr_{row['dropout_rate']:.1f}_s_{row['seed']:.0f}"
+
+            val_preds_file = pn.models.get(f"{subfolder}/{model_id}/{model_id}_val_preds.parquet")
+            test_preds_file = pn.models.get(f"{subfolder}/{model_id}/{model_id}_test_preds.parquet")
+
+            preds_val = pd.read_parquet(val_preds_file, engine='pyarrow')
+            preds_val = preds_val.rename(columns={"mean": "pred"})
+            rmse_val = calc_metrics(preds_val)['rmse']
+
+            preds_test = pd.read_parquet(test_preds_file, engine='pyarrow')
+            preds_test = preds_test.rename(columns={"mean": "pred"})
+            rmse_test = calc_metrics(preds_test)['rmse']
+
+            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), rmse_val, rmse_test]
+            results.append(res)
+
+cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "vali_rmse", "test_rmse"]
+df = pd.DataFrame(results, columns=cols)
+
+best_per_outer = df.loc[df.groupby("outer")["vali_rmse"].idxmin()]
+r"""
+	outer	inner	early_stopping	learning_rate	dropout_rate	seed	vali_rmse	test_rmse
+145	0	2	20	0.05	0.0	2.0	1.3532029390335083
+371	1	2	50	0.05	0.0	5.0	1.364026665687561
+550	2	2	50	0.005	0.0	2.0	1.3925034999847412
+860	3	3	50	0.05	0.1	5.0	3.7812254428863525	2.2306518629685854
+1074	4	3	50	0.05	0.1	4.0	2.1968185901641846	3.746063866270143
+
+
+=> 50 0.05 0 2
+"""
+cross_vali_rmse = best_per_outer["test_rmse"].mean()
+# => 2.1328144146699892
 #%% Test run
 # config_file = pn.models.get(f'{subfolder}/cfg/{model_id}.yml')
 
