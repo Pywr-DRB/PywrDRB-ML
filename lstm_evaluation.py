@@ -146,6 +146,14 @@ obs.loc[obs['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
 obs = obs['QbcTmax_T_L'].values
 sim, obs = clt.dropna_any(sim, obs)
 
+# For Tavg_L_mu
+sim_Tavg_L_mu = ml_model_temp.records["Tavg_L_mu"]
+obs_Tavg_L_mu = db_TempLSTM.copy()
+obs_Tavg_L_mu.loc[obs_Tavg_L_mu['tavg_water_src'] != "obs", 'QbcTavg_T_L'] = np.nan
+obs_Tavg_L_mu = obs_Tavg_L_mu['QbcTavg_T_L'].values
+sim_Tavg_L_mu, obs_Tavg_L_mu = clt.dropna_any(sim_Tavg_L_mu, obs_Tavg_L_mu)
+round(clt.metrics.rmse(sim_Tavg_L_mu, obs_Tavg_L_mu), 2)
+
 clt.plots.rmse_over_obs_bins_in_barplot(ax, obs, sim, bins=(0, 30, 5), color="salmon")
 ax.grid(True, axis='y', lw=0.3, ls="--")
 ax.set_ylabel(f"RMSE\n(Overall: {round(clt.metrics.rmse(sim, obs), 2)})")
@@ -210,7 +218,7 @@ ax.set_ylabel("$Saltfront$ (RM)")
 ax.set_xlabel(f"Date ({year})")
 
 plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg", dpi=500)
+#clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg", dpi=500)
 plt.show()
 
 
