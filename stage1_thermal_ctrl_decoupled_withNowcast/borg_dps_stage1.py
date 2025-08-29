@@ -29,6 +29,11 @@ if len(sys.argv) > 1:
 policy_type = None
 if len(sys.argv) > 2 and sys.argv[2] != "None":
     policy_type = sys.argv[2]
+    
+# With storage dynamics
+storage_dynamics = False
+if len(sys.argv) > 4 and sys.argv[4] != "None":
+    storage_dynamics = bool(sys.argv[4])
 
 policy = None
 if policy_type == "piecewise":
@@ -36,8 +41,10 @@ if policy_type == "piecewise":
     from src.policies import GeneralizedPiecewiseLinearPolicy
     policy = GeneralizedPiecewiseLinearPolicy(n_dim=n_dim, n_steps=n_steps)
 elif policy_type == "gaussian_rbf":
-    #from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf import eval_func, n_dim, n_basis
-    from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf_noStorageDynamics import eval_func, n_dim, n_basis
+    if storage_dynamics:
+        from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf import eval_func, n_dim, n_basis
+    else:
+        from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf_noStorageDynamics import eval_func, n_dim, n_basis
     from src.policies import GaussianRBFPolicy
     policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 elif policy_type == "regression":

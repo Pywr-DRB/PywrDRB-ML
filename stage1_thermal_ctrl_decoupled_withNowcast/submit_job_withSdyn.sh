@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=s1nowcast               # Job name
-#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_%j.out   # Standard output log file with job ID
-#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_%j.err    # Standard error log file with job ID
+#SBATCH --job-name=wSdyn               # Job name
+#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_wSdyn_%j.out   # Standard output log file with job ID
+#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_wSdyn_%j.err    # Standard error log file with job ID
 #SBATCH --nodes=4                           # Number of nodes to use
 #SBATCH --ntasks-per-node=40                # Number of tasks (processes) per node
 #SBATCH --exclude=c0004                      # Exclude node 0004
@@ -47,7 +47,7 @@ submit_job() {
 
     # Run the script with MPI and time the execution
     echo "Start JobID $SLURM_JOB_ID, policy: $policy_type, seed: $borg_seed"
-    time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled_withNowcast/borg_dps_stage1.py $SLURM_JOB_ID $policy_type $borg_seed
+    time mpirun -np $n_processors python /home/fs01/cl2769/Github/PywrDRB-ML/stage1_thermal_ctrl_decoupled_withNowcast/borg_dps_stage1.py $SLURM_JOB_ID $policy_type $borg_seed True
     #wait
     echo "Complete: $policy_type, seed: $borg_seed"
 }
