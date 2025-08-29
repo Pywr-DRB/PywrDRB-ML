@@ -31,6 +31,9 @@ n_dim = 3  # Number of dimensions for the policy
 n_basis = 2  # Number of basis functions for the Gaussian RBF policy
 disable = True  # Set to True to disable tqdm progress bar
 
+#params = [0.6668079974285346,0.11975964440958566,0.022207659506481296,0.17813763329250218,1.7059398435977362,0.2993269246768502,1.5566526515498547,0.7140878673442844,0.6849239989381573,1.434484702504693,0.7407818091429728,1.7744191545541022,0.1565724241446174,0.19409191896070352]
+
+
 #%%
 def eval_func(*params):
     database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']

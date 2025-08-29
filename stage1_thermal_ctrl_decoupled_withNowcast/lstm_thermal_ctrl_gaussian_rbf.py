@@ -51,7 +51,7 @@ def eval_func(*params):
 
             # Prepare the inputs
             # Nowcast/forecast
-            ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
+            ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
             forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
             forecast_T_C_mu = ml_model.forecast_T_C_mu_arr[-1]
 

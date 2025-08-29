@@ -39,10 +39,10 @@ Jrel_noCtrl_arr = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, qua
 Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 
 # Jrel_noCtrl
-# Out[5]: 0.2375
+# Out[5]: 0.2018  #0.2375
 
 # Jadd_noCtrl
-# Out[6]: 1.0 (132.4373)
+# Out[6]: 1.0 (132.4373*1.2159)
 #%%
 # db = database[['QbcTmax_T_L']]
 # db.loc[database['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
@@ -72,7 +72,7 @@ def return_dps_func(*params):
         ml_model.update_until(date=current_date)
         # Complete the preparation for thermal control
         # Make a forecast for the current date
-        ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
+        ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
         # Make thermal release decision and record the thermal release
         thermal_release = policy.run(X=ml_model.forecast_T_L_mu_arr)
         thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
@@ -106,12 +106,19 @@ for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
     # Update data in the ml_model for the next step(s) model update.
     t = ml_model.t
     ml_model.Q_C[t] += thermal_release
+    ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
     Q_C = ml_model.Q_C[t]
+    cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t]
     try:
         ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
         if ml_model.debug:
             print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+    try:
+        ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.cannonsville_storage_pct_lstm_var_name)] = cannonsville_storage_pct
+    except ValueError:
+        if ml_model.debug:
+            print(f"Warning: '{ml_model.cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
     try:
         ml_model.X_2[t, ml_model.x_vars_2.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
@@ -140,13 +147,14 @@ Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', thres
 Jtubr_arr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
 # Jrel
-# Out[5]: 0.3185
+# new, no storage, org
+# Out[5]: 0.2136, 0.2161 #0.3185
 
 # Jadd
-# Out[6]: 0.916
+# Out[6]: 0.97, 0.9785 #0.916
 
 # Jtubr
-# Out[7]: 0.2942
+# Out[7]: 0.1872, 0.4414 #0.2942
 
 #%% Historical thermal releases
 database["rel_thermal"] = database["rel_thermal"].fillna(0)
@@ -192,12 +200,19 @@ for date in tqdm(dates, desc="Running historic thermal release", disable=disable
     # Update data in the ml_model for the next step(s) model update.
     t = ml_model.t
     ml_model.Q_C[t] += thermal_release
+    ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
     Q_C = ml_model.Q_C[t]
+    cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t]
     try:
         ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
         if ml_model.debug:
             print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+    try:
+        ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.cannonsville_storage_pct_lstm_var_name)] = cannonsville_storage_pct
+    except ValueError:
+        if ml_model.debug:
+            print(f"Warning: '{ml_model.cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
     try:
         ml_model.X_2[t, ml_model.x_vars_2.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
@@ -226,13 +241,13 @@ Jadd_hist_arr = compute_max_annual_accumulated_degree_days(df_hist, col='Tavg_L_
 Jtubr_hist_arr = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
 # Jrel_hist
-# Out[7]: 0.3583
+# Out[7]: 0.4556 #0.3583
 
 # Jadd_hist
-# Out[8]: 0.764
+# Out[8]: 0.5509 #0.764
 
 # Jtubr_hist
-# Out[9]: 0.4994
+# Out[9]: 0.4994 #0.4994
 
 fig, ax = plt.subplots()
 database.groupby(database.index.year).sum().loc[2005:2024, ["rel_thermal"]].plot(kind='bar', legend=False, ax=ax)
