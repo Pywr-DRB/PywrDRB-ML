@@ -1,0 +1,24 @@
+# Version=5
+# Problem=
+# NumberOfVariables=14
+# NumberOfObjectives=3
+# NumberOfConstraints=0
+# Variable.1.Definition=RealVariable(0.0,1.0)
+# Variable.2.Definition=RealVariable(0.0,1.0)
+# Variable.3.Definition=RealVariable(1.0E-6,2.0)
+# Variable.4.Definition=RealVariable(0.0,1.0)
+# Variable.5.Definition=RealVariable(1.0E-6,2.0)
+# Variable.6.Definition=RealVariable(0.0,1.0)
+# Variable.7.Definition=RealVariable(1.0E-6,2.0)
+# Variable.8.Definition=RealVariable(0.0,1.0)
+# Variable.9.Definition=RealVariable(0.0,1.0)
+# Variable.10.Definition=RealVariable(1.0E-6,2.0)
+# Variable.11.Definition=RealVariable(0.0,1.0)
+# Variable.12.Definition=RealVariable(1.0E-6,2.0)
+# Variable.13.Definition=RealVariable(0.0,1.0)
+# Variable.14.Definition=RealVariable(1.0E-6,2.0)
+# Objective.1.Definition=Minimize
+# Objective.2.Definition=Minimize
+# Objective.3.Definition=Minimize
+0.6298547896160406 0.2429694065924197 0.5291897726877781 0.9321179289678386 0.022864928909163442 0.7498620380065083 1.4795758037554532 0.861515623485091 0.2905317100907051 5.478471968082822E-4 0.7070388641923291 1.0218357997048904 0.9344120656453101 1.5465396748263527 -0.2018 1.2159 0.0
+#

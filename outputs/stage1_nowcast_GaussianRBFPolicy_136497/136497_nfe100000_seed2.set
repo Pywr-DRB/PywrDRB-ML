@@ -1,0 +1,24 @@
+# Version=5
+# NumberOfVariables=14
+# NumberOfObjectives=3
+# NumberOfConstraints=0
+# Variable.1.Definition=RealVariable(0,1)
+# Variable.2.Definition=RealVariable(0,1)
+# Variable.3.Definition=RealVariable(1e-06,2.0)
+# Variable.4.Definition=RealVariable(0,1)
+# Variable.5.Definition=RealVariable(1e-06,2.0)
+# Variable.6.Definition=RealVariable(0,1)
+# Variable.7.Definition=RealVariable(1e-06,2.0)
+# Variable.8.Definition=RealVariable(0,1)
+# Variable.9.Definition=RealVariable(0,1)
+# Variable.10.Definition=RealVariable(1e-06,2.0)
+# Variable.11.Definition=RealVariable(0,1)
+# Variable.12.Definition=RealVariable(1e-06,2.0)
+# Variable.13.Definition=RealVariable(0,1)
+# Variable.14.Definition=RealVariable(1e-06,2.0)
+# Objective.1.Definition=Minimize
+# Objective.2.Definition=Minimize
+# Objective.3.Definition=Minimize
+//NFE=100000
+0.7574906157696365 0.26116598380291045 0.24468886008219395 0.3152554501582066 0.9494752830209338 0.5071320625737151 0.09258524473678072 0.16058875414556562 0.8902931564697747 0.17440790184902633 0.23917209967951572 0.8067806072596451 0.4318980023804815 0.16306354081166058 -0.2018 1.2159 0.0
+#

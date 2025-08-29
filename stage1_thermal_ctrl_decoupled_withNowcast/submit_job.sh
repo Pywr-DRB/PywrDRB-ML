@@ -4,6 +4,7 @@
 #SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/s1nowcast_%j.err    # Standard error log file with job ID
 #SBATCH --nodes=6                           # Number of nodes to use
 #SBATCH --ntasks-per-node=40                # Number of tasks (processes) per node
+#SBATCH --exclude=c0004                      # Exclude node 0004
 #SBATCH --exclusive                        # Use the node exclusively for this job
 #SBATCH --mail-type=END                    # Send email at job end
 #SBATCH --mail-user=cl2769@cornell.edu     # Email for notifications
