@@ -51,6 +51,8 @@ def eval_func(*params):
 
             # Prepare the inputs
             # Nowcast/forecast
+            # Have to retrieve storage info after update until such that t have been moved forward
+            cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t-1]  # Placeholder for storage percentage
             ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
             forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
             forecast_T_C_mu = ml_model.forecast_T_C_mu_arr[-1]
@@ -84,11 +86,10 @@ def eval_func(*params):
     ml_model.load_data(database)
 
     dates = pd.date_range(start="1979-01-01", end="2023-12-31", freq='D')
-    for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
+    for t, date in tqdm(enumerate(dates), desc="Running thermal control policy", disable=disable):
         Q_C = None  # Placeholder for controlled release
         Q_i = None  # Placeholder for inflow
-        t = ml_model.t
-        cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t-1]  # Placeholder for storage percentage
+        cannonsville_storage_pct = None        
 
         if date.month in [6, 7, 8]:
             thermal_release = dm_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, date)
@@ -96,8 +97,10 @@ def eval_func(*params):
             thermal_release = 0
 
         # Update data in the ml_model for the next step(s) model update.
+        #t = ml_model.t # 
+        acc_thermal_release = ml_model.thermal_mitigation_bank_size - ml_model.remained_bank_amount
         ml_model.Q_C[t] += thermal_release
-        ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
+        ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - acc_thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
         Q_C = ml_model.Q_C[t]
         cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t]
         try:
@@ -137,7 +140,12 @@ def eval_func(*params):
 # disable = False
 # policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 # params = policy.gen_params(seed=42)[0]
+
+# import clt
+# df = clt.borg.read_ref(ref_file=r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\outputs\stage1_nowcast_GaussianRBFPolicy_135322\borg.ref")
+# params = df.iloc[159, :-3]
 # objs = eval_func(*params)[0]
+#[-0.2, 0.9882, 0.3294]
 
 # Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 # Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='T_L_mu', threshold=20, return_distribution=True)

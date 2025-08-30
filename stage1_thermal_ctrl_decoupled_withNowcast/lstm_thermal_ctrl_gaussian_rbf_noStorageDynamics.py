@@ -133,7 +133,11 @@ def eval_func(*params):
 # disable = False
 # policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 # params = policy.gen_params(seed=42)[0]
+# import clt
+# df = clt.borg.read_ref(ref_file=r"C:\Users\CL\Documents\GitHub\PywrDRB-ML\outputs\stage1_nowcast_GaussianRBFPolicy_135322\borg.ref")
+# params = df.iloc[159, :-3]
 # objs = eval_func(*params)[0]
+# [-0.2, 0.9836, 0.3294]
 
 # Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 # Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='T_L_mu', threshold=20, return_distribution=True)
