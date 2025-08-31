@@ -44,7 +44,8 @@ elif policy_type == "gaussian_rbf":
     if storage_dynamics:
         from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf import eval_func, n_dim, n_basis
     else:
-        from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf_noStorageDynamics import eval_func, n_dim, n_basis
+        raise 
+        #from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf_noStorageDynamics import eval_func, n_dim, n_basis
     from src.policies import GaussianRBFPolicy
     policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 elif policy_type == "regression":
@@ -102,7 +103,7 @@ borg_settings = {
 borg = Borg(**borg_settings)
 
 ##### Parallel borg - solvempi #########################################################
-exp_folder = f"stage1_nowcast_{policy.name}_{job_id}"
+exp_folder = f"dps_{policy.name}_{job_id}"
 pn.mkdir(f"outputs/{exp_folder}")
 pn.outputs.mkdir(f"{exp_folder}/runtimes")
 #pn.outputs.mkdir(f"{exp_folder}/checkpoints")
