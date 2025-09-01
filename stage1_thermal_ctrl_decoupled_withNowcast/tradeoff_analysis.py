@@ -10,16 +10,16 @@ pn.chdir()
 import clt
 
 policy = "GaussianRBFPolicy"
-job_id = "135218"
-folder = f"stage1_nowcast_{policy}_{job_id}"
+job_id = "138146" #"138146"
+folder = "dps_GaussianRBFPolicy_138146"  #f"stage1_nowcast_{policy}_{job_id}"
 df_met = clt.borg.read_metric_files(pn.outputs.get(folder) / "metrics")
 df_ref = clt.borg.read_ref(pn.outputs.get(folder) / "borg.ref")
 
 #%% Plot convergence
-job_id = "135218"
+job_id = "138146"
 policies = ["GaussianRBFPolicy"]#, "RegressionPolicy", "CubicRBFPolicy", "GeneralizedPiecewiseLinearPolicy"]
 for policy in policies:
-    folder = f"stage1_nowcast_{policy}_{job_id}"
+    folder = "dps_GaussianRBFPolicy_138146"  #f"stage1_nowcast_{policy}_{job_id}"
     df_met = clt.borg.read_metric_files(pn.outputs.get(folder) / "metrics")
     df_met.plot()
 
