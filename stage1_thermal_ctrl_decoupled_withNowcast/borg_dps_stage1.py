@@ -44,8 +44,8 @@ elif policy_type == "gaussian_rbf":
     if storage_dynamics:
         from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf import eval_func, n_dim, n_basis
     else:
-        raise 
-        #from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf_noStorageDynamics import eval_func, n_dim, n_basis
+        #raise 
+        from stage1_thermal_ctrl_decoupled_withNowcast.lstm_thermal_ctrl_gaussian_rbf_noStorageDynamics import eval_func, n_dim, n_basis
     from src.policies import GaussianRBFPolicy
     policy = GaussianRBFPolicy(n_dim=n_dim, n_basis=n_basis)
 elif policy_type == "regression":

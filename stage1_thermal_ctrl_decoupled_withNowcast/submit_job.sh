@@ -2,7 +2,7 @@
 #SBATCH --job-name=noSdyn               # Job name
 #SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_%j.out   # Standard output log file with job ID
 #SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_%j.err    # Standard error log file with job ID
-#SBATCH --nodes=4                           # Number of nodes to use
+#SBATCH --nodes=10                           # Number of nodes to use
 #SBATCH --ntasks-per-node=40                # Number of tasks (processes) per node
 #SBATCH --exclude=c0004                      # Exclude node 0004
 #SBATCH --exclusive                        # Use the node exclusively for this job
