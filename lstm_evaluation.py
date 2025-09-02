@@ -104,6 +104,8 @@ ax.set_title('TempLSTM1')
 ax.set_xlabel('Features')
 ax.set_ylabel('Normalized Delta NLL')
 ax.tick_params(axis='x', rotation=0)
+ax.text(-0.1, 1.1, "a)", transform=ax.transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+
 
 # Plot df_fi2 (TempLSTM2) - sorted by delta_nll
 df_fi2_sorted = df_fi2.sort_values('delta_nll', ascending=False)
@@ -117,6 +119,8 @@ ax.bar(df_fi2_norm['x_var'], df_fi2_norm['delta_nll'], width=bar_width, color='#
 ax.set_title('TempLSTM2')
 ax.set_xlabel('Features')
 ax.tick_params(axis='x', rotation=0)
+ax.text(-0.1, 1.1, "b)", transform=ax.transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+
 
 # Plot df_fi_salt (SalinityLSTM) - sorted by delta_nll
 df_fi_salt_sorted = df_fi_salt.sort_values('delta_nll', ascending=False)
@@ -130,6 +134,7 @@ ax.bar(df_fi_salt_norm['x_var'], df_fi_salt_norm['delta_nll'], width=bar_width, 
 ax.set_title('SalinityLSTM')
 ax.set_xlabel('Features')
 ax.tick_params(axis='x', rotation=0)
+ax.text(-0.1, 1.1, "c)", transform=ax.transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
 
 # Adjust layout to prevent overlap
 plt.tight_layout()
@@ -217,8 +222,14 @@ ax.set_ylim([60, 88])
 ax.set_ylabel("$Saltfront$ (RM)")
 ax.set_xlabel(f"Date ({year})")
 
+# Add subplot labels
+axes[0, 0].text(-0.3, 1, "a)", transform=axes[0, 0].transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+axes[1, 0].text(-0.3, 1, "b)", transform=axes[1, 0].transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+axes[0, 1].text(-0.3, 1, "c)", transform=axes[0, 1].transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+axes[1, 1].text(-0.3, 1, "d)", transform=axes[1, 1].transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+
 plt.tight_layout()
-#clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg", dpi=500)
+clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg", dpi=500)
 plt.show()
 
 
