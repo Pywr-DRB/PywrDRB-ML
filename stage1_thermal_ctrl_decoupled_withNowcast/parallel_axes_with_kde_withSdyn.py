@@ -253,12 +253,14 @@ df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
 df_rulebased = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv", parse_dates=True, index_col=[0])
 df_noCtrl = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_noCtrl.csv", parse_dates=True, index_col=[0])
+df_hist = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_hist.csv", parse_dates=True, index_col=[0])
 
 df_res = pd.DataFrame(index=df_rulebased.index)
 df_res["historical"] = database["rel_thermal"]
 df_res["rule_based"] = df_rulebased["thermal_releases"]
 df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
 df_res["Tmax (rule_based)"] = df_rulebased["T_L_mu"]
+df_res["Tmax (hist)"] = df_hist["T_L_mu"]
 
 df_objs = pd.DataFrame()
 
@@ -388,12 +390,14 @@ for i, sol_idx in enumerate([47, 33, 49, 11]):
 database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
 df_rulebased = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv", parse_dates=True, index_col=[0])
 df_noCtrl = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_noCtrl.csv", parse_dates=True, index_col=[0])
+df_hist = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_hist.csv", parse_dates=True, index_col=[0])
 
 df_res = pd.DataFrame(index=df_rulebased.index)
 df_res["historical"] = database["rel_thermal"]
 df_res["rule_based"] = df_rulebased["thermal_releases"]
 df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
 df_res["Tmax (rule_based)"] = df_rulebased["T_L_mu"]
+df_res["Tmax (historic)"] = df_hist["T_L_mu"]
 
 for i, sol_idx in enumerate([47, 33, 49, 11]):
     df_rbf = pd.read_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_RBF{i+1}_{sol_idx}.csv", parse_dates=True, index_col=[0])
@@ -426,6 +430,7 @@ for yr in range(1979, 2024):
     ax1 = axes[0]
     ax1.plot(df_["Tmax (no_ctrl)"], ls="-", color=colors['no_ctrl'], label="Tmax (no_ctrl)")
     ax1.plot(df_["Tmax (rule_based)"], ls="-", color=colors['rule_based'], label="Tmax (rule_based)")
+    ax1.plot(df_["Tmax (historic)"], ls="-", color=colors['historic'], label="Tmax (historic)")
     for rbf_name in ["RBF-1", "RBF-2", "RBF-3", "RBF-4"]:
         ax1.plot(df_[f"Tmax ({rbf_name})"], ls="-", color=colors[f"{rbf_name}"], label=f"Tmax ({rbf_name})") #, color='dodgerblue'
     ax1.axhline(24, lw=1, c="k", ls=":")

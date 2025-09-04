@@ -144,7 +144,7 @@ def plot_parallel_coords_with_kde(
     return ax
 
 
-#%
+#%%
 import pathnavigator
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
@@ -167,15 +167,15 @@ df_highlight = pd.DataFrame()
 #                          "RBF-1\n(Jtubr=1.00)",
 #                          "RBF-2\n(Jtubr=0.98)",]
 
-# Without past three days [159 108]
-df_highlight["Jtubr"] = [0,        0.2942*3,  0.4994*3, 0.9999,  0.9279,  2.1774,  3.0]
-df_highlight["-Jrel"] = [-0.2375, -0.3185,   -0.3583,  -0.3778, -0.4524, -0.6585, -0.4229]
-df_highlight["Jadd"] =  [1,        0.916,     0.764,    0.742,   0.7684,  0.7405,  0.5146]
+# Without past three days [159 108] fuck this
+df_highlight["Jtubr"] = [0,        0.4414*3,  0.4994*3, 0.9819,  1.0593,  2.1774,  3.0]
+df_highlight["-Jrel"] = [-0.2018, -0.2161,   -0.4692,  -0.3202, -0.225, -0.6585, -0.4229]
+df_highlight["Jadd"] =  [1,        0.9785,     0.9499,    0.742,   0.9199,  0.7405,  0.5146]
 df_highlight["label"] = ["no_ctrl", "rule_based", "historic\n(2010-2023)",
-                         "RBF-1\n(Jtubr=1.0)", # 159
-                         "RBF-2\n(Jtubr=0.93)", # 108
-                         "RBF-3\n(Jrel=0.66)", # 106
-                         "RBF-4\n(Jadd=0.51)", # 11
+                         "RBF-better Jrel", # 37
+                         "RBF-better Jadd", # 108
+                         "RBF-best Jrel", # 106
+                         "RBF-best Jadd", # 11
                          ]
 cmap_highlights={
     'no_ctrl': 'k', 'rule_based': '#E41A1C',
@@ -200,9 +200,9 @@ zorder_highlights={
 
 for policy in ["GaussianRBFPolicy"]:#, "RegressionPolicy", "CubicRBFPolicy"]:#, "GeneralizedPiecewiseLinearPolicy"]:
     #policy = "GaussianRBFPolicy"
-    job_id = "135322" #"135218"
+    job_id = "138158" #"135322" #"135218"
 
-    df_ref = clt.borg.read_ref(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}/borg.ref"))
+    df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_GaussianRBFPolicy_{job_id}/borg.ref"))
     df_ref = df_ref[['obj3', 'obj1', 'obj2']]
     df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
     df_ref["Jtubr"] *= 3

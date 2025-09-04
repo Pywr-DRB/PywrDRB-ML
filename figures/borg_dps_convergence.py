@@ -10,8 +10,8 @@ pn.chdir()
 import clt
 
 policy = "GaussianRBFPolicy"
-job_id = "" # "138146" with storage dynamics
-folder = "dps_GaussianRBFPolicy_138146"  #f"stage1_nowcast_{policy}_{job_id}"
+job_id = "138158" # "138146" with storage dynamics
+folder = f"dps_GaussianRBFPolicy_{job_id}"  #f"stage1_nowcast_{policy}_{job_id}"
 df_met = clt.borg.read_metric_files(pn.outputs.get(folder) / "metrics")
 
 #%%

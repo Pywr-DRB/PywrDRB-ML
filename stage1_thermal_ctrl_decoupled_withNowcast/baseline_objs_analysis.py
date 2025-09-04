@@ -39,6 +39,13 @@ Jrel_noCtrl_arr = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, qua
 Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 
 # Jrel_noCtrl
+# Out[3]: 0.2018
+
+# Jadd_noCtrl
+# Out[4]: 1.0
+
+#old
+# Jrel_noCtrl
 # Out[5]: 0.2018  #0.2375
 
 # Jadd_noCtrl
@@ -72,7 +79,7 @@ def return_dps_func(*params):
         ml_model.update_until(date=current_date)
         # Complete the preparation for thermal control
         # Make a forecast for the current date
-        ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
+        ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
         # Make thermal release decision and record the thermal release
         thermal_release = policy.run(X=ml_model.forecast_T_L_mu_arr)
         thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
@@ -93,7 +100,7 @@ ml_model = WaterTempLSTMModel(
 ml_model.load_data(database)
 
 dates = pd.date_range(start="1979-01-01", end="2023-12-31", freq='D')
-for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
+for t, date in tqdm(enumerate(dates), desc="Running thermal control policy", disable=disable):
     Q_C = None  # Placeholder for controlled release
     Q_i = None  # Placeholder for inflow
     cannonsville_storage_pct = None  # Placeholder for storage percentage
@@ -104,21 +111,13 @@ for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
         thermal_release = 0
 
     # Update data in the ml_model for the next step(s) model update.
-    t = ml_model.t
     ml_model.Q_C[t] += thermal_release
-    ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
     Q_C = ml_model.Q_C[t]
-    cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t]
     try:
         ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
         if ml_model.debug:
             print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
-    try:
-        ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.cannonsville_storage_pct_lstm_var_name)] = cannonsville_storage_pct
-    except ValueError:
-        if ml_model.debug:
-            print(f"Warning: '{ml_model.cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
     try:
         ml_model.X_2[t, ml_model.x_vars_2.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
@@ -127,25 +126,34 @@ for date in tqdm(dates, desc="Running thermal control policy", disable=disable):
 
     # Record
     ml_model.remained_bank_amount -= thermal_release
-    ml_model.records["thermal_releases"][ml_model.t] = thermal_release
-    ml_model.records["remained_bank_amounts"][ml_model.t] = ml_model.remained_bank_amount
+    ml_model.records["thermal_releases"][t] = thermal_release
+    ml_model.records["remained_bank_amounts"][t] = ml_model.remained_bank_amount
 
 # Update the model until the end of the simulation period
 ml_model.update_until(date="2024-01-01")
 
 #%%
-df = pd.DataFrame(ml_model.records, index=ml_model.dates)
+df = pd.DataFrame(ml_model.records, index=ml_model.dates)#.loc["2010": ,:]
 df.to_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv")
 
 Jrel = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
 Jadd = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
 Jtubr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
 
-
 Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 Jtubr_arr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
+# Jrel
+# Out[10]: 0.2161  (if post 2010: 0.4565)
+
+# Jadd
+# Out[11]: 0.9785 (if post 2010: 0.5605)
+
+# Jtubr
+# Out[12]: 0.4414 (if post 2010: 0.1605)
+
+# old
 # Jrel
 # new, no storage, org
 # Out[5]: 0.2136, 0.2161 #0.3185
@@ -187,7 +195,7 @@ ml_model = WaterTempLSTMModel(
 ml_model.load_data(database)
 
 dates = pd.date_range(start="1979-01-01", end="2023-12-31", freq='D')
-for date in tqdm(dates, desc="Running historic thermal release", disable=disable):
+for t, date in tqdm(enumerate(dates), desc="Running historic thermal release", disable=disable):
     Q_C = None  # Placeholder for controlled release
     Q_i = None  # Placeholder for inflow
     cannonsville_storage_pct = None  # Placeholder for storage percentage
@@ -198,21 +206,13 @@ for date in tqdm(dates, desc="Running historic thermal release", disable=disable
         thermal_release = 0
 
     # Update data in the ml_model for the next step(s) model update.
-    t = ml_model.t
     ml_model.Q_C[t] += thermal_release
-    ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - thermal_release)/ 95700 * 100  # Update the storage percentage based on the thermal release
     Q_C = ml_model.Q_C[t]
-    cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t]
     try:
         ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
         if ml_model.debug:
             print(f"Warning: '{ml_model.Q_C_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
-    try:
-        ml_model.X_1[t, ml_model.x_vars_1.index(ml_model.cannonsville_storage_pct_lstm_var_name)] = cannonsville_storage_pct
-    except ValueError:
-        if ml_model.debug:
-            print(f"Warning: '{ml_model.cannonsville_storage_pct_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
     try:
         ml_model.X_2[t, ml_model.x_vars_2.index(ml_model.Q_C_lstm_var_name)] = Q_C
     except ValueError:
@@ -221,8 +221,8 @@ for date in tqdm(dates, desc="Running historic thermal release", disable=disable
 
     # Record
     ml_model.remained_bank_amount -= thermal_release
-    ml_model.records["thermal_releases"][ml_model.t] = thermal_release
-    ml_model.records["remained_bank_amounts"][ml_model.t] = ml_model.remained_bank_amount
+    ml_model.records["thermal_releases"][t] = thermal_release
+    ml_model.records["remained_bank_amounts"][t] = ml_model.remained_bank_amount
 
 # Update the model until the end of the simulation period
 ml_model.update_until(date="2024-01-01")
@@ -235,10 +235,18 @@ Jrel_hist = compute_reliability(df_hist, col="T_L_mu", threshold=24, quantile=0.
 Jadd_hist = compute_max_annual_accumulated_degree_days(df_hist, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
 Jtubr_hist = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
 
-
 Jrel_hist_arr = compute_reliability(df_hist, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 Jadd_hist_arr = compute_max_annual_accumulated_degree_days(df_hist, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 Jtubr_hist_arr = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
+
+# Jrel_hist
+# Out[20]: 0.4692 (if all: 0.1962)
+
+# Jadd_hist
+# Out[21]: 0.5614 (if all: 1)
+
+# Jtubr_hist
+# Out[22]: 0.4994 (if all: 0.4994)
 
 # Jrel_hist
 # Out[7]: 0.4556 #0.3583
@@ -249,6 +257,7 @@ Jtubr_hist_arr = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_ban
 # Jtubr_hist
 # Out[9]: 0.4994 #0.4994
 
+#%%
 fig, ax = plt.subplots()
 database.groupby(database.index.year).sum().loc[2005:2024, ["rel_thermal"]].plot(kind='bar', legend=False, ax=ax)
 ax.axhline(1620, c="k")
@@ -256,37 +265,37 @@ ax.set_xlabel("Year")
 ax.set_ylabel("Thermal release (MG)")
 plt.tight_layout()
 plt.show()
-#%% Plot Histograms
-# Plot histogram for Jrel
-fig, ax = plt.subplots()
-ax.hist(Jrel_noCtrl_arr, bins=30, alpha=0.7, edgecolor='black', label='No ctrl')
-ax.hist(Jrel_arr, bins=30, alpha=0.7, edgecolor='black', label='Rule-based ctrl')
-ax.hist(Jrel_hist_arr, bins=30, alpha=0.7, edgecolor='black', label='Historical ctrl')
-ax.set_xlabel('JRel Values')
-ax.set_ylabel('Frequency')
-ax.grid(True, alpha=0.3)
-ax.axvline(Jrel_noCtrl, color='red', linestyle='--', label=f'Jrel (no ctrl): {Jrel_noCtrl:.4f}')
-ax.axvline(Jrel, color='red', linestyle=':', label=f'Jrel (rule-based): {Jrel:.4f}     ')
-ax.axvline(Jrel_hist, color='red', linestyle='-.', label=f'Jrel (historical): {Jrel_hist:.4f}')
-ax.legend(loc = "upper right", frameon=False)
-ax.set_xlim([0, 1])
-plt.tight_layout()
-plt.show()
-#%%
-# Plot histogram for Jadd_noCtrl_arr
-fig, ax = plt.subplots()
-ax.hist(Jadd_noCtrl_arr, bins=30, alpha=0.7, edgecolor='black', label='No ctrl')
-ax.hist(Jadd_arr, bins=30, alpha=0.7, edgecolor='black', label='Rule-based ctrl')
-ax.hist(Jadd_hist_arr, bins=30, alpha=0.7, edgecolor='black', label='Historical ctrl')
-ax.set_xlabel('JADD Values')
-ax.set_ylabel('Frequency')
-ax.grid(True, alpha=0.3)
-ax.axvline(Jadd_noCtrl*132.4373, color='red', linestyle='--', label=f'Jadd (no ctrl): {Jadd_noCtrl*132.4373:.1f}')
-ax.axvline(Jadd*132.4373, color='red', linestyle=':', label=f'Jadd (rule-based): {Jadd*132.4373:.1f}     ')
-ax.axvline(Jadd_hist*132.4373, color='red', linestyle='-.', label=f'Jadd (historical): {Jadd_hist*132.4373:.1f}')
-ax.legend()
-ax.set_xlim([0, 270])
-plt.tight_layout()
-plt.show()
+# #%% Plot Histograms
+# # Plot histogram for Jrel
+# fig, ax = plt.subplots()
+# ax.hist(Jrel_noCtrl_arr, bins=30, alpha=0.7, edgecolor='black', label='No ctrl')
+# ax.hist(Jrel_arr, bins=30, alpha=0.7, edgecolor='black', label='Rule-based ctrl')
+# ax.hist(Jrel_hist_arr, bins=30, alpha=0.7, edgecolor='black', label='Historical ctrl')
+# ax.set_xlabel('JRel Values')
+# ax.set_ylabel('Frequency')
+# ax.grid(True, alpha=0.3)
+# ax.axvline(Jrel_noCtrl, color='red', linestyle='--', label=f'Jrel (no ctrl): {Jrel_noCtrl:.4f}')
+# ax.axvline(Jrel, color='red', linestyle=':', label=f'Jrel (rule-based): {Jrel:.4f}     ')
+# ax.axvline(Jrel_hist, color='red', linestyle='-.', label=f'Jrel (historical): {Jrel_hist:.4f}')
+# ax.legend(loc = "upper right", frameon=False)
+# ax.set_xlim([0, 1])
+# plt.tight_layout()
+# plt.show()
+# #%%
+# # Plot histogram for Jadd_noCtrl_arr
+# fig, ax = plt.subplots()
+# ax.hist(Jadd_noCtrl_arr, bins=30, alpha=0.7, edgecolor='black', label='No ctrl')
+# ax.hist(Jadd_arr, bins=30, alpha=0.7, edgecolor='black', label='Rule-based ctrl')
+# ax.hist(Jadd_hist_arr, bins=30, alpha=0.7, edgecolor='black', label='Historical ctrl')
+# ax.set_xlabel('JADD Values')
+# ax.set_ylabel('Frequency')
+# ax.grid(True, alpha=0.3)
+# ax.axvline(Jadd_noCtrl*132.4373, color='red', linestyle='--', label=f'Jadd (no ctrl): {Jadd_noCtrl*132.4373:.1f}')
+# ax.axvline(Jadd*132.4373, color='red', linestyle=':', label=f'Jadd (rule-based): {Jadd*132.4373:.1f}     ')
+# ax.axvline(Jadd_hist*132.4373, color='red', linestyle='-.', label=f'Jadd (historical): {Jadd_hist*132.4373:.1f}')
+# ax.legend()
+# ax.set_xlim([0, 270])
+# plt.tight_layout()
+# plt.show()
 
 
