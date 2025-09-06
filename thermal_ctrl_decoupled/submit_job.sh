@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=wSdyn               # Job name
-#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_wSdyn_%j.out   # Standard output log file with job ID
-#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_wSdyn_%j.err    # Standard error log file with job ID
-#SBATCH --nodes=8                           # Number of nodes to use
+#SBATCH --job-name=final               # Job name
+#SBATCH --output=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_final_%j.out   # Standard output log file with job ID
+#SBATCH --error=/home/fs01/cl2769/Github/PywrDRB-ML/logs/dps_final_%j.err    # Standard error log file with job ID
+#SBATCH --nodes=6                           # Number of nodes to use
 #SBATCH --ntasks-per-node=40                # Number of tasks (processes) per node
 #SBATCH --exclude=c0004                      # Exclude node 0004
 #SBATCH --exclusive                        # Use the node exclusively for this job
@@ -26,7 +26,7 @@ export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
 # Define arrays for policy types and borg seeds
 policy_types=("gaussian_rbf")  # Add your policy types here "regression" "piecewise" "cubic_rbf"
-borg_seeds=(1 2 3 4 5)  # Add your borg seeds here
+borg_seeds=(6 7 8 9 10 1 2 3 4 5)  # Add your borg seeds here
 #6 7 8 9 10
 # Function to submit the job
 submit_job() {
