@@ -22,6 +22,8 @@ import torch
 import pathnavigator
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 pn = pathnavigator.create(root_dir)
@@ -182,6 +184,7 @@ for model_id in tqdm(model2_ids):
     cur_model_train.train_model()
 
 #%%
+# pip install "pyarrow<17,>=16"
 results = []
 for outer_fold in tqdm(crossval_folds):
     for inner_fold in outer_fold['inner_folds']:
@@ -257,7 +260,7 @@ r"""
 => 50 0.05 0 2
 """
 cross_vali_rmse = best_per_outer["test_rmse"].mean()
-# => 2.1328144146699892
+# => 2.9883578646193643
 #%% Test run
 # config_file = pn.models.get(f'{subfolder}/cfg/{model_id}.yml')
 

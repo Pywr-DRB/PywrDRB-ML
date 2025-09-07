@@ -7,6 +7,8 @@ import numpy as np
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 
@@ -189,6 +191,10 @@ Jrel_hist_arr = compute_reliability(df_hist, col="T_L_mu", threshold=24, quantil
 Jadd_hist_arr = compute_max_annual_accumulated_degree_days(df_hist, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 Jtubr_hist_arr = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
+
+Jrel_obs = compute_reliability(database , col="QobsTmax_T_L", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
+Jadd_obs = compute_max_annual_accumulated_degree_days(database , col='QobsTmax_T_L', threshold=20, only_summer_period=True, return_distribution=False)
+
 # Jrel_hist
 # Out[3]: 0.3769
 
@@ -197,6 +203,23 @@ Jtubr_hist_arr = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_ban
 
 # Jtubr_hist
 # Out[5]: 0.4994
+
+# If consider all periods
+# Jrel_hist
+# Out[11]: 0.2018
+
+# Jadd_hist
+# Out[12]: 1.0
+
+# Jtubr_hist
+# Out[13]: 0.4994
+
+# If calculate from hist data
+# Jrel_obs
+# Out[18]: 0.4353
+
+# Jadd_obs
+# Out[19]: 1.2668
 
 r"""
 fig, ax = plt.subplots()
