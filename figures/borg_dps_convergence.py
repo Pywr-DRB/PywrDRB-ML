@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import pathnavigator
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 pn = pathnavigator.create(root_dir)
@@ -10,7 +12,7 @@ pn.chdir()
 import clt
 
 policy = "GaussianRBFPolicy"
-job_id = "138158" # "138146" with storage dynamics
+job_id = "139181"
 folder = f"dps_GaussianRBFPolicy_{job_id}"  #f"stage1_nowcast_{policy}_{job_id}"
 df_met = clt.borg.read_metric_files(pn.outputs.get(folder) / "metrics")
 

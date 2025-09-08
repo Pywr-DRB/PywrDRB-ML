@@ -165,10 +165,11 @@ highlight_rows = [
     [0,        -0.2018, 1,        names[0]], # "no_ctrl"
     [0.4681*3, -0.516, 0.7794,   names[1]], # "rule_based"
     [0.4994*3, -0.3769, 0.5614,    names[2]], # "historic\n(2010-2023)"
-    [1.0104,   -0.6445, 0.8374,   names[3]], # "RBF-better Jrel" 28
-    [1.0494,   -0.5125, 0.8298,   names[4]], # "RBF-better Jadd" 57
-    [2.7564,   -0.9991, 0.5889,   names[5]], # "RBF-best Jrel" 79
-    [2.9802,   -0.9989, 0.5585,   names[6]], # "RBF-best Jadd" 74
+    #[0.4994*3, -0.4353, 1.2668,    names[2]], # "historic\n(2010-2023)"
+    [1.0026,   -0.6606, 0.8353,   names[3]], # "RBF-better Jrel" 28
+    [1.0488,   -0.5125, 0.8299,   names[4]], # "RBF-better Jadd" 68
+    [2.5986,   -0.9989, 0.6099,   names[5]], # "RBF-best Jrel" 20
+    [2.9688,   -0.9987, 0.5596,   names[6]], # "RBF-best Jadd" 51
 ]
 df_highlight = pd.DataFrame(highlight_rows, columns=["Jtubr", "-Jrel", "Jadd", "label"])
 
@@ -181,6 +182,7 @@ cmap_highlights={
     names[6]: "peru"
     }
 ls_highlights={
+    names[2]: ":",
     names[5]: "--",
     names[6]: "--"
     }
@@ -194,7 +196,7 @@ zorder_highlights={
     }
 
 policy ="GaussianRBFPolicy"
-job_id = "138925" 
+job_id = "139181" 
 
 df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 df_ref = df_ref[['obj3', 'obj1', 'obj2']]
@@ -229,6 +231,7 @@ plot_parallel_coords_with_kde(
     )
 #ax.set_title(policy)
 plt.tight_layout()
+clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_tradeoffs.jpg")
 plt.show()
 
 #%% Compare thermal release
@@ -253,8 +256,7 @@ df_res["Tmax (hist)"] = df_hist["T_L_mu"]
 
 df_objs = pd.DataFrame()
 
-sol_idx = 159 #11 #106 #108 #159 #              #24#, 155155 #
-for i, sol_idx in enumerate([28, 57, 76, 74]):
+for i, sol_idx in enumerate([28, 68, 20, 51]):
     params = df_ref.iloc[sol_idx, :-3]
     n_dim = 3  # Number of dimensions for the policy
     n_basis = 2  # Number of basis functions for the Gaussian RBF policy
@@ -367,13 +369,116 @@ df_res["historic"] = database["rel_thermal"]
 df_res["rule_based"] = df_rulebased["thermal_releases"]
 df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
 df_res["Tmax (rule_based)"] = df_rulebased["T_L_mu"]
-df_res["Tmax (historic)"] = database["QobsTmax_T_L"] #df_hist["T_L_mu"]
+df_res["Tmax (historic)"] = df_hist["T_L_mu"] #database["QobsTmax_T_L"]
 
-for i, sol_idx in enumerate([28, 57, 76, 74]):
+for i, sol_idx in enumerate([28, 68, 20, 51]):
     df_rbf = pd.read_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_{names[3+i]}_{sol_idx}.csv", parse_dates=True, index_col=[0])
     df_res[f"{names[3+i]}"] = df_rbf["thermal_releases"]
     df_res[f"Tmax ({names[3+i]})"] = df_rbf["T_L_mu"]
+#%%
+import matplotlib.gridspec as gridspec
 
+yr = 2020
+df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
+
+colors = {
+    'no_ctrl': 'k',
+    'rule_based': '#E41A1C',
+    'historic': "blue",
+    names[3]: "lime",
+    names[4]: "aquamarine",
+    names[5]: "saddlebrown",
+    names[6]: "peru"
+    }
+
+release_names = ['rule_based'] + names[3:] + ['historic']  # All release types you want to plot
+n_release_types = len(release_names)
+
+fig = plt.figure(figsize=(8, 1 * (n_release_types + 1)))
+gs = gridspec.GridSpec(8, 1, height_ratios=[1, 0.15, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3], hspace=0)
+
+# Top subplot: Tmax
+ax1 = fig.add_subplot(gs[0])
+ax1.plot(df_["Tmax (no_ctrl)"], ls="-", color=colors['no_ctrl'], label="Tmax (no_ctrl)")
+ax1.plot(df_["Tmax (rule_based)"], ls="-", color=colors['rule_based'], label="Tmax (rule_based)")
+#ax1.plot(df_["Tmax (historic)"], ls="-", color=colors['historic'], label="Tmax (historic)")
+for rbf_name in names[3:]:
+    ax1.plot(df_[f"Tmax ({rbf_name})"], ls="-", color=colors[f"{rbf_name}"], label=f"Tmax ({rbf_name})")
+ax1.axhline(24, lw=1, c="k", ls=":")
+ax1.set_ylabel("$T_{max}$ (°C)")
+ax1.grid(True, axis='y', lw=0.3, ls="--")
+#ax1.tick_params(axis='x', direction='in')
+ax1.set_ylim([18, 27])
+ax1.set_yticks([20, 24])
+ax1.legend(frameon=False, loc='center left', bbox_to_anchor=(1, 0.5))
+custom_ticks = pd.to_datetime([
+    f"{yr}-06-01", f"{yr}-06-15", f"{yr}-07-01", f"{yr}-07-15",
+    f"{yr}-08-01", f"{yr}-08-15", f"{yr}-09-01"
+])
+ax1.set_xticks(custom_ticks)
+ax1.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
+
+ax1.text(
+    -0.12, 1, "(a)",
+    transform=ax1.transAxes,
+    ha="left", va="top",
+    fontsize=12, fontweight="bold"
+)
+
+# Bottom subplots: releases
+for i, release_name in enumerate(release_names):
+    ax = fig.add_subplot(gs[2+i])
+    
+    if release_name == 'historic':
+        non_zero_mask = df_["historic"] != 0
+        x_vals = df_.index[non_zero_mask]
+        y_vals = df_["historic"][non_zero_mask]
+        if not x_vals.empty:
+            markerline, stemlines, baseline = ax.stem(
+                x_vals, y_vals,
+                linefmt="k-", markerfmt="ko", basefmt=" ", label="obs"
+            )
+            markerline.set_color(colors['historic'])
+            stemlines.set_color(colors['historic'])
+            plt.setp(stemlines, lw=1, zorder=80)
+            plt.setp(markerline, ms=4, zorder=80)
+            plt.setp(baseline, visible=False)
+            ax.set_xlim(df_.index[0], df_.index[-1])
+        else:
+            ax.plot([], [], marker='o', color='k', linestyle='None', label="historic")
+    else:
+        ax.bar(df_.index, df_[release_name], width=1.0, color=colors[release_name], label=release_name, alpha=0.6, zorder=4)
+    ax.grid(True, axis='y', lw=0.3, ls="--")
+    #ax.set_ylabel(f"{release_name}\nThermal release (mgd)")
+    ax.set_ylim([0, 160])
+    ax.legend(frameon=False, loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.tick_params(axis='x', direction='in')
+    ax.set_xticklabels([])
+    
+    if i == 0:
+        ax.text(
+            -0.12, 1, "(b)",
+            transform=ax.transAxes,
+            ha="left", va="top",
+            fontsize=12, fontweight="bold"
+        )
+    
+    if i == 2:
+        ax.set_ylabel("Thermal release (mgd)             ")
+
+ax.set_xlabel(f"Date (Year={yr})")
+custom_ticks = pd.to_datetime([
+    f"{yr}-06-01", f"{yr}-06-15", f"{yr}-07-01", f"{yr}-07-15",
+    f"{yr}-08-01", f"{yr}-08-15", f"{yr}-09-01"
+])
+ax.set_xticks(custom_ticks)
+ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
+
+plt.tight_layout()
+pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
+clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_thermal_release_{yr}.jpg")
+#clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
+plt.show()
 #%%
 yr = 2023
 for yr in range(1979, 2024):
@@ -464,9 +569,11 @@ for yr in range(1979, 2024):
         frameon=False
     )
 
+    pos1 = axes[1].get_position()
+    axes[1].set_position([pos1.x0, pos1.y0 - 0.07, pos1.width, pos1.height])  # Move second subplot down for hspace
     plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for external legend
-    pn.outputs.mkdir(f"stage1_nowcast_{policy}_{job_id}/figures/RBFs")
-    #clt.fig.savefig(fig, pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
+    pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
+    clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
     plt.show()
 
 #%%

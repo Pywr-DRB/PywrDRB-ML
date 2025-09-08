@@ -3,25 +3,26 @@ import pathnavigator
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
-pn.mkdir("outputs/coupled_pywrdrb")
-pn.sc.add("wd", pn.get("outputs/coupled_pywrdrb"), overwrite=True)
+pn.mkdir("outputs/coupled_pywrdrb_analysis")
 
 import pywrdrb
 
 #%% Create coupled Pywr-DRB model
 inflow_type = 'pub_nhmv10_BC_withObsScaled'
-model_filename = str(pn.sc.wd / f"{inflow_type}.json")
-output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
+model_filename = str(pn.outputs.coupled_pywrdrb_analysis.get() / f"{inflow_type}.json")
+output_filename = str(pn.outputs.coupled_pywrdrb_analysis.get() / f"{inflow_type}.hdf5")
 
 temp_options = {
     "ml_model_type": "lstm",
     "PywrDRB_ML_plugin_path": str(pn.get()),
-    "model1": str(pn.models.get() / r"TempLSTM1_comparison\TempLSTM1_Qc.yml"),
-    "model2": str(pn.models.get() / r"TempLSTM2_comparison\TempLSTM2_Qc.yml"),
+    "model1": str(pn.models.get() / r"TempLSTM\TempLSTM1.yml"),
+    "model2": str(pn.models.get() / r"TempLSTM\TempLSTM2.yml"),
     "Tavg2Tmax_coefs": str(pn.get() / "models/TempLSTM/Tavg2Tmax_coefs.json"),
     "start_date": "1979-01-01",
     "end_date": "2023-12-31",
@@ -37,7 +38,7 @@ temp_options = {
 salinity_options = {
     "ml_model_type": "lstm",
     "PywrDRB_ML_plugin_path": pn.get_str(),
-    "model_salinity": str(pn.models.get() / r"SalinityLSTM_comparison\SalinityLSTM_1d_7d_avg.yml"),
+    "model_salinity": str(pn.models.get() / r"SalinityLSTM\SalinityLSTM.yml"),
     "start_date": "1979-01-01",
     "end_date": "2023-12-31",
     "Q_Trenton_lstm_var_name": "Q_Trenton_bc",
@@ -48,7 +49,7 @@ salinity_options = {
 
 mb = pywrdrb.ModelBuilder(
     inflow_type=inflow_type,
-    start_date="1979-01-01",
+    start_date="1978-01-01",
     end_date="2023-12-31",
     options={
         "temperature_model": temp_options,
@@ -69,9 +70,13 @@ recorder = pywrdrb.OutputRecorder(
 stats = model.run()
 
 #%% Load the output data
-inflow_type = 'pub_nhmv10_BC_withObsScaled'
-model_filename = str(pn.sc.wd / f"{inflow_type}.json")
-output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
+# inflow_type = 'pub_nhmv10_BC_withObsScaled'
+# model_filename = str(pn.sc.wd / f"{inflow_type}.json")
+# output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
+
+name = "coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_with_ctrl"
+pn.models.mkdir(name)
+model_filename = str(pn.models.get(name) / f"{name}.json")
 
 data = pywrdrb.Data()
 results_sets = [
@@ -298,7 +303,7 @@ ax_joint.text(57, 24.1, "24.0", rotation=0, ha='center', va='bottom', fontsize=1
 ax_joint.set_xlim([55, 93])
 ax_joint.set_ylim([-0.5, 30])
 plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "tmax_and_saltfront_dynamics.jpg")
+#clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "tmax_and_saltfront_dynamics.jpg")
 plt.show()
 
 
