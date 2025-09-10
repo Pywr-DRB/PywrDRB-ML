@@ -13,7 +13,7 @@ def plot_parallel_coords_with_kde(
         cmap_kdes={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'},
         cmap_lines={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'},
         cmap_highlights={
-            'no_ctrl': 'k', 'rule_based': '#E41A1C',
+            'No control': 'k', 'Rule-based': '#E41A1C',
             'historic\n(2010-2023)': "blue",
             "RBF (utilize\n1620 mgd\nbank size)": "lime",
             "RBF-1\n(Jtubr=1.00)": "lime",
@@ -158,13 +158,14 @@ import clt
 
 df_highlight = pd.DataFrame()
 
-names = ["no_ctrl", "rule_based", "historic\n(2010-2023)", 
+names = ["No control", "Rule-based", "historic\n(2010-2023)", 
          "RBF-better Jrel", "RBF-better Jadd", "RBF-best Jrel", "RBF-best Jadd"]
                          
 highlight_rows = [
-    [0,        -0.2018, 1,        names[0]], # "no_ctrl"
-    [0.4681*3, -0.516, 0.7794,   names[1]], # "rule_based"
-    [0.4994*3, -0.3769, 0.5614,    names[2]], # "historic\n(2010-2023)"
+    [0,        -0.2018, 1,        names[0]], # "No control"
+    [0.4681*3, -0.516, 0.7794,   names[1]], # "Rule-based"
+    [1, -0,5236, ]
+    #[0.4994*3, -0.3769, 0.5614,    names[2]], # "historic\n(2010-2023)"
     #[0.4994*3, -0.4353, 1.2668,    names[2]], # "historic\n(2010-2023)"
     [1.0026,   -0.6606, 0.8353,   names[3]], # "RBF-better Jrel" 28
     [1.0488,   -0.5125, 0.8299,   names[4]], # "RBF-better Jadd" 68
@@ -249,9 +250,9 @@ df_hist = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_hist.csv", parse_da
 
 df_res = pd.DataFrame(index=df_rulebased.index)
 df_res["historic"] = database["rel_thermal"]
-df_res["rule_based"] = df_rulebased["thermal_releases"]
-df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
-df_res["Tmax (rule_based)"] = df_rulebased["T_L_mu"]
+df_res["Rule-based"] = df_rulebased["thermal_releases"]
+df_res["Tmax (No control)"] = df_noCtrl["T_L_mu"]
+df_res["Tmax (Rule-based)"] = df_rulebased["T_L_mu"]
 df_res["Tmax (hist)"] = df_hist["T_L_mu"]
 
 df_objs = pd.DataFrame()
@@ -366,9 +367,9 @@ df_hist = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_hist.csv", parse_da
 
 df_res = pd.DataFrame(index=df_rulebased.index)
 df_res["historic"] = database["rel_thermal"]
-df_res["rule_based"] = df_rulebased["thermal_releases"]
-df_res["Tmax (no_ctrl)"] = df_noCtrl["T_L_mu"]
-df_res["Tmax (rule_based)"] = df_rulebased["T_L_mu"]
+df_res["Rule-based"] = df_rulebased["thermal_releases"]
+df_res["Tmax (No control)"] = df_noCtrl["T_L_mu"]
+df_res["Tmax (Rule-based)"] = df_rulebased["T_L_mu"]
 df_res["Tmax (historic)"] = df_hist["T_L_mu"] #database["QobsTmax_T_L"]
 
 for i, sol_idx in enumerate([28, 68, 20, 51]):
@@ -382,8 +383,8 @@ yr = 2020
 df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
 
 colors = {
-    'no_ctrl': 'k',
-    'rule_based': '#E41A1C',
+    'No control': 'k',
+    'Rule-based': '#E41A1C',
     'historic': "blue",
     names[3]: "lime",
     names[4]: "aquamarine",
@@ -391,7 +392,7 @@ colors = {
     names[6]: "peru"
     }
 
-release_names = ['rule_based'] + names[3:] + ['historic']  # All release types you want to plot
+release_names = ['Rule-based'] + names[3:] + ['historic']  # All release types you want to plot
 n_release_types = len(release_names)
 
 fig = plt.figure(figsize=(8, 1 * (n_release_types + 1)))
@@ -399,8 +400,8 @@ gs = gridspec.GridSpec(8, 1, height_ratios=[1, 0.15, 0.3, 0.3, 0.3, 0.3, 0.3, 0.
 
 # Top subplot: Tmax
 ax1 = fig.add_subplot(gs[0])
-ax1.plot(df_["Tmax (no_ctrl)"], ls="-", color=colors['no_ctrl'], label="Tmax (no_ctrl)")
-ax1.plot(df_["Tmax (rule_based)"], ls="-", color=colors['rule_based'], label="Tmax (rule_based)")
+ax1.plot(df_["Tmax (No control)"], ls="-", color=colors['No control'], label="Tmax (No control)")
+ax1.plot(df_["Tmax (Rule-based)"], ls="-", color=colors['Rule-based'], label="Tmax (Rule-based)")
 #ax1.plot(df_["Tmax (historic)"], ls="-", color=colors['historic'], label="Tmax (historic)")
 for rbf_name in names[3:]:
     ax1.plot(df_[f"Tmax ({rbf_name})"], ls="-", color=colors[f"{rbf_name}"], label=f"Tmax ({rbf_name})")
@@ -436,7 +437,7 @@ for i, release_name in enumerate(release_names):
         if not x_vals.empty:
             markerline, stemlines, baseline = ax.stem(
                 x_vals, y_vals,
-                linefmt="k-", markerfmt="ko", basefmt=" ", label="obs"
+                linefmt="k-", markerfmt="ko", basefmt=" ", label="Obs"
             )
             markerline.set_color(colors['historic'])
             stemlines.set_color(colors['historic'])
@@ -476,8 +477,9 @@ ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
 
 plt.tight_layout()
 pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
-clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_thermal_release_{yr}.jpg")
-#clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
+clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.jpg")
+#clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_thermal_release_{yr}_with_hist.jpg")
+###clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
 plt.show()
 #%%
 yr = 2023
@@ -485,8 +487,8 @@ for yr in range(1979, 2024):
     df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
 
     colors = {
-        'no_ctrl': 'k',
-        'rule_based': '#E41A1C',
+        'No control': 'k',
+        'Rule-based': '#E41A1C',
         'historic': "blue",
         names[3]: "lime",
         names[4]: "aquamarine",
@@ -503,8 +505,8 @@ for yr in range(1979, 2024):
 
     # ----------------- Top subplot -----------------
     ax1 = axes[0]
-    ax1.plot(df_["Tmax (no_ctrl)"], ls="-", color=colors['no_ctrl'], label="Tmax (no_ctrl)")
-    ax1.plot(df_["Tmax (rule_based)"], ls="-", color=colors['rule_based'], label="Tmax (rule_based)")
+    ax1.plot(df_["Tmax (No control)"], ls="-", color=colors['No control'], label="Tmax (No control)")
+    ax1.plot(df_["Tmax (Rule-based)"], ls="-", color=colors['Rule-based'], label="Tmax (Rule-based)")
     ax1.plot(df_["Tmax (historic)"], ls="-", color=colors['historic'], label="Tmax (historic)")
     for rbf_name in names[3:]:
         ax1.plot(df_[f"Tmax ({rbf_name})"], ls="-", color=colors[f"{rbf_name}"], label=f"Tmax ({rbf_name})") #, color='dodgerblue'
@@ -539,10 +541,10 @@ for yr in range(1979, 2024):
         # Add a dummy invisible point just to include legend entry
         ax2.plot([], [], marker='o', color='k', linestyle='None', label="historic")
 
-    # 5. rbf and rule_based as bars
+    # 5. rbf and Rule-based as bars
     for rbf_name, zorder in zip(names[3:], [50, 60, 40, 30]):
         ax2.bar(df_.index, df_[f"{rbf_name}"], width=1.0, color=colors[f"{rbf_name}"], label=f"{rbf_name}", alpha=0.6, zorder=4) # color='dodgerblue'
-    ax2.bar(df_.index, df_["rule_based"], width=1.0, color=colors['rule_based'], label="rule_based", alpha=0.6, zorder=70)
+    ax2.bar(df_.index, df_["Rule-based"], width=1.0, color=colors['Rule-based'], label="Rule-based", alpha=0.6, zorder=70)
 
     ax2.grid(True, axis='y', lw=0.3, ls="--")
     ax2.set_ylabel("Thermal release (mgd)")
@@ -592,8 +594,8 @@ for rbf_name in ["RBF-1", "RBF-2", "RBF-3", "RBF-4"]:
 
         # ----------------- Top subplot -----------------
         ax1 = axes[0]
-        ax1.plot(df_["Tmax (no_ctrl)"], ls="-", color='red', label="Tmax (no_ctrl)")
-        ax1.plot(df_["Tmax (rule_based)"], ls="-", color='chocolate', label="Tmax (rule_based)")
+        ax1.plot(df_["Tmax (No control)"], ls="-", color='red', label="Tmax (No control)")
+        ax1.plot(df_["Tmax (Rule-based)"], ls="-", color='chocolate', label="Tmax (Rule-based)")
         ax1.plot(df_[f"Tmax ({rbf_name})"], ls="-", color='dodgerblue', label=f"Tmax ({rbf_name})")
         ax1.axhline(24, lw=1, c="k", ls=":")
         ax1.set_ylabel("$T_{max}$ (°C)")
@@ -624,9 +626,9 @@ for rbf_name in ["RBF-1", "RBF-2", "RBF-3", "RBF-4"]:
             # Add a dummy invisible point just to include legend entry
             ax2.plot([], [], marker='o', color='k', linestyle='None', label="historic")
 
-        # 5. rbf and rule_based as bars
+        # 5. rbf and Rule-based as bars
         ax2.bar(df_.index, df_[f"{rbf_name}"], width=1.0, color='dodgerblue', label=f"{rbf_name}", alpha=0.6, zorder=4)
-        ax2.bar(df_.index, df_["rule_based"], width=1.0, color='chocolate', label="rule_based", alpha=0.6, zorder=2)
+        ax2.bar(df_.index, df_["Rule-based"], width=1.0, color='chocolate', label="Rule-based", alpha=0.6, zorder=2)
 
         ax2.grid(True, axis='y', lw=0.3, ls="--")
         ax2.set_ylabel("Thermal release (mgd)")
@@ -701,8 +703,8 @@ fig, axes = plt.subplots(
 )
 
 ax = axes[0]
-# Top subplot: Tmax (no_ctrl)
-ax.plot(df_["Tmax (no_ctrl)"], ls="-", color='grey', label="Tmax (no_ctrl)")
+# Top subplot: Tmax (No control)
+ax.plot(df_["Tmax (No control)"], ls="-", color='grey', label="Tmax (No control)")
 ax.axhline(24, lw=1, c="k", ls=":")
 ax.set_ylabel("$T_{max}$ (°C)")
 ax.legend(frameon=False)
@@ -712,7 +714,7 @@ ax = axes[1]
 # Bottom subplot: Thermal releases
 ax.plot(df_["historic"], color='k', lw=2, ls="-", label="historic")
 ax.plot(df_["rbf"], color='salmon', lw=2, label="rbf")
-ax.plot(df_["rule_based"], color='dodgerblue', lw=2, label="rule_based")
+ax.plot(df_["Rule-based"], color='dodgerblue', lw=2, label="Rule-based")
 ax.grid(True, axis='y', lw=0.3, ls="--")
 
 custom_ticks = pd.to_datetime([f"{yr}-06-01", f"{yr}-06-15", f"{yr}-07-01", f"{yr}-07-15", f"{yr}-08-01", f"{yr}-08-15", f"{yr}-09-01"])
@@ -729,7 +731,7 @@ for yr in range(2006, 2023):
     fig, ax = plt.subplots()
     ax.plot(df_["historic"], color='k', lw=2, ls="-", label="historic")
     ax.plot(df_["rbf"], color='salmon', lw=2, label="rbf")
-    ax.plot(df_["rule_based"], color='dodgerblue', lw=2, label="rule_based")
+    ax.plot(df_["Rule-based"], color='dodgerblue', lw=2, label="Rule-based")
     ax.grid(True, axis='y', lw=0.3, ls="--")
     ax.legend(frameon=False)
     ticks = ax.get_xticks()
@@ -739,7 +741,7 @@ for yr in range(2006, 2023):
     ax.set_xlabel("Date")
 
     ax2 = ax.twinx()
-    ax2.plot(df_["Tmax (no_ctrl)"], ls="-", color='grey', label="Tmax (no_ctrl)")
+    ax2.plot(df_["Tmax (No control)"], ls="-", color='grey', label="Tmax (No control)")
     ax2.axhline(24, lw=1, c="k", ls=":")
     ax2.set_ylabel("$T_{max}$ (°C)")
 

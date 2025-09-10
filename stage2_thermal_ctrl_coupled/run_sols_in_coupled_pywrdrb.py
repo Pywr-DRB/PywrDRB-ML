@@ -11,6 +11,8 @@ warnings.filterwarnings('ignore', message='.*Conversion of an array with ndim > 
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 pn = pathnavigator.create(root_dir)
@@ -20,7 +22,7 @@ from src.policies import GaussianRBFPolicy, RuleBasedPolicy
 
 
 # Output folder for simulation results
-output_folder = "coupled_pywrdrb_simulated_sols"
+output_folder = "coupled_pywrdrb_RBF_sols"
 pn.outputs.mkdir(output_folder)
 #%% Simulation with control
 # General configuration
@@ -30,10 +32,10 @@ model_filename = str(pn.models.get(name) / f"{name}.json")
 
 # Load dps solutions
 policy = "GaussianRBFPolicy"
-job_id = "135322"
-df_ref = clt.borg.read_ref(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}/borg.ref"))
+job_id = "139181"
+df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 
-for i, sol_idx in enumerate([159, 108, 106, 11]):
+for i, sol_idx in enumerate([28, 68, 20, 51]):
     output_filename=pn.outputs.get(output_folder) / f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_RBF{i+1}_{sol_idx}.hdf5"
     model = pywrdrb.Model.load(str(model_filename))
     recorder = pywrdrb.OutputRecorder(
@@ -105,12 +107,12 @@ for i, sol_idx in enumerate([159, 108, 106, 11]):
     ml_model = model.parameters["salinity_model"].ml_model
     ml_model.update_until(date="2024-01-01")
     df_salinity = pd.DataFrame(ml_model.records, index=ml_model.dates)
-    df_salinity.to_csv(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}") / f"df_pywrdrb_salinity_RBF{i+1}_{sol_idx}.csv")
+    df_salinity.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_salinity_RBF{i+1}_{sol_idx}.csv")
 
     ml_model = model.parameters["temperature_model"].ml_model
     ml_model.update_until(date="2024-01-01")
     df_temp = pd.DataFrame(ml_model.records, index=ml_model.dates)
-    df_temp.to_csv(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}") / f"df_pywrdrb_temp_RBF{i+1}_{sol_idx}.csv")
+    df_temp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_temp_RBF{i+1}_{sol_idx}.csv")
 
 #%% No ctrl
 # General configuration

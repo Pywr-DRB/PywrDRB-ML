@@ -124,6 +124,85 @@ Jtubr_arr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts'
 # Jtubr
 # Out[5]: 0.4681
 
+#%% Ruled based with 1x bank size
+def return_dps_func(*params):
+    # Initialize the thermal control policy with specific parameters
+    policy = RuleBasedPolicy(threshold=24, thermal_release_amount=65)
+    # Define the function that will be used for the control algorithm
+    def dps_func(model, Q_C, Q_i, cannonsville_storage_pct, current_date):
+        # Retrieve the ml_model from the model
+        ml_model = model#.ml_model      # Need .ml_model when using the coupled model.
+        # Reset the bank amount at the beginning of June
+        if current_date.day == 1 and current_date.month == 6:
+            ml_model.remained_bank_amount = ml_model.thermal_mitigation_bank_size
+        ml_model.update_until(date=current_date)
+        # Complete the preparation for thermal control
+        cannonsville_storage_pct = ml_model.cannonsville_storage_pct[t-1]  
+        ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
+        # Make thermal release decision and record the thermal release
+        thermal_release = policy.run(X=ml_model.forecast_T_L_mu_arr)
+        thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
+        return thermal_release
+    return dps_func
+
+# Prepare the decision-making function with parameters
+params = []
+dm_func = return_dps_func(*params)
+
+ml_model = WaterTempLSTMModel(
+    model1=pn.models.get() / "TempLSTM/TempLSTM1.yml",
+    model2=pn.models.get() / "TempLSTM/TempLSTM2.yml",
+    Tavg2Tmax_coefs=pn.models.get() / "TempLSTM/Tavg2Tmax_coefs.json",
+    debug=True,
+    thermal_mitigation_bank_size=1620,  # mgd
+    )
+ml_model.load_data(database)
+
+dates = pd.date_range(start="1979-01-01", end="2023-12-31", freq='D')
+for t, date in tqdm(enumerate(dates), desc="Running thermal control policy", disable=disable):
+    Q_C = None  # Placeholder for controlled release
+    Q_i = None  # Placeholder for inflow
+    cannonsville_storage_pct = None  # Placeholder for storage percentage
+
+    if date.month in [6, 7, 8]:
+        thermal_release = dm_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, date)
+    else:
+        thermal_release = 0
+
+    # Update data in the ml_model for the next step(s) model update.
+    #t = ml_model.t
+    ml_model.Q_C[t] += thermal_release
+    acc_thermal_release = ml_model.thermal_mitigation_bank_size - ml_model.remained_bank_amount
+    ml_model.cannonsville_storage_pct[t] = (ml_model.cannonsville_storage_pct[t] * 95700/100 - acc_thermal_release)/ 95700 * 100  
+
+    # Record
+    ml_model.remained_bank_amount -= thermal_release
+    ml_model.records["thermal_releases"][ml_model.t] = thermal_release
+    ml_model.records["remained_bank_amounts"][ml_model.t] = ml_model.remained_bank_amount
+
+# Update the model until the end of the simulation period
+ml_model.update_until(date="2024-01-01")
+
+df = pd.DataFrame(ml_model.records, index=ml_model.dates)
+df.to_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased_1xbanksize.csv")
+
+Jrel = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
+Jadd = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
+Jtubr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=False, last_date_of_ctrl=(8, 31))
+
+Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
+Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
+Jtubr_arr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
+
+# Jrel
+# Out[22]: 0.5323
+
+# Jadd
+# Out[23]: 0.839
+
+# Jtubr
+# Out[24]: 1.0
+
 #%% Historical thermal releases
 database["rel_thermal"] = database["rel_thermal"].fillna(0)
 def return_dps_func(*params):
@@ -204,6 +283,7 @@ Jadd_obs = compute_max_annual_accumulated_degree_days(database , col='QobsTmax_T
 # Jtubr_hist
 # Out[5]: 0.4994
 
+
 # If consider all periods
 # Jrel_hist
 # Out[11]: 0.2018
@@ -213,6 +293,7 @@ Jadd_obs = compute_max_annual_accumulated_degree_days(database , col='QobsTmax_T
 
 # Jtubr_hist
 # Out[13]: 0.4994
+
 
 # If calculate from hist data
 # Jrel_obs
