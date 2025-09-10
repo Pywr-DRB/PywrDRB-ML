@@ -58,36 +58,32 @@ for i, sol_idx in enumerate([28, 68, 20, 51]):
 
         # Define the function that will be used for the control algorithm
         def dps_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, current_date):
-            # Reset the bank amount at the beginning of June
             if current_date.day == 1 and current_date.month == 6:
                 ml_model.remained_bank_amount = ml_model.thermal_mitigation_bank_size
-
+            ml_model.update_until(date=current_date)
+            
             if current_date.month in [6, 7, 8]:
-                ml_model.update_until(date=current_date)
-
                 # Prepare the inputs
-                # Nowcast/forecast (estimated Q_C and Q_i and cannonsville_storage_pct at t-1)
-                #ml_model.forecast(t=ml_model.t, Q_C=Q_C, Q_i=Q_i, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
-                # Debug
-                ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
+                # Have to retrieve storage info after update until such that t have been moved forward
+                ml_model.forecast(t=ml_model.t, Q_C=Q_C, Q_i=Q_i, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
                 forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
                 forecast_T_C_mu = ml_model.forecast_T_C_mu_arr[-1]
-
+    
                 remained_bank_ratio = ml_model.remained_bank_amount/ml_model.thermal_mitigation_bank_size
-
+    
                 X = np.array([
                     minmaxscalers["T_L"].transform(pd.DataFrame([[forecast_T_L_mu]], columns=["T_L"]))[0][0],
                     minmaxscalers["T_C"].transform(pd.DataFrame([[forecast_T_C_mu]], columns=["T_C"]))[0][0],
                     remained_bank_ratio,
                     ])
-
+    
                 # Make thermal release decision and record the thermal release
                 thermal_release = policy.run(X=X) * 300 # assuming the maximum thermal release is 300 MGD per day
                 # Ensure thermal release does not exceed the bank size
                 thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
             else:
                 thermal_release = 0
-
+            
             # Manually add to records for post-processing
             ml_model.remained_bank_amount -= thermal_release
             ml_model.records["thermal_releases"][ml_model.t] = thermal_release
@@ -97,7 +93,7 @@ for i, sol_idx in enumerate([28, 68, 20, 51]):
         return dps_func
 
 
-    params = df_ref.iloc[159, :-3].values
+    params = df_ref.iloc[sol_idx, :-3].values
     dps_func = return_dps_func(*params)
 
     temperature_model.set_control_algorithm(dps_func)
@@ -134,12 +130,12 @@ stats = model.run()
 ml_model = model.parameters["salinity_model"].ml_model
 ml_model.update_until(date="2024-01-01")
 df_salinity_noCtrl = pd.DataFrame(ml_model.records, index=ml_model.dates)
-df_salinity_noCtrl.to_csv(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}") / "df_pywrdrb_salinity_no_ctrl.csv")
+df_salinity_noCtrl.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / "df_pywrdrb_salinity_no_ctrl.csv")
 
 ml_model = model.parameters["temperature_model"].ml_model
 ml_model.update_until(date="2024-01-01")
 df_temp_noCtrl = pd.DataFrame(ml_model.records, index=ml_model.dates)
-df_temp_noCtrl.to_csv(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}") / "df_pywrdrb_temp_no_ctrl.csv")
+df_temp_noCtrl.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / "df_pywrdrb_temp_no_ctrl.csv")
 
 #%% Rule-based
 name = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_without_ctrl"
@@ -190,12 +186,12 @@ stats = model.run()
 ml_model = model.parameters["salinity_model"].ml_model
 ml_model.update_until(date="2024-01-01")
 df_salinity = pd.DataFrame(ml_model.records, index=ml_model.dates)
-df_salinity.to_csv(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}") / f"df_pywrdrb_salinity_rulebased.csv")
+df_salinity.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_salinity_rulebased.csv")
 
 ml_model = model.parameters["temperature_model"].ml_model
 ml_model.update_until(date="2024-01-01")
 df_temp = pd.DataFrame(ml_model.records, index=ml_model.dates)
-df_temp.to_csv(pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}") / f"df_pywrdrb_temp_rulebased.csv")
+df_temp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_temp_rulebased.csv")
 #%%
 Jrel = compute_reliability(df_temp, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
 Jadd = compute_max_annual_accumulated_degree_days(df_temp, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)

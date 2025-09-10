@@ -257,8 +257,11 @@ class WaterTempLSTMModel():
             #if isinstance(date, str):
             date = np.datetime64(date)
             t = int((date - self.start_date) / np.timedelta64(1, 'D'))
-            if t >= len(self.X_1) + 1 or t <= self.t:
+            if t >= len(self.X_1) + 1 or t < self.t:
                 raise ValueError(f"Invalid time step {t} for date {date}. Must be between current date {self.current_date} and {self.end_date + pd.Timedelta(days=1)}.")
+            elif t == self.t:
+                print(f"{t} is equal to model_ml current time step {self.t}. No update is implemented." )
+                return self.T_L_mu, self.T_L_sd
 
         length = t - self.t # Minimum 1 step
         t = self.t
