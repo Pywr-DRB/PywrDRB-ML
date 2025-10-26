@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 
@@ -32,7 +34,7 @@ ml_model_temp = WaterTempLSTMModel(
 
 
 ml_model_salt = SalinityLSTMModel(
-    model_salinity=pn.models.get() / r"SalinityLSTM\SalinityLSTM.yml",
+    model_salinity=pn.models.get() / r"SalinityLSTM/SalinityLSTM.yml",
     start_date='1979-01-01', end_date='2023-12-31',
     Q_Trenton_lstm_var_name="Q_Trenton_bc",
     Q_Schuylkill_lstm_var_name="Q_Schuylkill_bc",

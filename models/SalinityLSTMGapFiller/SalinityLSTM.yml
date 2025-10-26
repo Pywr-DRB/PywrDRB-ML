@@ -34,7 +34,7 @@ head_hidden_units: 16
 head_n_distr: 1
 weight_loss: true
 weight_threshold: 80
-weight_value: 10
+weight_value: 5
 mc_dropout: true
 recurrent_dropout_rate: 0.3
 dropout_rate: 0.1
@@ -58,4 +58,4 @@ c_sd: 0.06
 produce_ensembles: false
 n_samples: 100
 n_segs: 1
-seed: 4
+seed: 2

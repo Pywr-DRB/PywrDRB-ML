@@ -30,7 +30,7 @@ from src.policies import GaussianRBFPolicy
 # Global configuration variables for the Gaussian RBF policy
 # Policy parameters
 n_dim = 3  # Number of dimensions for the policy
-n_basis = 2  # Number of basis functions for the Gaussian RBF policy
+n_basis = n_dim + 1 #2  # Number of basis functions for the Gaussian RBF policy
 disable = True  # Set to True to disable tqdm progress bar
 
 #%%

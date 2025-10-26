@@ -3,6 +3,8 @@ from copy import deepcopy
 
 if pathnavigator.os_name == 'Windows':  
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == "Darwin":
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
     
@@ -38,13 +40,13 @@ config_template = {
     'head_n_distr': 1,
     'weight_loss': True,
     'weight_threshold': 80,
-    'weight_value': 10,
+    'weight_value': 5,
     'mc_dropout': True,
     'recurrent_dropout_rate': 0.3,
     'dropout_rate': 0.1,
     'seq_len': 365,
     'offset': 1.0,
-    'seed': 4
+    'seed': 2
     }
 
 lstm_settings = {
@@ -78,19 +80,19 @@ df = data_prep(lstm_config_file, root_dir)
 #%%
 #subfolder = None #"SalinityLSTM"
 model_ids = ["SalinityLSTM"]
-loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
+loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False, overwrite=True)
 
 #%%
 #subfolder = None #"SalinityLSTM"
 model_ids = ["SalinityLSTM"] #, "LSTM_bc_lag1"]
-lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
+lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, mode="SalinityLSTM", disable=False, overwrite=False)
 
 #%%
-df_metric_train = loop_to_eval_lstm_models(lstms, period="train", only_months=None, mode="SalinityLSTM", disable=False)
+df_metric_train = loop_to_eval_lstm_models(lstms, subfolder=subfolder, period="train", only_months=None, mode="SalinityLSTM")
 
 #%% Fill data
 import pandas as pd
-pairs = return_sim_obs_pair(lstms, period="all", only_months=None, mode="SalinityLSTM", disable=False)
+pairs = return_sim_obs_pair(lstms, subfolder=subfolder, period="all", only_months=None, mode="SalinityLSTM")
 lstm_simed_saltfront = pairs["SalinityLSTM"][0].to_frame("saltfront")
 lstm_simed_saltfront.index.name = "date"
 lstm_simed_saltfront.to_csv(pn.data.raw.get() / "lstm_simed_saltfront.csv")

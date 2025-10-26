@@ -99,14 +99,15 @@ lstm2_settings = {
     }
 
 # Hyperparameters to tune
-learning_rate = [0.005, 0.005, 0.05]
+learning_rate = [0.005, 0.05]
 early_stopping = [20, 50]
 dropout_rate = [0, 0.1, 0.3]
 seed = [4, 2, 5]
+weight = [1, 2, 5, 10]
 # Create a product of the hyperparameter sets
-hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed))
+hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed, weight))
 # Create a df from the hyperparameter combos
-hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate', 'seed'])
+hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate', 'seed', 'weight'])
 
 # Create model_config.yml for each k_fold crossval
 model1_ids = []
@@ -135,6 +136,7 @@ for outer_fold in tqdm(crossval_folds):
             cur_config['learn_rate_pre'] = float(row['learning_rate'])
             cur_config['dropout_rate'] = float(row['dropout_rate'])
             cur_config['seed'] = float(row['seed'])
+            cur_config['weight_value'] = float(row['weight'])
 
             lstm_config_file = make_lstm_model(subfolder=subfolder, yml_subsubfolder="cfg", **cur_config)
             _ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new splits; write to new datafile
@@ -166,6 +168,7 @@ for outer_fold in tqdm(crossval_folds):
             cur_config['learn_rate_pre'] = float(row['learning_rate'])
             cur_config['dropout_rate'] = float(row['dropout_rate'])
             cur_config['seed'] = float(row['seed'])
+            cur_config['weight_value'] = float(row['weight'])
 
             lstm_config_file = make_lstm_model(subfolder=subfolder, yml_subsubfolder="cfg", **cur_config)
             _ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new splits; write to new datafile
@@ -202,14 +205,25 @@ for outer_fold in tqdm(crossval_folds):
             preds_test = preds_test.rename(columns={"mean": "pred"})
             rmse_test = calc_metrics(preds_test)['rmse']
 
-            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), rmse_val, rmse_test]
+            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), float(row['weight']), rmse_val, rmse_test]
             results.append(res)
 
-cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "vali_rmse", "test_rmse"]
+cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "weight", "vali_rmse", "test_rmse"]
 df = pd.DataFrame(results, columns=cols)
 
 best_per_outer = df.loc[df.groupby("outer")["vali_rmse"].idxmin()]
 r"""
+new 
+	outer	inner	early_stopping	learning_rate	dropout_rate	seed	weight	vali_rmse	test_rmse
+432	    0	3	20	0.005	0.0	4.0	1.0	1.6860804557800293	1.5663820382371085
+628	    1	0	50	0.005	0.1	2.0	1.0	1.2545368671417236	2.671778780100116
+1228	2	0	20	0.05	0.0	2.0	1.0	1.3144129514694214	2.4063138284825007
+1844	3	0	50	0.05	0.0	5.0	1.0	1.1444867849349976	2.9919790034464944
+2428	4	0	50	0.05	0.1	2.0	1.0	1.3747378587722778	1.852431786885651
+
+=> 50 0.05 0 2
+
+old
 	outer	inner	early_stopping	learning_rate	dropout_rate	seed	vali_rmse	test_rmse
 162	0	3	20	0.005	0.0	4.0	1.509933352470398	1.70497653489212
 424	1	3	50	0.05	0.0	2.0	1.2163923978805542	1.9550134387221456
@@ -220,6 +234,7 @@ r"""
 => 20 0.05 0.1 2
 """
 cross_vali_rmse = best_per_outer["test_rmse"].mean()
+# new 2.297777087430374
 # => 2.1328144146699892
 
 
@@ -241,14 +256,25 @@ for outer_fold in tqdm(crossval_folds):
             preds_test = preds_test.rename(columns={"mean": "pred"})
             rmse_test = calc_metrics(preds_test)['rmse']
 
-            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), rmse_val, rmse_test]
+            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), float(row['weight']), rmse_val, rmse_test]
             results.append(res)
 
-cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "vali_rmse", "test_rmse"]
+cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "weight", "vali_rmse", "test_rmse"]
 df = pd.DataFrame(results, columns=cols)
 
 best_per_outer = df.loc[df.groupby("outer")["vali_rmse"].idxmin()]
 r"""
+new 
+	outer	inner	early_stopping	learning_rate	dropout_rate	seed	weight	vali_rmse	test_rmse
+400	    0	2	50	0.05	0.0	2.0	1.0	1.46137273311615	
+940	    1	2	20	0.05	0.0	2.0	1.0	1.449185848236084	
+1556	2	2	50	0.05	0.0	5.0	1.0	1.330108404159546	
+2236	3	3	20	0.05	0.0	2.0	1.0	3.0253043174743652	2.6535668003805166
+2848	4	3	50	0.05	0.0	2.0	1.0	2.3119587898254395	3.12489831612819
+
+=> new 50 0.05 0 2
+
+old
 	outer	inner	early_stopping	learning_rate	dropout_rate	seed	vali_rmse	test_rmse
 145	0	2	20	0.05	0.0	2.0	1.3532029390335083
 371	1	2	50	0.05	0.0	5.0	1.364026665687561
@@ -260,6 +286,7 @@ r"""
 => 50 0.05 0 2
 """
 cross_vali_rmse = best_per_outer["test_rmse"].mean()
+# new => 2.889232558254353
 # => 2.9883578646193643
 #%% Test run
 # config_file = pn.models.get(f'{subfolder}/cfg/{model_id}.yml')

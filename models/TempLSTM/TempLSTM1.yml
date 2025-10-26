@@ -28,7 +28,7 @@ learn_rate_pre: 0.05
 learn_rate_fine: 0.05
 n_epochs_pre: 50
 n_epochs_fine: 350
-early_stopping_patience: 20
+early_stopping_patience: 50
 hidden_units: 16
 head_hidden_units: 16
 head_n_distr: 1
@@ -37,7 +37,7 @@ weight_threshold: 20
 weight_value: 2
 mc_dropout: true
 recurrent_dropout_rate: 0.3
-dropout_rate: 0.1
+dropout_rate: 0
 model_type: lstm
 n_en_gridmet: 1
 gpu: false

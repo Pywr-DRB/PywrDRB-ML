@@ -94,14 +94,15 @@ lstm_settings = {
     }
 
 # Hyperparameters to tune
-learning_rate = [0.005, 0.005, 0.05]
+learning_rate = [0.005, 0.05]
 early_stopping = [20, 50]
 dropout_rate = [0, 0.1, 0.3]
 seed = [4, 2, 5]
+weight = [1, 2, 5, 10]
 # Create a product of the hyperparameter sets
-hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed))
+hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed, weight))
 # Create a df from the hyperparameter combos
-hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate', 'seed'])
+hyperparameter_df = pd.DataFrame(hyperparameter_combinations, columns=['learning_rate', 'early_stopping', 'dropout_rate', 'seed', 'weight'])
 
 # Create model_config.yml for each k_fold crossval
 model_ids = []
@@ -134,12 +135,13 @@ for outer_fold in tqdm(crossval_folds):
             cur_config['learn_rate_pre'] = float(row['learning_rate'])
             cur_config['dropout_rate'] = float(row['dropout_rate'])
             cur_config['seed'] = float(row['seed'])
+            cur_config['weight_value'] = float(row['weight'])
 
             lstm_config_file = make_lstm_model(subfolder=subfolder, yml_subsubfolder="cfg", **cur_config)
             _ = data_prep(lstm_config_file, root_dir) # prepare the dataset based on new splits; write to new datafile
             model_ids.append(model_id)
 #%% Train each model in a loop
-for model_id in tqdm(model_ids):
+for i, model_id in tqdm(enumerate(model_ids)):
     config_file = pn.models.get(f'{subfolder}/cfg/{model_id}.yml')
     cur_model_train = bmi_lstm()
     cur_model_train.initialize(config_file=config_file, train=True, disable_tqdm=True, root_dir=pn.get())
@@ -159,20 +161,35 @@ for outer_fold in tqdm(crossval_folds):
 
             preds_val = pd.read_parquet(val_preds_file, engine='pyarrow')
             preds_val = preds_val.rename(columns={"mean": "pred"})
+            
+            #threshold = 80
+            #preds_val = preds_val[(preds_val["obs"] >= threshold) | (preds_val["pred"] >= threshold)]
             rmse_val = calc_metrics(preds_val)['rmse']
 
             preds_test = pd.read_parquet(test_preds_file, engine='pyarrow')
             preds_test = preds_test.rename(columns={"mean": "pred"})
             rmse_test = calc_metrics(preds_test)['rmse']
 
-            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), rmse_val, rmse_test]
+            res = [model_id, outer_fold["outer_fold"], inner_fold['inner_fold'], int(row['early_stopping']), float(row['learning_rate']), float(row['dropout_rate']), float(row['seed']), float(row['weight']), rmse_val, rmse_test]
             results.append(res)
 
-cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "vali_rmse", "test_rmse"]
+cols = ["model_id", "outer", "inner", "early_stopping", "learning_rate", "dropout_rate", "seed", "weight", "vali_rmse", "test_rmse"]
 df = pd.DataFrame(results, columns=cols)
 
 best_per_outer = df.loc[df.groupby("outer")["vali_rmse"].idxmin()]
 r"""
+new
+without 80 threshold (ignore weight)
+	outer	inner	early_stopping	learning_rate	dropout_rate	seed	weight	vali_rmse	test_rmse
+420	    0	2	50	0.05	0.3	4.0	1.0	3.012895345687866	4.012965939427637
+1000	1	2	50	0.05	0.3	2.0	1.0	3.313754081726074	5.040208346168896
+1256	2	0	20	0.05	0.3	5.0	1.0	3.3321075439453125	5.436838608600696
+1856	3	0	50	0.05	0.1	5.0	1.0	3.5183629989624023	4.331315988877591
+2376	4	0	20	0.05	0.0	4.0	1.0	3.440990924835205	11.775877560539481
+
+=> 50 0.05 0.3 5 1
+
+old
 	outer	inner	early_stopping	learning_rate	dropout_rate	seed	vali_rmse	test_rmse
 157	0	2	50	0.05	0.1	2.0	3.083493709564209	3.2374207737123606
 376	1	2	50	0.05	0.3	2.0	3.052367687225342	4.344518011584668
@@ -183,6 +200,7 @@ r"""
 => 50 0.05 0 2
 """
 cross_vali_rmse = best_per_outer["test_rmse"].mean()
+# new 6.11944128872286
 # 4.629181695754189
 #%% Test run
 # config_file = pn.models.get(f'{subfolder}/cfg/{model_id}.yml')

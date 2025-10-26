@@ -3,13 +3,15 @@ from copy import deepcopy
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == "Darwin":
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 
 pn = pathnavigator.create(root_dir)
 pn.add_to_sys_path()
 pn.chdir()
-from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, eval_TempLSTM, return_sim_obs_pair_for_T_L, return_T_L
+from src.model_builder import make_lstm_model, loop_to_train_lstm_models, loop_to_simple_run_lstm_models, loop_to_eval_lstm_models, eval_TempLSTM, return_sim_obs_pair_for_T_L, return_T_L_lstm
 
 config_template = {
     'input_data_file': "data/database/TempLSTM_database.csv",
@@ -91,16 +93,22 @@ df = data_prep(lstm2_config_file, root_dir)
 #%%
 #subfolder = "TempLSTMGapFiller"
 model_ids = ["TempLSTM1", "TempLSTM2"]
-loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False)
+loop_to_train_lstm_models(model_ids, subfolder=subfolder, disable=False, overwrite=True)
 
 #%%
 #subfolder = "TempLSTMGapFiller"
 model_ids = ["TempLSTM1", "TempLSTM2"]
-lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False)
+lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, disable=False, overwrite=True)
 
 #%%
-df_metric_train = loop_to_eval_lstm_models(lstms, period="train", only_months=None, mode="TempLSTM", disable=False)
+df_metric_train = loop_to_eval_lstm_models(lstms, subfolder=subfolder, period="train", only_months=None, mode="TempLSTM")
 
+"""                                
+              nrmse         r        r2      rmse
+model_id                                         
+TempLSTM1  0.066339  0.916600  0.834460  1.605414
+TempLSTM2  0.013235  0.921774  0.849194  4.450750
+"""
 #%%
 df_metric = eval_TempLSTM(
     lstm1=lstms["TempLSTM1"],
@@ -134,7 +142,7 @@ with open(pn.models.get(f"{subfolder}") / "eval_metrics.txt", 'w') as f:
 
 #%%
 # Output to data to rerun db formation
-df_lstm_simed = return_T_L(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"], map_to_Tmax=True)
+df_lstm_simed = return_T_L_lstm(lstm1=lstms["TempLSTM1"], lstm2=lstms["TempLSTM2"], map_to_Tmax=True)
 df_lstm_simed.index.name = "date"
 df_lstm_simed.to_csv(pn.data.raw.get() / "lstm_simed_T_degC.csv")
 

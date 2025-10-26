@@ -40,10 +40,10 @@ config_template = {
     'head_n_distr': 1,
     'weight_loss': True,
     'weight_threshold': 80,
-    'weight_value': 5,
+    'weight_value': 2,
     'mc_dropout': True,
     'recurrent_dropout_rate': 0.3,
-    'dropout_rate': 0, #0.30,
+    'dropout_rate': 0.30,
     'seq_len': 365,
     'offset': 1.0,
     'seed': 2,
@@ -70,6 +70,10 @@ lstms = loop_to_simple_run_lstm_models(model_ids, subfolder=subfolder, mode="Sal
 #%%
 df_metric_train = loop_to_eval_lstm_models(model_ids, subfolder=subfolder, period="train", only_months=None, mode="SalinityLSTM")
 r"""
+
+Out[4]: '\n                 nrmse         r        r2      rmse\
+nmodel_id\nSalinityLSTM  0.084535  0.884838  0.777871  3.014507\n'
+
                  nrmse         r        r2      rmse
 model_id
 SalinityLSTM  0.084535  0.884838  0.777871  3.014507
@@ -108,16 +112,51 @@ SalinityLSTM  0.084535  0.884838  0.777871  3.014507
 
 
 
+#%% Check new old 
+# import pandas as pd
+
+# new = pd.read_csv(pn.data.raw.get() / "pywrdrb_pub_nhmv10_BC_withObsScaled_flow_and_storage.csv", parse_dates=True, index_col=["date"])["1979":"2024"][["flow_delTrenton", "flow_outletSchuylkill"]]
+# new.columns = ["Q_Trenton_bc", "Q_Schuylkill_bc"]
+
+# old = pd.read_csv("/Users/cl/Downloads/pywrdrb_pub_nhmv10_BC_withObsScaled_flow_and_storage.csv", parse_dates=True, index_col=["date"])["1979":"2024"][["flow_delTrenton", "flow_outletSchuylkill"]]
+# old.columns = ["Q_Trenton_bc", "Q_Schuylkill_bc"]
+
+# db = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"), parse_dates=True, index_col=["date"])["1979":"2024"][["Q_Trenton_bc", "Q_Schuylkill_bc"]]
 
 
+# gauge = "Q_Trenton_bc"
+# gauge = "Q_Schuylkill_bc"
 
+# df_compare = pd.concat([
+#     new[gauge].rename("new"),
+#     old[gauge].rename("old"),
+#     db[gauge].rename("db")
+# ], axis=1).dropna()
 
+# # Correlation matrix
+# corr = df_compare.corr()
+# print(corr)
 
+# import matplotlib.pyplot as plt
 
+# fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+# ax[0].scatter(df_compare["old"], df_compare["new"], s=5)
+# ax[0].set_xscale("log")
+# ax[0].set_yscale("log")
+# ax[0].set_xlabel(f"Old {gauge}")
+# ax[0].set_ylabel(f"New {gauge}")
+# ax[0].set_title("New vs Old")
 
+# # --- New vs DB ---
+# ax[1].scatter(df_compare["db"], df_compare["new"], s=5)
+# ax[1].set_xscale("log")
+# ax[1].set_yscale("log")
+# ax[1].set_xlabel(f"DB {gauge}")
+# ax[1].set_ylabel(f"New {gauge}")
+# ax[1].set_title("New vs DB")
 
-
-
+# plt.tight_layout()
+# plt.show()
 
 
 

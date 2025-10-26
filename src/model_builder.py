@@ -304,8 +304,22 @@ def return_T_L_lstm(lstm1, lstm2, map_to_Tmax=True):
     Tavg = Tavg.to_frame("Tavg")
 
     if map_to_Tmax:
-        rf_model = get_rf_model()
-        Tmax = rf_model.predict(Tavg.values.reshape(-1, 1))
+        Tavg_ = np.atleast_1d(Tavg).astype(float)
+
+        filepath = "/Users/cl/Documents/GitHub/PywrDRB-ML/models/TempLSTM/Tavg2Tmax_coefs.json"
+        
+        import json
+        with open(filepath, "r") as file:
+            Tavg2Tmax_coefs = json.load(file)
+        
+        a = Tavg2Tmax_coefs["a"]
+        b = Tavg2Tmax_coefs["b"]
+
+        # Predict
+        Tmax = a * Tavg_ + b
+        
+        # rf_model = get_rf_model()
+        # Tmax = rf_model.predict(Tavg.values.reshape(-1, 1))
         Tavg["T_L"] = Tmax
         Tavg.loc[pd.isna(Tavg["Tavg"]), "T_L"] = np.nan
     df = pd.concat([T_C, T_i, Tavg], axis=1)

@@ -4,6 +4,8 @@ from copy import deepcopy
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 
@@ -52,9 +54,10 @@ lstm1_settings = {
     "y_vars_src": ["tavg_water_cannonsville_src"],
     'learn_rate_pre': 0.05,
     'learn_rate_fine': 0.05,
-    'early_stopping_patience': 20,
-    'dropout_rate': 0.1,
+    'early_stopping_patience': 50,
+    'dropout_rate': 0,
     }
+# 50 0.05 0 2
 lstm2_settings = {
     "model_id": "TempLSTM2",
     "x_vars": ["tmmn", "tmmx", "pr", "srad", "QbcTavg_Q_i", "doy", "QbcTavg_Q_C"],
