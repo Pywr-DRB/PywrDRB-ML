@@ -147,16 +147,17 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 df = pd.DataFrame()
-df["Water Tmax (degC)"] = df_temperature.loc["2007":"2023", "temperature_after_thermal_release_mu"]
-df["Salt front (RM)"] = df_salinity.loc["2007":"2023", "salt_front_location_mu"]
+df["Water Tmax (degC)"] = df_temperature.loc["1979":"2023", "temperature_after_thermal_release_mu"]
+df["Salt front (RM)"] = df_salinity.loc["1979":"2023", "salt_front_location_mu"]
 df["obs_T_C"] = df_obs_temp["QbcTmax_T_L"]
 df["obs_saltfront"] = df_obs_salinity["saltfront"]
 df["nyc_zone"] = df_res_level["nyc"]
 df["zone"] = "flood"
-df.loc[df["nyc_zone"] == 5, "zone"] = "drought emergency"
-df.loc[df["nyc_zone"] == 4, "zone"] = "drought watch"
-df.loc[df["nyc_zone"] == 3, "zone"] = "drought warning"
-df.loc[df["nyc_zone"] == 2, "zone"] = "normal"
+
+df.loc[df["nyc_zone"] == 6, "zone"] = "drought emergency"
+df.loc[df["nyc_zone"] == 5, "zone"] = "drought watch"
+df.loc[df["nyc_zone"] == 4, "zone"] = "drought warning"
+df.loc[df["nyc_zone"] == 3, "zone"] = "normal"
 
 mask = (df["zone"] == "flood") & (df.index.month.isin([6, 7, 8]))
 df.loc[mask, "zone"] = "flood (Jun, Jul, Aug)"
