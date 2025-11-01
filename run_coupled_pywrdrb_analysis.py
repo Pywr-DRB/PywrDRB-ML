@@ -202,16 +202,16 @@ ax_marg_y = fig.add_subplot(gs[1:-1, -1], sharey=ax_joint)
 # Scatter plot
 
 # Observed
-sc_obs = ax_joint.scatter(
-    df["obs_saltfront"],
-    df["obs_T_C"],
-    c=zone_colors,
-    marker='+',
-    s=10,
-    alpha=0.6,
-    linewidths=0.5,
-    label='Observed'
-)
+# sc_obs = ax_joint.scatter(
+#     df["obs_saltfront"],
+#     df["obs_T_C"],
+#     c=zone_colors,
+#     marker='+',
+#     s=10,
+#     alpha=0.6,
+#     linewidths=0.5,
+#     label='Observed'
+# )
 
 # Simulated
 sc_sim = ax_joint.scatter(
@@ -277,8 +277,8 @@ ax_joint.tick_params(direction='in', length=6, width=1, colors='black')
 # Optional: add legend manually
 from matplotlib.patches import Patch
 legend_elements = [Patch(facecolor=color, label=label) for label, color in zone_color_map.items()]
-zone_legend = ax_joint.legend(handles=legend_elements, title="Reservoir operation zone", frameon=False, loc="center left", bbox_to_anchor=(1.15, 0.5), fontsize=12)
-
+zone_legend = ax_joint.legend(handles=legend_elements, title="Reservoir operation zone", 
+                              frameon=False, loc="center left", bbox_to_anchor=(1.15, 0.5), fontsize=12)
 # Add marker legend
 from matplotlib.lines import Line2D
 marker_legend_elements = [
@@ -303,7 +303,7 @@ ax_joint.text(57, 24.1, "24.0", rotation=0, ha='center', va='bottom', fontsize=1
 
 ax_joint.set_xlim([55, 93])
 ax_joint.set_ylim([-0.5, 30])
-plt.tight_layout()
+#plt.tight_layout()
 clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "tmax_and_saltfront_dynamics.jpg")
 plt.show()
 
