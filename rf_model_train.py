@@ -5,6 +5,8 @@ import clt
 
 if pathnavigator.os_name == 'Windows':  
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
 else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
     
@@ -12,7 +14,7 @@ pn = pathnavigator.create(root_dir)
 pn.chdir()
 from src.rf_model import RandomForestUncertaintyModel
 
-folder = "RFModels_deeptree"
+folder = "RFModels"
 pn.models.mkdir(folder)
 
 #%%
@@ -23,55 +25,50 @@ n_bootstrap = 100
 
 
 rf_settings = {
-    "n_estimators": 60,#35,
+    "n_estimators": 20,#35,
     "max_features": "sqrt",
     "random_state": 4,
     "n_jobs": -2,
-    "max_depth": 20,#14,
+    "max_depth": 10,#14,
     }
+
+# Temp1
 df = database[["tmmn", "tmmx", "pr", "srad", "bc_cannonsville_storage_pct", "doy", "QbcTavg_Q_C", "QbcTavg_T_C", "tavg_water_cannonsville_src"]].dropna()
 df.loc[df["tavg_water_cannonsville_src"] != "obs", "QbcTavg_T_C"] = np.nan
 df.dropna(axis=0, how='any', inplace=True)
-x_vars = ["tmmn", "tmmx", "pr", "srad", "bc_cannonsville_storage_pct", "QbcTavg_Q_C", "doy"]
+x_vars = ["tmmn", "tmmx", "pr", "srad", "bc_cannonsville_storage_pct", "doy", "QbcTavg_Q_C"]
 y_var = "QbcTavg_T_C"
 X = df[x_vars].values
 obs = df[y_var].values
 rf_model1 = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
 #rf_model1.grid_search(X, obs)
 rf_model1.fit(X, obs)
-rf_model1.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
+rf_model1.cross_val_rmse(X, obs, n_splits=5, shuffle=False, threshold=20, weight=2)
 #rf_model1.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
 #rf_model1.downsample_tau(size=5000)
 rf_model1.save(pn.models.get(folder) / "rf_model1.gz")
-# RMSE on training set: 0.572
-# Mean RMSE from cross-validation: 1.539
+# RMSE on training set: 1.487
+# Mean RMSE from cross-validation: 1.911
 X = database[rf_model1.x_vars].values
 df_res["T_C"], df_res["T_C_lb"], df_res["T_C_ub"] = rf_model1.predict(X, quantile=0.95)
 
-# rf_settings = {
-#     "n_estimators": 40,
-#     "max_features": "sqrt",
-#     "random_state": 4,
-#     "n_jobs": -2,
-#     "max_depth": 12,
-#     }
-
+# Temp2
 df = database[["tmmn", "tmmx", "pr", "srad", "QbcTavg_Q_i", "doy", "QbcTavg_Q_C", "QbcTavg_T_i", "tavg_water_src"]].dropna()
 df.loc[df["tavg_water_src"] != "obs", "QbcTavg_T_i"] = np.nan
 df.dropna(axis=0, how='any', inplace=True)
-x_vars = ["tmmn", "tmmx", "pr", "srad", "QbcTavg_Q_i", "QbcTavg_Q_C", "doy"]
+x_vars = ["tmmn", "tmmx", "pr", "srad", "QbcTavg_Q_i", "doy", "QbcTavg_Q_C"]
 y_var = "QbcTavg_T_i"
 X = df[x_vars].values
 obs = df[y_var].values
 rf_model2 = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
 #rf_model2.grid_search(X, obs)
 rf_model2.fit(X, obs)
-rf_model2.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
+rf_model2.cross_val_rmse(X, obs, n_splits=5, shuffle=False, threshold=20, weight=2)
 #rf_model2.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
 #rf_model2.downsample_tau(size=5000)
 rf_model2.save(pn.models.get(folder) / "rf_model2.gz")
-# RMSE on training set: 1.890
-# Mean RMSE from cross-validation: 4.321
+# RMSE on training set: 2.529
+# Mean RMSE from cross-validation: 4.242
 X = database[rf_model2.x_vars].values
 df_res["T_i"], df_res["T_i_lb"], df_res["T_i_ub"] = rf_model2.predict(X, quantile=0.95)
 
@@ -94,7 +91,7 @@ obs = df[y_var].values
 rf_model_map = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
 #rf_model_map.grid_search(X, obs)
 rf_model_map.fit(X, obs)
-rf_model_map.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
+rf_model_map.cross_val_rmse(X, obs, n_splits=5, shuffle=False)
 #rf_model_map.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
 #rf_model_map.downsample_tau(size=5000)
 rf_model_map.save(pn.models.get(folder) / "rf_model_map.gz")
@@ -142,11 +139,11 @@ database = db_SalinityLSTM.copy()['1979-01-01': '2023-12-31']
 df_res = pd.DataFrame(index=database.index)
 
 rf_settings = {
-    "n_estimators": 45,
+    "n_estimators": 20,#35,
     "max_features": "sqrt",
     "random_state": 4,
     "n_jobs": -2,
-    "max_depth": 14,
+    "max_depth": 10,#14,
     }
 n_bootstrap = 100
 
@@ -158,19 +155,20 @@ y_var = "saltfront"
 X = df[x_vars].values
 obs = df[y_var].values
 rf_model_saltfront = RandomForestUncertaintyModel(x_vars, y_var, **rf_settings)
-rf_model_saltfront.grid_search(X, obs)
+#rf_model_saltfront.grid_search(X, obs)
 rf_model_saltfront.fit(X, obs)
-rf_model_saltfront.cross_val_rmse(X, obs, n_splits=5, shuffle=True)
-rf_model_saltfront.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
-rf_model_saltfront.downsample_tau(size=5000)
-rf_model_saltfront.save(pn.models.get(folder) / "rf_model_saltfront.gz")
+rf_model_saltfront.cross_val_rmse(X, obs, n_splits=5, shuffle=False, threshold=80, weight=10)
+#rf_model_saltfront.compute_tau(X, obs, n_bootstrap=n_bootstrap, disable=False)
+#rf_model_saltfront.downsample_tau(size=5000)
+#rf_model_saltfront.save(pn.models.get(folder) / "rf_model_saltfront.gz")
 
-X = database[rf_model_saltfront.x_vars].values
-df_res["saltfront"], df_res["saltfront_lb"], df_res["saltfront_ub"] = rf_model_saltfront.predict(X, quantile=0.95)
-df_res.to_csv(pn.models.get(folder) / "simple_run_Saltfront.csv")
+# X = database[rf_model_saltfront.x_vars].values
+# df_res["saltfront"], df_res["saltfront_lb"], df_res["saltfront_ub"] = rf_model_saltfront.predict(X, quantile=0.95)
+# df_res.to_csv(pn.models.get(folder) / "simple_run_Saltfront.csv")
 
-# RMSE on training set: 1.316
-# Mean RMSE from cross-validation: 3.654
+# RMSE on training set: 2.967
+# Mean RMSE from cross-validation: 4.176
+
 #%% Plot saltfront
 pn.mkdir(pn.models.get(folder) / "figures")
 

@@ -220,7 +220,7 @@ class RandomForestUncertaintyModel:
         else:
             return preds, np.nan, np.nan
         
-    def cross_val_rmse(self, X, y, n_splits=5, shuffle=True, test_size=None, overwrite=False):
+    def cross_val_rmse(self, X, y, n_splits=5, shuffle=True, test_size=None, overwrite=False, threshold=20, weight=1):
         if self.rmse_cross_vali is not None and not overwrite:
             print("mean_rmse already computed. Use overwrite=True to recompute.")
             print(f"Mean RMSE from cross-validation: {self.rmse_cross_vali:.3f}")
@@ -255,7 +255,10 @@ class RandomForestUncertaintyModel:
             rf = RandomForestRegressor(**rf_settings)
             rf.fit(X_train, y_train)
             y_pred = rf.predict(X_vali)
-            rmse = root_mean_squared_error(y_vali, y_pred)
+            sample_weight = np.ones(len(y_vali))
+            if threshold is not None:
+                sample_weight[sample_weight >= threshold] = weight
+            rmse = root_mean_squared_error(y_vali, y_pred, sample_weight=sample_weight)
             rmses.append(rmse)
             
         if test_size is not None:

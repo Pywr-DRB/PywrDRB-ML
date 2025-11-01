@@ -12,7 +12,8 @@ pn.chdir()
 import clt
 
 policy = "GaussianRBFPolicy"
-job_id = "139181"
+#job_id = "139181"
+job_id = "143740"
 folder = f"dps_GaussianRBFPolicy_{job_id}"  #f"stage1_nowcast_{policy}_{job_id}"
 df_met = clt.borg.read_metric_files(pn.outputs.get(folder) / "metrics")
 
@@ -22,8 +23,8 @@ clt.borg.plot_convergence_across_seeds(ax, pn.outputs.get(folder) / "metrics", f
 
 # Legend
 handles, labels = ax.get_legend_handles_labels()
-handles = handles[:1] + handles[2:] + [handles[1]]
-labels  = labels[:1]  + labels[2:]  + [labels[1]]
+#handles = handles[:1] + handles[2:] + [handles[1]]
+#labels  = labels[:1]  + labels[2:]  + [labels[1]]
 ax.legend(handles, labels, loc="center left", bbox_to_anchor=(1, 0.5), ncol=1, frameon=False)
 
 ax.set_xlabel("Number of evaluations")

@@ -158,24 +158,27 @@ import clt
 
 df_highlight = pd.DataFrame()
 
-names = ["No control", "Rule-based", "historic\n(2010-2023)", 
+names = ["No control", "Rule-based", "historic", #\n(2010-2023)
          "RBF-better Jrel", "RBF-better Jadd", "RBF-best Jrel", "RBF-best Jadd"]
                          
 highlight_rows = [
-    [0,        -0.2018, 1,        names[0]], # "No control"
-    [0.4681*3, -0.516, 0.7794,   names[1]], # "Rule-based"
-    [1, -0,5236, ]
-    #[0.4994*3, -0.3769, 0.5614,    names[2]], # "historic\n(2010-2023)"
+    #[0,        -0.2018, 1,        names[0]], # "No control"
+    #[0.4681*3, -0.516, 0.7794,   names[1]], # "Rule-based"
+    [0,        -0.2211, 1,        names[0]], # "No control"
+    [1, -0.5577, 0.7834,   names[1]], # "Rule-based"
+    #[1, -0,5236, ]
+    #[0.4994*3, -0.3312, 0.7349,    names[2]], # "historic\n(2010-2023)"
     #[0.4994*3, -0.4353, 1.2668,    names[2]], # "historic\n(2010-2023)"
-    [1.0026,   -0.6606, 0.8353,   names[3]], # "RBF-better Jrel" 28
-    [1.0488,   -0.5125, 0.8299,   names[4]], # "RBF-better Jadd" 68
-    [2.5986,   -0.9989, 0.6099,   names[5]], # "RBF-best Jrel" 20
-    [2.9688,   -0.9987, 0.5596,   names[6]], # "RBF-best Jadd" 51
+    [1.0095,   -0.7831, 0.78502,   names[3]], # "RBF-better Jrel" 107
+    [1.0197,   -0.5578, 0.772433,   names[4]], # "RBF-better Jadd" 77
+    [2.4696,   -0.9992, 0.496635,   names[5]], # "RBF-best Jrel" 57
+    [3,   -0.9979, 0.39818,   names[6]], # "RBF-best Jadd" 4
 ]
 df_highlight = pd.DataFrame(highlight_rows, columns=["Jtubr", "-Jrel", "Jadd", "label"])
 
 cmap_highlights={
-    names[0]: 'k', names[1]: '#E41A1C',
+    names[0]: 'k', 
+    names[1]: '#E41A1C',
     names[2]: "blue",
     names[3]: "lime",
     names[4]: "aquamarine",
@@ -197,11 +200,13 @@ zorder_highlights={
     }
 
 policy ="GaussianRBFPolicy"
-job_id = "139181" 
+#job_id = "139181" 
+job_id = "143740"
 
 df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 df_ref = df_ref[['obj3', 'obj1', 'obj2']]
 df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
+df_ref["Jadd"] /= 0.8024 
 df_ref["Jtubr"] *= 3
 df_ref["label"] = df_ref.index
 
@@ -232,7 +237,7 @@ plot_parallel_coords_with_kde(
     )
 #ax.set_title(policy)
 plt.tight_layout()
-clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_tradeoffs.jpg")
+#clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_tradeoffs.jpg")
 plt.show()
 
 #%% Compare thermal release
@@ -257,10 +262,10 @@ df_res["Tmax (hist)"] = df_hist["T_L_mu"]
 
 df_objs = pd.DataFrame()
 
-for i, sol_idx in enumerate([28, 68, 20, 51]):
+for i, sol_idx in enumerate([107, 77, 57, 4]):
     params = df_ref.iloc[sol_idx, :-3]
     n_dim = 3  # Number of dimensions for the policy
-    n_basis = 2  # Number of basis functions for the Gaussian RBF policy
+    n_basis = n_dim + 1  # Number of basis functions for the Gaussian RBF policy
 
     def eval_func(*params):
         database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
@@ -372,7 +377,7 @@ df_res["Tmax (No control)"] = df_noCtrl["T_L_mu"]
 df_res["Tmax (Rule-based)"] = df_rulebased["T_L_mu"]
 df_res["Tmax (historic)"] = df_hist["T_L_mu"] #database["QobsTmax_T_L"]
 
-for i, sol_idx in enumerate([28, 68, 20, 51]):
+for i, sol_idx in enumerate([107, 77, 57, 4]):
     df_rbf = pd.read_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_{names[3+i]}_{sol_idx}.csv", parse_dates=True, index_col=[0])
     df_res[f"{names[3+i]}"] = df_rbf["thermal_releases"]
     df_res[f"Tmax ({names[3+i]})"] = df_rbf["T_L_mu"]
@@ -477,7 +482,7 @@ ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
 
 plt.tight_layout()
 pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
-clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.jpg")
+#clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.jpg")
 #clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_thermal_release_{yr}_with_hist.jpg")
 ###clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
 plt.show()

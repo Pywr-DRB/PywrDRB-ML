@@ -97,8 +97,14 @@ lstm_settings = {
 learning_rate = [0.005, 0.05]
 early_stopping = [20, 50]
 dropout_rate = [0, 0.1, 0.3]
-seed = [4, 2, 5]
-weight = [1, 2, 5, 10]
+seed = [2]
+weight = [10]
+
+# learning_rate = [0.05]
+# early_stopping = [50]
+# dropout_rate = [0]
+# seed = [2]
+# weight = [10]
 # Create a product of the hyperparameter sets
 hyperparameter_combinations = list(itertools.product(learning_rate, early_stopping, dropout_rate, seed, weight))
 # Create a df from the hyperparameter combos
@@ -178,6 +184,14 @@ df = pd.DataFrame(results, columns=cols)
 
 best_per_outer = df.loc[df.groupby("outer")["vali_rmse"].idxmin()]
 r"""
+	outer	inner	early_stopping	learning_rate	dropout_rate	seed	weight	vali_rmse	test_rmse
+35	0	2	50	0.05	0.3	2.0	10.0	3.36301589012146	3.683713447150459
+83	1	2	50	0.05	0.3	2.0	10.0	3.313754081726074	5.040208346168896
+106	2	0	50	0.05	0.1	2.0	10.0	3.5924994945526123	5.2137228449398005
+165	3	1	50	0.05	0.0	2.0	10.0	3.860602617263794	4.034526380433201
+199	4	0	20	0.05	0.1	2.0	10.0	3.733459711074829	7.36374497170445
+
+
 new
 without 80 threshold (ignore weight)
 	outer	inner	early_stopping	learning_rate	dropout_rate	seed	weight	vali_rmse	test_rmse
@@ -200,6 +214,7 @@ old
 => 50 0.05 0 2
 """
 cross_vali_rmse = best_per_outer["test_rmse"].mean()
+#5.067183198079361
 # new 6.11944128872286
 # 4.629181695754189
 #%% Test run

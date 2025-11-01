@@ -60,7 +60,7 @@ def compute_reliability(
 
 
 def compute_max_annual_accumulated_degree_days(
-    df: pd.DataFrame, col: str = 'Tavg_L_mu', threshold: float = 20, only_summer_period: bool = True, max_Jadd: float = 1.2159*132.4373, return_distribution: bool = False
+    df: pd.DataFrame, col: str = 'Tavg_L_mu', threshold: float = 20, only_summer_period: bool = True, max_Jadd: float = 1.2159*132.4373*0.8024, return_distribution: bool = False
     ) -> float:
     """
     Compute JADD(θ): Maximum annual accumulated degree days.
