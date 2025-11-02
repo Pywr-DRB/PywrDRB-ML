@@ -40,6 +40,16 @@ Jrel_noCtrl_arr = compute_reliability(df_noCtrl, col="T_L_mu", threshold=24, qua
 Jadd_noCtrl_arr = compute_max_annual_accumulated_degree_days(df_noCtrl, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 
 # Jrel_noCtrl
+# Out[5]: 0.303
+
+# Jadd_noCtrl
+# Out[6]: 1
+
+
+
+
+
+# Jrel_noCtrl
 # Out[12]: 0.2211
 
 # Jadd_noCtrl
@@ -121,6 +131,16 @@ Jtubr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', ba
 Jrel_arr = compute_reliability(df, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=True)
 Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=True)
 Jtubr_arr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
+
+# Jrel
+# Out[15]: 0.5913
+
+# Jadd
+# Out[16]: 0.7798
+
+# Jtubr
+# Out[17]: 0.2675
+
 
 # Jrel
 # Out[15]: 0.5511
@@ -213,6 +233,17 @@ Jadd_arr = compute_max_annual_accumulated_degree_days(df, col='Tavg_L_mu', thres
 Jtubr_arr = compute_max_thermal_bank_usage_ratio(df, col='remained_bank_amounts', bank_size=ml_model.thermal_mitigation_bank_size, return_distribution=True, last_date_of_ctrl=(8, 31))
 
 # Jrel
+# Out[20]: 0.5913
+
+# Jadd
+# Out[21]: 0.7798
+
+# Jtubr
+# Out[22]: 0.8025
+
+
+
+# Jrel
 # Out[34]: 0.5577
 
 # Jadd
@@ -302,7 +333,17 @@ Jtubr_hist_arr = compute_max_thermal_bank_usage_ratio(df_hist, col='remained_ban
 Jrel_obs = compute_reliability(database , col="QobsTmax_T_L", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
 Jadd_obs = compute_max_annual_accumulated_degree_days(database , col='QobsTmax_T_L', threshold=20, only_summer_period=True, return_distribution=False)
 
-#
+
+
+# Jrel_hist
+# Out[25]: 0.325
+
+# Jadd_hist
+# Out[26]: 0.9304
+
+# Jtubr_hist
+# Out[27]: 0.4994
+
 
 # Jrel_hist
 # Out[39]: 0.3312
