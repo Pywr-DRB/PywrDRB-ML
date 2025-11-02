@@ -1,0 +1,21 @@
+
+Borg settings
+=================
+numberOfVariables: 28
+numberOfObjectives: 3
+numberOfConstraints: 0
+function: <function eval_func at 0x14854a06bba0>
+epsilons: [0.01, 0.01, 0.01]
+bounds: [[0, 1], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0], [0, 1], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0], [0, 1], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0], [0, 1], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0], [0, 1], [1e-06, 2.0]]
+directions: None
+seed: 7
+
+Borg solveMPI settings
+=================
+islands: 1
+maxTime: None
+maxEvaluations: 50000
+initialization: None
+runtime: /home/fs01/cl2769/Github/PywrDRB-ML/outputs/dps_GaussianRBFPolicy_143990/runtimes/143990_nfe50000_seed7.runtime
+allEvaluations: None
+frequency: 500
