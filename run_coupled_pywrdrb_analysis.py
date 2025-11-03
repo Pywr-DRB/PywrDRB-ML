@@ -287,6 +287,19 @@ marker_legend_elements = [
 ]
 marker_legend = ax_joint.legend(handles=marker_legend_elements, title="Data type", frameon=False, loc="center left", bbox_to_anchor=(1.15, 0.15), fontsize=12)
 
+from matplotlib.patches import Rectangle
+
+# Example: add a white rectangle in data coordinates
+fig.patches.append(Rectangle(
+    xy=(0.95, 0.22),      # figure fraction coordinates (0–1)
+    width=0.18, height=0.15,
+    transform=fig.transFigure,
+    facecolor='white',
+    edgecolor=None,
+    alpha=1.0,
+    zorder=5
+))
+
 # Add the zone legend back since the marker legend overwrites it
 ax_joint.add_artist(zone_legend)
 
