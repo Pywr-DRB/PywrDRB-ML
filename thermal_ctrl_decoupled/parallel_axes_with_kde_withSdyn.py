@@ -175,14 +175,15 @@ names = ["No control", "Rule-based", "historic", #\n(2010-2023)
 #     [3,   -0.9979, 0.39818,   names[6]], # "RBF-best Jadd" 4
 # ]
 
+toC = 103.16
 
 highlight_rows = [
-    [0,        -0.303, 1,        names[0]], # "No control"
-    [0.8025, -0.5913, 0.7798,   names[1]], # "Rule-based"
-    [0.9765,   -0.9981, 0.7351,   names[3]], # "RBF-better Jrel" 28
-    [0.9846,   -0.5485, 0.7123,   names[4]], # "RBF-better Jadd" 151
-    [2.8944,   -0.9995, 0.3741,   names[5]], # "RBF-best Jrel" 63
-    [2.9655,   -0.7826, 0.3615,   names[6]], # "RBF-best Jadd" 106
+    [0,        -0.303, 1*toC,        names[0]], # "No control"
+    [0.8025, -0.5913, 0.7798*toC,   names[1]], # "Rule-based"
+    [0.9765,   -0.9981, 0.7351*toC,   names[3]], # "RBF-better Jrel" 28
+    [0.9846,   -0.5485, 0.7123*toC,   names[4]], # "RBF-better Jadd" 151
+    [2.8944,   -0.9995, 0.3741*toC,   names[5]], # "RBF-best Jrel" 63
+    [2.9655,   -0.7826, 0.3615*toC,   names[6]], # "RBF-best Jadd" 106
 ]
 df_highlight = pd.DataFrame(highlight_rows, columns=["Jtubr", "-Jrel", "Jadd", "label"])
 
@@ -216,7 +217,8 @@ job_id = "143990"
 df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 df_ref = df_ref[['obj3', 'obj1', 'obj2']]
 df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
-df_ref["Jadd"] /= 0.7984 
+df_ref["Jadd"] /= 0.7984
+df_ref["Jadd"] *= toC 
 df_ref["Jtubr"] *= 3
 df_ref["label"] = df_ref.index
 
@@ -239,7 +241,7 @@ plot_parallel_coords_with_kde(
     dict_colorlines_dfs=dict_colorlines_dfs,
     soln_labels=df_highlight["label"].to_list(),
     objmins=None, objmaxs=None,
-    axes_labels=["Jtubr", "-Jrel", "Jadd"],
+    axes_labels=["Jtubr\n\nThermal\nbank\nusage\n(%)", "-Jrel\n\nThermal\nsatisfication\nfrequency\n(--)", "Jadd\n\nAnnual\ncumulative\nheat exposure\n(°C·day)"],
     ideal_direction='bottom', fontsize=10, kde_scale=0.05,
     cmap_highlights=cmap_highlights,
     ls_highlights=ls_highlights,
