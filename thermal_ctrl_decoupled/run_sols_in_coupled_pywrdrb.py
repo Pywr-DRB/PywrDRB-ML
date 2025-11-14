@@ -26,7 +26,7 @@ output_folder = "coupled_pywrdrb_RBF_sols"
 pn.outputs.mkdir(output_folder)
 #%% Simulation with control
 # General configuration
-name = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_with_ctrl"
+name = "coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_with_ctrl"
 pn.models.mkdir(name)
 model_filename = str(pn.models.get(name) / f"{name}.json")
 
