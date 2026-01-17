@@ -35,7 +35,7 @@ policy = "GaussianRBFPolicy"
 job_id = "143990"
 df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 
-for i, sol_idx in enumerate([28, 151, 63, 106]):
+for i, sol_idx in enumerate([28, 151, 114]):
     output_filename=pn.outputs.get(output_folder) / f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_RBF{i+1}_{sol_idx}.hdf5"
     model = pywrdrb.Model.load(str(model_filename))
     recorder = pywrdrb.OutputRecorder(

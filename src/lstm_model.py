@@ -27,7 +27,7 @@ class WaterTempLSTMModel():
                  Q_C_lstm_var_name="QbcTavg_Q_C",
                  Q_i_lstm_var_name="QbcTavg_Q_i",
                  cannonsville_storage_pct_lstm_var_name="bc_cannonsville_storage_pct",
-                 thermal_mitigation_bank_size=1620,  # MGD-days ~= 2500 cfs-days
+                 thermal_mitigation_bank_size=1620,  # MGD-days ~= 2500 cfs-days
                  debug=False,
                  disable_tqdm=True
                  ):

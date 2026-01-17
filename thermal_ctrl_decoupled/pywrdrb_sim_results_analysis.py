@@ -12,10 +12,9 @@ import pandas as pd
 
 output_folder = "dps_GaussianRBFPolicy_143990"
 salinity_dict = {
-    "RBF-better Jrel": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF1_28.csv", parse_dates=True, index_col=[0]),
-    "RBF-better Jadd": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF2_151.csv", parse_dates=True, index_col=[0]),
-    "RRBF-best Jrel": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF3_63.csv", parse_dates=True, index_col=[0]),
-    "RBF-best Jadd": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF4_106.csv", parse_dates=True, index_col=[0]),
+    "Standard bank,\nmax Jrel": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF1_28.csv", parse_dates=True, index_col=[0]),
+    "Standard bank,\nmin Jadd": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF2_151.csv", parse_dates=True, index_col=[0]),
+    "Enlarged bank": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF3_114.csv", parse_dates=True, index_col=[0]),
     "No control": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_no_ctrl.csv", parse_dates=True, index_col=[0]),
     "Rule-based": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_rulebased.csv", parse_dates=True, index_col=[0]),
     }

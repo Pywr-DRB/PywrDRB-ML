@@ -1,7 +1,20 @@
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.colors as mcolors
+import pathnavigator
+if pathnavigator.os_name == 'Windows':
+    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+elif pathnavigator.os_name == 'Darwin':
+    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
+else:
+    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
+pn = pathnavigator.create(root_dir)
+pn.chdir()
+import clt
 
 def plot_parallel_coords_with_kde(
         ax, df, columns, add_background_grey_lines=True,
@@ -9,7 +22,7 @@ def plot_parallel_coords_with_kde(
         soln_labels=None, objmins=None, objmaxs=None,
         axes_labels=["Jtubr", "-Jrel", "Jadd"],
         ideal_direction='top',
-        fontsize=10, kde_scale=0.12,
+        fontsize=12, kde_scale=0.12,
         cmap_kdes={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'},
         cmap_lines={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'},
         cmap_highlights={
@@ -75,8 +88,15 @@ def plot_parallel_coords_with_kde(
 
     # Axis lines and ticks
     for j in range(num_axes):
-        ax.annotate(str(round(tops[j], 1)), [x_spacing[j], 1.02], ha='center', va='bottom', fontsize=fontsize)
-        bottom_label = str(round(bottoms[j], 1))
+        if j == 1:
+            top_label = f"{round(tops[j]*(-100), 0)}%"
+            bottom_label = f"{round(bottoms[j]*(-100), 0)}%"
+        else:
+            top_label = str(round(tops[j], 1))
+            bottom_label = str(round(bottoms[j], 1))
+        
+        ax.annotate(top_label, [x_spacing[j], 1.02], ha='center', va='bottom', fontsize=fontsize)
+        
         ax.annotate(bottom_label, [x_spacing[j], -0.02], ha='center', va='top', fontsize=fontsize)
         ax.plot([x_spacing[j], x_spacing[j]], [0, 1], c='k', zorder=2)
         for y in np.arange(0, 1.001, 0.2):
@@ -120,7 +140,8 @@ def plot_parallel_coords_with_kde(
                 ax.plot(xx, yy, c=c, lw=1.7, zorder=50+zorder, label=soln_label)
             else:
                 ax.plot(xx, yy, c=c, lw=1.7, ls=ls, zorder=50+zorder, label=soln_label)
-    ax.legend(frameon=False, loc="center right")
+    #ax.legend(frameon=False, loc="center right")
+    line_legend = ax.legend(frameon=False, bbox_to_anchor=(0.72, 0.35), loc="lower left", fontsize=fontsize)
 
     # KDE shading
     if dict_kde_dfs is not None:
@@ -140,26 +161,506 @@ def plot_parallel_coords_with_kde(
                 y = y[mask]
                 ax.fill_betweenx(y, x + x_spacing[o], x_spacing[o],
                                  where=(x > 0.00005), lw=1, alpha=0.6, zorder=4, fc=cmap_kdes[key], ec='k')
+                
+    # Add KDE legend
+
+    # KDE shading
+    if dict_kde_dfs is not None:
+        for i, key in enumerate(dict_kde_dfs):
+            dff = dict_kde_dfs_scaled[key]
+            for o, obj in enumerate(columns):  # [1:]
+                y = np.arange(0, 1, 0.01)
+                data = dff[obj]
+                kde = sm.nonparametric.KDEUnivariate(data)
+                kde.fit(bw=0.025)
+                kde_scale = kde_scale
+                x = np.array([kde.evaluate(v)[0] * kde_scale if not np.isnan(kde.evaluate(v)[0]) else 0 for v in y])
+
+                # Manually truncate kde
+                mask = (y >= min(data)) & (y <= max(data))
+                x = x[mask]
+                y = y[mask]
+                ax.fill_betweenx(y, x + x_spacing[o], x_spacing[o],
+                                 where=(x > 0.00005), lw=1, alpha=0.6, zorder=4,
+                                 fc=cmap_kdes[key], ec='k')
+
+        # ---------- KDE legend (second legend) ----------
+        kde_handles = []
+        kde_labels = ["Standard bank\n(0, 1x]", "Medium bank increase\n(1, 2x]", "High bank increase\n(2, 3x]"]
+        for key, color in cmap_kdes.items():
+            # You can customize these labels as you like
+            label = kde_labels[key] #f"Group {key}"
+            kde_handles.append(
+                mpatches.Patch(facecolor=color, edgecolor='k', alpha=0.6, label=label)
+            )
+
+        kde_legend = ax.legend(handles=kde_handles,
+                               bbox_to_anchor=(0.722, -0.1), 
+                               loc="lower left",
+                               frameon=False, 
+                               fontsize=fontsize)
+
+        # re-add the original line legend so both appear
+        ax.add_artist(line_legend)
+    
+    
     ax.set_xlim([x_spacing[0] - 0.3, x_spacing[-1] + 0.3])
     return ax
 
+# Scatter plot
+def kde_scatter_plot(ax, df, base_color="#1b9e77", df_ref=None, highlight=True, idx_list=[], fontsize=12):
+    # Convert to RGB
+    r, g, b = mcolors.to_rgb(base_color)
+
+    # Create a MUCH lighter version (toward white)
+    very_light_color = (1 - (1 - r) * 0.05,
+                        1 - (1 - g) * 0.05,
+                        1 - (1 - b) * 0.05)
+
+    # Build a strong gradient colormap
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        "strong_green",
+        [very_light_color, base_color]
+    )
+    
+    sc = ax.scatter(
+        df["Jadd"],
+        df["-Jrel"],
+        c=df["Jtubr"],
+        cmap=cmap,
+        s=50,
+        edgecolor="black",
+        zorder=13
+    )
+    
+    cbar = fig.colorbar(sc, ax=ax)
+    cbar.set_label("Jtubr", fontsize=fontsize)
+    
+    ax.set_xlabel("Jadd", fontsize=fontsize)
+    ax.set_ylabel("Jrel", fontsize=fontsize)
+    yticks = ax.get_yticks()
+    
+    #ax.set_title("Custom Color Gradient: Light → Dark (#1b9e77)")
+    ax.set_xlim(30, 105)
+    ax.set_ylim(-1.04, -0.3)
+    
+    yticks = np.linspace(-0.3, -1.0, 8)   # adjust number of ticks as needed
+    ax.set_yticks(yticks)
+    
+    # Example: convert to percent
+    ytick_labels = [f"{y * -100:.0f}%" for y in yticks]
+    ax.set_yticklabels(ytick_labels)
+    #ax.set_yticklabels([f"{y * -100:.0f}%" for y in yticks])
+    
+    
+    # Extract original x/y
+    x = df["Jadd"].values
+    y = df["-Jrel"].values
+    z = df["Jtubr"].values
+    labels = df["label"]
+    
+    
+    if df_ref is None:
+        x_ref = None
+        y_ref = None
+        z_ref = None
+    else:
+        x_ref = df_ref["Jadd"].values
+        y_ref = df_ref["-Jrel"].values
+        z_ref = df_ref["Jtubr"].values
+    
+    # --- Normalize ONLY for selecting the closest point ---
+    def normalize(arr, arr_ref=None):
+        if arr_ref is None:
+            arr_ref = arr
+        amin, amax = arr_ref.min(), arr_ref.max()
+        return (arr - amin) / (amax - amin) if amax > amin else np.zeros_like(arr)
+    
+    x_norm = normalize(x, x_ref)
+    y_norm = normalize(y, y_ref)
+    z_norm = normalize(z, z_ref)
+    
+    # distance to lower-left corner (0,0) in normalized space
+    dist = np.sqrt(x_norm**2 + y_norm**2 + z_norm**2)
+    idx_closest = dist.argmin()
+    
+    # original values of the chosen point
+    x_closest = x[idx_closest]
+    y_closest = y[idx_closest]
+    
+    print(df.iloc[idx_closest, -1])
+    
+    # --- Highlight on the existing figure/axes ---
+    if highlight:
+        ax.scatter(
+            x_closest,
+            y_closest,
+            s=100,
+            facecolors="none",
+            edgecolors="red",
+            linewidths=2.5,
+            zorder=10,
+        )
+    
+    for i, c in idx_list: 
+        idx = np.where(labels == i)[0][0]
+        x_ = x[idx]
+        y_ = y[idx]
+        ax.scatter(
+            x_,
+            y_,
+            s=100,
+            facecolors="none",
+            edgecolors=c,
+            linewidths=4,
+            zorder=10,
+        )
+    
+    # Ideal point
+    # ax.scatter(
+    #     31,
+    #     -1,
+    #     s=200,              # size of the star
+    #     marker="*",         # star marker
+    #     color="yellow",     # fill color
+    #     edgecolors="black", # optional: outline
+    #     linewidths=1.2,
+    #     zorder=11           # ensure it appears on top
+    # )
+    
+    ax.annotate(
+        "*",                   # the star symbol
+        xy=(31, -1.03),           # point location
+        xytext=(31, -1.06),       # same location (no offset)
+        fontsize=28,           # size of the star
+        color="yellow",        # star color
+        ha="center",
+        va="center",
+        weight="bold",
+        transform=ax.transAxes,
+        path_effects=[         # optional: black outline
+            path_effects.Stroke(linewidth=1.5, foreground='black'),
+            path_effects.Normal()
+        ],
+        zorder=12
+    )
+    
+    plt.tight_layout()
+    return ax
+
+#% Combine the plots
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
+fig = plt.figure(figsize=(9, 6))
+
+# Grid: 2 rows × 3 columns
+gs = gridspec.GridSpec(2, 3, height_ratios=[2.2, 1])
+
+# --- Top large panel (span all 3 columns) ---
+ax_top = fig.add_subplot(gs[0, :])
+names = ["No control", "Fixed-release\n(baseline)", "historic", #\n(2010-2023)
+         "Standard bank,\nmax Jrel", "Standard bank,\nmin Jadd", 
+         "Enlarged bank", "XXX"]
+toC = 103.16
+
+highlight_rows = [
+    [0,        -0.303, 1*toC,        names[0]], # "No control"
+    [0.8025, -0.5913, 0.7798*toC,   names[1]], # "Rule-based"
+    [0.9765,   -0.9981, 0.7351*toC,   names[3]], # "RBF-better Jrel" 28
+    [0.9846,   -0.5485, 0.7123*toC,   names[4]], # "RBF-better Jadd" 151
+    [1.9905,   -0.9989, 51.6317,   names[5]], # 114
+    #[1.4862,   -0.9989, 0.6008*toC,   names[5]], # 91 (only xyz)
+    #[2.5005,   -0.9987, 0.4256*toC,   names[6]], # 67 (only xyz)
+    #[1.9905,   -0.9989, 0.5005*toC,   names[5]], # 114 (only xy)
+    #[2.9883,   -0.9992, 0.3629*toC,   names[6]], # 70 (only xy)
+#    [2.8944,   -0.9995, 0.3741*toC,   names[5]], # "RBF-best Jrel" 63
+#    [2.9655,   -0.7826, 0.3615*toC,   names[6]], # "RBF-best Jadd" 106
+]
+df_highlight = pd.DataFrame(highlight_rows, columns=["Jtubr", "-Jrel", "Jadd", "label"])
+
+cmap_highlights={
+    names[0]: 'k', 
+    names[1]: '#E41A1C',
+    names[2]: "blue",
+    names[3]: "limegreen",
+    names[4]: "cyan", #"aquamarine",
+    names[5]: "saddlebrown",
+    names[6]: "peru"
+    }
+ls_highlights={
+    names[2]: ":",
+    names[5]: "--",
+    names[6]: "--"
+    }
+zorder_highlights={
+    names[0]: 0, names[1]: 1,
+    names[2]: 2,
+    names[3]: 8,
+    names[4]: 9,
+    names[5]: 4,
+    names[6]: 5
+    }
+
+policy ="GaussianRBFPolicy"
+#job_id = "139181" 
+job_id = "143990"
+
+df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
+df_ref = df_ref[['obj3', 'obj1', 'obj2']]
+df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
+df_ref["Jadd"] /= 0.7984
+df_ref["Jadd"] *= toC 
+df_ref["Jtubr"] *= 3
+df_ref["label"] = df_ref.index
+
+df_ref = pd.concat([df_ref, df_highlight])
+
+dict_kde_dfs = {
+    0: df_ref[df_ref['Jtubr'] <= 1],
+    1: df_ref[(df_ref['Jtubr'] > 1) & (df_ref['Jtubr'] <= 2)],
+    2: df_ref[df_ref['Jtubr'] > 2],
+    }
+dict_colorlines_dfs = {
+    0: df_ref[df_ref['Jtubr'] <= 1],
+    }
+
+df = df_ref
+
+plot_parallel_coords_with_kde(
+    ax=ax_top, df=df, columns=["Jtubr", "-Jrel", "Jadd"],
+    dict_kde_dfs=dict_kde_dfs,
+    #dict_colorlines_dfs=dict_colorlines_dfs,
+    soln_labels=df_highlight["label"].to_list(),
+    objmins=None, objmaxs=None,
+    axes_labels=["Thermal\nbank\nusage\n(Jtubr; --)", "Thermal\ncontrol\nreliability\n(Jrel; %)", "Annual\ncumulative\nheat exposure\n(Jadd; °C·day)"],
+    ideal_direction='bottom', fontsize=12, kde_scale=0.05,
+    cmap_highlights=cmap_highlights,
+    ls_highlights=ls_highlights,
+    zorder_highlights=zorder_highlights
+    )
+
+# --- Bottom three small panels ---
+df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
+df_ref = df_ref[['obj3', 'obj1', 'obj2']]
+df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
+df_ref["Jadd"] /= 0.7984
+df_ref["Jadd"] *= toC 
+df_ref["Jtubr"] *= 3
+df_ref["label"] = df_ref.index
+
+cmap_kdes={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'}
+
+ax1 = fig.add_subplot(gs[1, 0])
+df = df_ref[df_ref["Jtubr"] <=1 ]
+kde_scatter_plot(ax1, df, base_color=cmap_kdes[0], highlight=False, idx_list=[(28, "limegreen"), (151, "cyan")])
+ax1.axvline(80.44, color="red", ls=":", lw=1)
+ax1.axhline(-0.5913, color="red", ls=":", lw=1)
+
+ax2 = fig.add_subplot(gs[1, 1])
+df = df_ref[(df_ref["Jtubr"] > 1) & (df_ref["Jtubr"] <= 2)]
+kde_scatter_plot(ax2, df, base_color=cmap_kdes[1], highlight=False, idx_list=[(114, "saddlebrown")])
+ax2.axvline(80.44, color="red", ls=":", lw=1)
+ax2.axhline(-0.5913, color="red", ls=":", lw=1)
+
+ax3 = fig.add_subplot(gs[1, 2])
+df = df_ref[(df_ref["Jtubr"] > 2) & (df_ref["Jtubr"] <= 3)]
+kde_scatter_plot(ax3, df, base_color=cmap_kdes[2], highlight=False)
+ax3.axvline(80.44, color="red", ls=":", lw=1)
+ax3.axhline(-0.5913, color="red", ls=":", lw=1)
+
+# Example usage:
+#ax_top.set_title()
+fontsize = 12
+ax1.set_title("Standard bank", fontsize=fontsize)
+ax2.set_title("Medium bank increase", fontsize=fontsize)
+ax3.set_title("High bank increase", fontsize=fontsize)
+
+
+ax_top.text(
+    -0.1, 1,            # position (x, y) in axis coords
+    "a)",
+    transform=ax_top.transAxes,
+    fontsize=14,
+    fontweight="bold",
+    va="top",
+    ha="left"
+)
+axes = [ax1, ax2, ax3]
+labels = ["b)", "c)", "d)"]
+for ax, label in zip(axes, labels):
+    ax.text(
+        -0.55, 1.2,            # position (x, y) in axis coords
+        label,
+        transform=ax.transAxes,
+        fontsize=14,
+        fontweight="bold",
+        va="top",
+        ha="left"
+    )
+plt.tight_layout()
+plt.show()
+
+
+#%% release
+database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
+df_rulebased = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv", parse_dates=True, index_col=[0])
+df_noCtrl = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_noCtrl.csv", parse_dates=True, index_col=[0])
+df_hist = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_hist.csv", parse_dates=True, index_col=[0])
+
+df_res = pd.DataFrame(index=df_rulebased.index)
+df_res["historic"] = database["rel_thermal"]
+df_res["Fixed-release\n(baseline)"] = df_rulebased["thermal_releases"]
+df_res["Tmax (No control)"] = df_noCtrl["T_L_mu"]
+df_res["Tmax (Rule-based)"] = df_rulebased["T_L_mu"]
+df_res["Tmax (historic)"] = df_hist["T_L_mu"] #database["QobsTmax_T_L"]
+
+for i, sol_idx in enumerate([28, 151, 114]):
+    df_rbf = pd.read_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_{sol_idx}.csv", parse_dates=True, index_col=[0])
+    df_res[f"{names[3+i]}"] = df_rbf["thermal_releases"]
+    df_res[f"Tmax ({names[3+i]})"] = df_rbf["T_L_mu"]
+#%%
+import matplotlib.gridspec as gridspec
+
+yr = 2020
+#for yr in range(1979, 2024):
+mgd2m3 = 378541/10**6
+df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
+
+colors = {
+    'No control': 'k',
+    "Fixed-release\n(baseline)": '#E41A1C',
+    'historic': "blue",
+    names[3]: "limegreen",
+    names[4]: "cyan",
+    names[5]: "saddlebrown",
+    names[6]: "peru"
+    }
+
+release_names = ["Fixed-release\n(baseline)"] + names[3:-1] + ['historic']  # All release types you want to plot
+n_release_types = len(release_names)
+
+fig = plt.figure(figsize=(8, 1 * (n_release_types + 1)))
+gs = gridspec.GridSpec(7, 1, height_ratios=[1, 0.15, 0.3, 0.3, 0.3, 0.3, 0.3], hspace=0)
+
+# Top subplot: Tmax
+ax1 = fig.add_subplot(gs[0])
+ax1.plot(df_["Tmax (No control)"], ls="-", color=colors['No control'], label="Tmax (No control)")
+ax1.plot(df_["Tmax (Rule-based)"], ls="-", color=colors["Fixed-release\n(baseline)"], label="Tmax (baseline)")
+#ax1.plot(df_["Tmax (historic)"], ls="-", color=colors['historic'], label="Tmax (historic)")
+for rbf_name in names[3:-1]:
+    ax1.plot(df_[f"Tmax ({rbf_name})"], ls="-", color=colors[f"{rbf_name}"], label=f"Tmax ({rbf_name})")
+ax1.axhline(24, lw=1, c="k", ls=":")
+ax1.set_ylabel("$T_{max}$ (°C)")
+ax1.grid(True, axis='y', lw=0.3, ls="--")
+#ax1.tick_params(axis='x', direction='in')
+ax1.set_ylim([18, 27])
+ax1.set_yticks([20, 24])
+ax1.legend(frameon=False, loc='center left', bbox_to_anchor=(1, 0.5))
+custom_ticks = pd.to_datetime([
+    f"{yr}-06-01", f"{yr}-06-15", f"{yr}-07-01", f"{yr}-07-15",
+    f"{yr}-08-01", f"{yr}-08-15", f"{yr}-09-01"
+])
+ax1.set_xticks(custom_ticks)
+ax1.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
+
+ax1.text(
+    -0.12, 1, "(a)",
+    transform=ax1.transAxes,
+    ha="left", va="top",
+    fontsize=12, fontweight="bold"
+)
+
+# Bottom subplots: releases
+for i, release_name in enumerate(release_names):
+    ax = fig.add_subplot(gs[2+i])
+    
+    if release_name == 'historic':
+        non_zero_mask = df_["historic"] != 0
+        x_vals = df_.index[non_zero_mask]
+        y_vals = df_["historic"][non_zero_mask]
+        if not x_vals.empty:
+            markerline, stemlines, baseline = ax.stem(
+                x_vals, y_vals*mgd2m3,
+                linefmt="k-", markerfmt="ko", basefmt=" ", label="Obs"
+            )
+            markerline.set_color(colors['historic'])
+            stemlines.set_color(colors['historic'])
+            plt.setp(stemlines, lw=1, zorder=80)
+            plt.setp(markerline, ms=4, zorder=80)
+            plt.setp(baseline, visible=False)
+            ax.set_xlim(df_.index[0], df_.index[-1])
+        else:
+            ax.plot([], [], marker='o', color='k', linestyle='None', label="historic")
+    else:
+        ax.bar(df_.index, df_[release_name]*mgd2m3, width=1.0, color=colors[release_name], label=release_name, alpha=0.6, zorder=4)
+    ax.grid(True, axis='y', lw=0.3, ls="--")
+    #ax.set_ylabel(f"{release_name}\nThermal release (mgd)")
+    ax.set_ylim([0, 200*mgd2m3])
+    ax.legend(frameon=False, loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.tick_params(axis='x', direction='in')
+    ax.set_xticklabels([])
+    
+    if i == 0:
+        ax.text(
+            -0.12, 1, "(b)",
+            transform=ax.transAxes,
+            ha="left", va="top",
+            fontsize=12, fontweight="bold"
+        )
+    
+    if i == 2:
+        ax.set_ylabel("Thermal release ($10^6 m^3/day$)        ")
+
+ax.set_xlabel(f"Date (Year={yr})")
+custom_ticks = pd.to_datetime([
+    f"{yr}-06-01", f"{yr}-06-15", f"{yr}-07-01", f"{yr}-07-15",
+    f"{yr}-08-01", f"{yr}-08-15", f"{yr}-09-01"
+])
+ax.set_xticks(custom_ticks)
+ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
+
+plt.tight_layout()
+pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
+clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.jpg")
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #%%
-import pathnavigator
-if pathnavigator.os_name == 'Windows':
-    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
-elif pathnavigator.os_name == 'Darwin':
-    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
-else:
-    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
-pn = pathnavigator.create(root_dir)
-pn.chdir()
-import clt
+
 
 df_highlight = pd.DataFrame()
 
 names = ["No control", "Rule-based", "historic", #\n(2010-2023)
          "RBF-better Jrel", "RBF-better Jadd", "RBF-best Jrel", "RBF-best Jadd"]
+
+names = ["No control", "Fixed-release", "historic", #\n(2010-2023)
+         "Standard bank,\nmax Jrel", "Standard bank,\nmin Jadd", "RBF-best Jrel", "RBF-best Jadd"]
                          
 # highlight_rows = [
 #     #[0,        -0.2018, 1,        names[0]], # "No control"
@@ -183,7 +684,7 @@ highlight_rows = [
     [0.9765,   -0.9981, 0.7351*toC,   names[3]], # "RBF-better Jrel" 28
     [0.9846,   -0.5485, 0.7123*toC,   names[4]], # "RBF-better Jadd" 151
     [2.8944,   -0.9995, 0.3741*toC,   names[5]], # "RBF-best Jrel" 63
-    [2.9655,   -0.7826, 0.3615*toC,   names[6]], # "RBF-best Jadd" 106
+#    [2.9655,   -0.7826, 0.3615*toC,   names[6]], # "RBF-best Jadd" 106
 ]
 df_highlight = pd.DataFrame(highlight_rows, columns=["Jtubr", "-Jrel", "Jadd", "label"])
 
@@ -238,10 +739,10 @@ fig, ax = plt.subplots()
 plot_parallel_coords_with_kde(
     ax, df, columns=["Jtubr", "-Jrel", "Jadd"],
     dict_kde_dfs=dict_kde_dfs,
-    dict_colorlines_dfs=dict_colorlines_dfs,
+    #dict_colorlines_dfs=dict_colorlines_dfs,
     soln_labels=df_highlight["label"].to_list(),
     objmins=None, objmaxs=None,
-    axes_labels=["Jtubr\n\nThermal\nbank\nusage\n(%)", "-Jrel\n\nThermal\nsatisfication\nfrequency\n(--)", "Jadd\n\nAnnual\ncumulative\nheat exposure\n(°C·day)"],
+    axes_labels=["Thermal\nbank\nusage\n(Jtubr; %)", "Thermal\nsatisfication\nfrequency\n(Jrel; --)", "Annual\ncumulative\nheat exposure\n(Jadd; °C·day)"],
     ideal_direction='bottom', fontsize=10, kde_scale=0.05,
     cmap_highlights=cmap_highlights,
     ls_highlights=ls_highlights,
@@ -249,8 +750,39 @@ plot_parallel_coords_with_kde(
     )
 #ax.set_title(policy)
 plt.tight_layout()
-clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_tradeoffs.jpg")
+#clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_tradeoffs.jpg")
 plt.show()
+
+#%% Scatter plot
+df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
+df_ref = df_ref[['obj3', 'obj1', 'obj2']]
+df_ref.columns = ["Jtubr", "-Jrel", "Jadd"]
+df_ref["Jadd"] /= 0.7984
+df_ref["Jadd"] *= toC 
+df_ref["Jtubr"] *= 3
+df_ref["label"] = df_ref.index
+
+df = df_ref[df_ref["Jtubr"] <=1 ]
+# Base color
+
+
+
+cmap_kdes={0: '#1b9e77', 1: '#d95f02', 2: '#7570b3'}
+fig, ax = plt.subplots(figsize=(5,4))
+df = df_ref[df_ref["Jtubr"] <=1 ]
+ax = kde_scatter_plot(ax, df, base_color=cmap_kdes[0])#, df_ref=df_ref)
+plt.show()
+
+fig, ax = plt.subplots(figsize=(5,4))
+df = df_ref[(df_ref["Jtubr"] > 1) & (df_ref["Jtubr"] <= 2)]
+ax = kde_scatter_plot(ax, df, base_color=cmap_kdes[1])#, df_ref=df_ref)
+plt.show()
+
+fig, ax = plt.subplots(figsize=(5,4))
+df = df_ref[(df_ref["Jtubr"] > 2) & (df_ref["Jtubr"] <= 3)]
+ax = kde_scatter_plot(ax, df, base_color=cmap_kdes[2])#, df_ref=df_ref)
+plt.show()
+
 
 #%% Compare thermal release
 import joblib
@@ -274,7 +806,8 @@ df_res["Tmax (hist)"] = df_hist["T_L_mu"]
 
 df_objs = pd.DataFrame()
 
-for i, sol_idx in enumerate([28, 151, 63, 106]):
+#for i, sol_idx in enumerate([28, 151, 91, 67]):#63, 106]):
+for sol_idx in tqdm(list(df_ref.index)): #enumerate([28, 151, 91, 67]):#63, 106]):
     params = df_ref.iloc[sol_idx, :-3]
     n_dim = 3  # Number of dimensions for the policy
     n_basis = n_dim + 1  # Number of basis functions for the Gaussian RBF policy
@@ -366,16 +899,36 @@ for i, sol_idx in enumerate([28, 151, 63, 106]):
 
     objs = [Jtubr*3, -Jrel, Jadd, Jtubr_avg*3]
 
-    df_res[f"{names[3+i]}"] = df_rbf["thermal_releases"]
-    df_res[f"Tmax ({names[3+i]})"] = df_rbf["T_L_mu"]
-    df_objs[f"{names[3+i]}"] = objs
+    # df_res[f"{names[3+i]}"] = df_rbf["thermal_releases"]
+    # df_res[f"Tmax ({names[3+i]})"] = df_rbf["T_L_mu"]
+    # df_objs[f"{names[3+i]}"] = objs
+    
+    df_res[sol_idx] = df_rbf["thermal_releases"]
+    df_res[f"Tmax {sol_idx}"] = df_rbf["T_L_mu"]
+    df_objs[f"{sol_idx}"] = objs
 
-    df_rbf.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_{names[3+i]}_{sol_idx}.csv")
+    #df_rbf.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_{names[3+i]}_{sol_idx}.csv")
+    df_rbf.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_{sol_idx}.csv")
 
+df_res.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / "df_res.csv")
+df_objs.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / "df_objs.csv")
 
 # 159 [0.9999, -0.3778, 0.742, 0.9665999999999999]
 # 24 (better Jadd): Out[95]: [0.9813, -0.356, 0.7558, 0.9606]
 # 115 (better Jrel):         [1.0023, -0.456, 0.8904, 0.1869]
+
+
+#%%
+df1 = df_ref[df_ref["Jtubr"] <=1 ] #53 153 10
+df2 = df_ref[(df_ref["Jtubr"] > 1) & (df_ref["Jtubr"] <= 2)] #86, 143
+df3 = df_ref[(df_ref["Jtubr"] > 2) & (df_ref["Jtubr"] <= 3)] #67 106 24
+
+yr = 2020
+#for yr in range(1979, 2024):
+df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
+df_.loc[:, df1.index].plot(legend=False, color="g", alpha=0.2, lw=1)
+df_.loc[:, df2.index].plot(legend=False, color="orange", alpha=0.2, lw=1)
+df_.loc[:, df3.index].plot(legend=False, color="purple", alpha=0.2, lw=1)
 #%%
 database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
 df_rulebased = pd.read_csv(pn.data.baseline_ctrl_lstm.get() / "df_rulebased.csv", parse_dates=True, index_col=[0])
@@ -397,6 +950,7 @@ for i, sol_idx in enumerate([28, 151, 63, 106]):
 import matplotlib.gridspec as gridspec
 
 yr = 2020
+#for yr in range(1979, 2024):
 df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
 
 colors = {
@@ -498,6 +1052,7 @@ clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.jpg
 #clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_thermal_release_{yr}_with_hist.jpg")
 ###clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
 plt.show()
+
 #%%
 yr = 2023
 for yr in range(1979, 2024):

@@ -144,6 +144,7 @@ clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "feature_importance.jp
 plt.show()
 
 #%% RSME barplot and timeseries
+#for yr in range(1981, 2024):
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(6.5,5))
 
 ax = axes[0, 0]
@@ -172,7 +173,7 @@ obs = db_TempLSTM.copy()
 obs.loc[obs['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
 obs = obs['QbcTmax_T_L'].values
 df = pd.DataFrame({"obs": obs, "sim": sim}, index=ml_model_temp.dates)
-year = 2019
+year = 2007 #2019
 df = df.loc[f"{year}-01-01":f"{year}-12-31", :]
 ax.plot(df["obs"], ls='None', marker='o', color="k", alpha=0.2, ms=3, label="obs")
 ax.plot(df["sim"], color='salmon', lw=1, label="sim")
@@ -234,6 +235,117 @@ plt.tight_layout()
 clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg", dpi=500)
 plt.show()
 
+#%%
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# ---------------------------
+# Build aligned obs/sim series
+# ---------------------------
+sim = ml_model_salt.records["sf_mu"]
+
+obs_df = db_SalinityLSTM.copy()
+obs_df.loc[obs_df["saltfront_src"] != "obs", "saltfront"] = np.nan
+obs = obs_df["saltfront"].values
+
+df = pd.DataFrame(
+    {"obs": obs, "sim": sim},
+    index=pd.to_datetime(ml_model_salt.dates)
+).dropna()
+
+df["err"] = df["sim"] - df["obs"]
+df["year"] = df.index.year
+
+# ---------------------------
+# Plot
+# ---------------------------
+fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(6, 5), sharex=False)
+
+# ---- Row 1: residuals by year (boxplot) ----
+ax = axes[0]
+
+sim = ml_model_temp.records["T_L_mu"]
+obs = db_TempLSTM.copy()
+obs.loc[obs['tmmx_water_src'] != "obs", 'QbcTmax_T_L'] = np.nan
+obs = obs['QbcTmax_T_L'].values
+df = pd.DataFrame({"obs": obs, "sim": sim}, index=ml_model_temp.dates)
+df["err"] = df["sim"] - df["obs"]
+df["year"] = df.index.year
+
+years = np.sort(df["year"].unique())
+data_by_year = [
+    df.loc[df["year"] == y, "err"].dropna().values
+    for y in years
+]
+
+bp = ax.boxplot(
+    data_by_year,
+    labels=years,
+    showfliers=False,   # cleaner; set True if you want outliers
+    widths=0.6,
+    medianprops=dict(color="salmon", linewidth=1.5)
+)
+
+# Reference line at zero error
+ax.axhline(0, lw=0.8, color="k", alpha=0.6)
+
+ax.set_ylabel("$T_{max, sim}$ - $T_{max, obs}$\n(°C)")
+ax.set_xlabel("Year")
+ax.grid(True, axis="y", lw=0.3, ls="--")
+
+# Optional: reduce x-label clutter if many years
+if len(years) > 12:
+    step = max(1, len(years) // 10)
+    for i, lab in enumerate(ax.get_xticklabels()):
+        lab.set_visible(i % step == 0)
+
+# ---- Row 2: salt front time series ----
+ax = axes[1]
+
+sim = ml_model_salt.records["sf_mu"]
+obs = db_SalinityLSTM.copy()
+obs.loc[obs['saltfront_src'] != "obs", 'saltfront'] = np.nan
+obs = obs['saltfront'].values
+df = pd.DataFrame({"obs": obs, "sim": sim}, index=ml_model_salt.dates)
+df["err"] = df["sim"] - df["obs"]
+df["year"] = df.index.year
+
+years = np.sort(df["year"].unique())
+data_by_year = [
+    df.loc[df["year"] == y, "err"].dropna().values
+    for y in years
+]
+
+bp = ax.boxplot(
+    data_by_year,
+    labels=years,
+    showfliers=False,   # cleaner; set True if you want outliers
+    widths=0.6,
+    medianprops=dict(color="mediumpurple", linewidth=1.5)
+)
+
+# Reference line at zero error
+ax.axhline(0, lw=0.8, color="k", alpha=0.6)
+
+ax.set_ylabel("$Saltfront_{sim}$ - $Saltfront_{obs}$\n(RM)")
+ax.set_xlabel("Year")
+ax.grid(True, axis="y", lw=0.3, ls="--")
+
+# Optional: reduce x-label clutter if many years
+if len(years) > 12:
+    step = max(1, len(years) // 10)
+    for i, lab in enumerate(ax.get_xticklabels()):
+        lab.set_visible(i % step == 0)
+
+# Add subplot labels
+axes[0].text(-0.23, 1, "a)", transform=axes[0].transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+axes[1].text(-0.23, 1, "b)", transform=axes[1].transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
+
+plt.tight_layout()
+fig.align_ylabels(axes)
+clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "timeseries_error_plot.jpg", dpi=500)
+plt.show()
 
 #%% Plot with historical thermal release
 
