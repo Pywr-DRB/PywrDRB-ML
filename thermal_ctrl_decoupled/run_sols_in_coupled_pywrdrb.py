@@ -36,7 +36,8 @@ job_id = "143990"
 df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 
 for i, sol_idx in enumerate([28, 151, 114]):
-    output_filename=pn.outputs.get(output_folder) / f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_RBF{i+1}_{sol_idx}.hdf5"
+    scenario = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_RBF{i+1}_{sol_idx}"
+    output_filename=pn.outputs.get(output_folder) / f"{scenario}.hdf5"
     model = pywrdrb.Model.load(str(model_filename))
     recorder = pywrdrb.OutputRecorder(
         model=model,
@@ -109,7 +110,26 @@ for i, sol_idx in enumerate([28, 151, 114]):
     ml_model.update_until(date="2024-01-01")
     df_temp = pd.DataFrame(ml_model.records, index=ml_model.dates)
     df_temp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_temp_RBF{i+1}_{sol_idx}.csv")
-
+    
+    
+    data = pywrdrb.Data()
+    results_sets = [
+        'temperature',
+        'salinity',
+        'mrf_targets',
+        'major_flow',
+        "ffmp_level_boundaries",
+        "res_level"
+        ]
+    data.load_output(output_filenames=[str(output_filename)], results_sets=results_sets)
+    df_mrf_targets = data.mrf_targets[scenario][0]
+    df_mrf_targets.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_mrf_targets_RBF{i+1}_{sol_idx}.csv")
+    df_major_flow = data.major_flow[scenario][0]
+    df_major_flow.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_major_flow_RBF{i+1}_{sol_idx}.csv")
+    df_ffmp = data.ffmp_level_boundaries[scenario][0]
+    df_ffmp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_ffmp_RBF{i+1}_{sol_idx}.csv")
+    df_res_level = data.res_level[scenario][0]
+    df_res_level.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_res_level_RBF{i+1}_{sol_idx}.csv")
 #%% No ctrl
 # General configuration
 name = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_without_ctrl"
