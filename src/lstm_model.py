@@ -92,7 +92,10 @@ class WaterTempLSTMModel():
         self.lstm2 = lstm2
 
         # Map Tavg to Tmax (T_L) at Lordville
-        if isinstance(Tavg2Tmax_coefs, dict):
+        if Tavg2Tmax_coefs is None:
+            self.Tavg2Tmax_coefs = None
+            print("Tavg2Tmax_coefs is not given.")
+        elif isinstance(Tavg2Tmax_coefs, dict):
             self.Tavg2Tmax_coefs = Tavg2Tmax_coefs
         else:
             import json
