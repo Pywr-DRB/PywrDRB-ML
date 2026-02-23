@@ -1,22 +1,23 @@
 # PywrDRB-ML
 ML plugin for water temperature and salt front prediction.
-The following example can only be used with v0.0.0.
 
 # Run Coupled Pywr-DRB 
 Coupled Pywr-DRB = [Pywr-DRB v2.0](https://github.com/Pywr-DRB/Pywr-DRB) + PywrDRB-ML plugin
 
-See the demo in `run_coupled_pywrdrb.py`. You will be able to generate the figures as I shown below.
+See the demo in `Tutorial 05 Run Coupled PywrDRB.ipynb`. 
 
-Note: Please install [Pywr-DRB v2.0](https://github.com/Pywr-DRB/Pywr-DRB) first, which contains all dependencies to run the Coupled Pywr-DRB. Then clone this repo to run `run_coupled_pywrdrb.py`. In `run_coupled_pywrdrb.py` (top few lines), you need to change `root_dir` to your directory of cloned `PywrDRB-ML`.
+Note: Please install [Pywr-DRB v2.0](https://github.com/Pywr-DRB/Pywr-DRB) first, which contains all dependencies to run the Coupled Pywr-DRB. Then clone this repo to run `run_coupled_pywrdrb.py`. In `Tutorial 05 Run Coupled PywrDRB.ipynb` or `run_coupled_pywrdrb.py`, you need to change `root_dir` to your directory of cloned `PywrDRB-ML`.
 
+The figure below show you the snapshot of the trained LSTMs performance.
 
-![alt text](./images/res_2019.png)
+![alt text](./images/rmse_barplot_and_ts.jpg)
+Model evaluation of daily maximum stream temperature at Lordville ($T_max$) and 7-day average salt front location in the estuary ($Saltfront$) dynamics in the DRB from 1979 to 2023. a) and c) shows Root Mean Square Error (RMSE) across different ranges of T_max and Saltfront, respectively. b) and d) present time series comparison of observed (obs; dots) and simulated (sim; solid lines) T_max and Saltfront in 2007.
 
 # Data availability 
 Designed to run until 2023 as the reconstruction data end at 2023.
 | Data            | From        | Note |
 |-----------------|-------------|------|
-| **GridMET**     | **1/1/1979**|      |
+| GridMET     | 1/1/1979|      |
 | T_C             | 10/1/1975   | Filled by reservoir_io_sntemp.csv (pretrain) or LSTM outputs |
 | Tmax_C          | 10/1/1963   |      |
 | Q_C             | 10/1/1963   |      |
@@ -24,8 +25,7 @@ Designed to run until 2023 as the reconstruction data end at 2023.
 | Tmax_L          | 10/1/1992   |      |
 | Q_L             | 7/28/2006   |      |
 | dwallin_temp_c  | 4/1/1982    |      |
-|-----------------|-------------|------|
-| **Saltfront**   |**10/1/1963**|      |
+| Saltfront   |10/1/1963|      |
 | 01463500        | 10/1/1963   |      |
 | 01474500        | 10/1/1963   |      |
 
@@ -42,8 +42,6 @@ Designed to run until 2023 as the reconstruction data end at 2023.
 | SalinityLSTM    | 10/3/1963   | Constrained by saltfront location data if choosed to have lag 1 as an input|
 
 
-Below are Chung-Yi's code developing notes.
-
 # Raw data preparation
 ## Observed data download from API
 - `src/data_retrievel/pull_gridmet.py`: Downloads and processes GridMET meteorological data for use as model input features.
@@ -54,19 +52,6 @@ Below are Chung-Yi's code developing notes.
     - `data\raw\salt_front_data.csv`
 
 ## Below files are directly downloaded from webpage or copied from the given sources.
-- `data\raw\dwallin_stream_preds.csv`
-    - https://www.sciencebase.gov/catalog/item/5f6a28a782ce38aaa2449137
-    - Used to filled in T_L
-    - It is Tavg
-- `data\raw\reservoir_io_sntemp.csv`
-    - https://www.sciencebase.gov/catalog/item/5f6a28a782ce38aaa2449137
-    - Used to filled in T_C
-    - It is Tavg
-    - seg_id_nat
-        - 1566 => Canonsville outflow
-        - 1444 => Pepecton outflow
-        - 1573 => Lordville
-        - GIS: https://www.sciencebase.gov/catalog/item/535eda80e4b08e65d60fc834
 
 - `data\raw\sf_data.xlsx (.csv)` 
     - https://drbc.net/Sky/hydro/saltfront.html#header2
@@ -76,7 +61,7 @@ Below are Chung-Yi's code developing notes.
 
 ## Pywrdrb-simulated data
 - `src/data_retrievel/pull_pywrdrb_simulated_data.py`
-    - Simulate `pub_nhmv10_BC_withObsScaled`, the reconstruction data (median) from Trev.
+    - Simulate `pub_nhmv10_BC_withObsScaled`, the reconstruction data (median).
     - from 1945 - 2023
 
 # Creating database for LSTM training
@@ -109,11 +94,3 @@ Below are Chung-Yi's code developing notes.
     - Create model, train model, basic analysis
 - `lstm_train_SalinityLSTM.py`
     - Create model, train model, basic analysis
-
-# Coupled model debuging
-- `debug\temperature_coupled_pywrdrb_debug.py`
-    - Compare between obs, trained lstm, and coupled pywrdrb
-    - Help to debug logic flaws in coupled pywrdrb
-- `debug\salinity_coupled_pywrdrb_debug.py`
-    - Compare between obs, trained lstm, and coupled pywrdrb
-    - Help to debug logic flaws in coupled pywrdrb
