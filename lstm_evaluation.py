@@ -102,7 +102,7 @@ min_val, max_val = df_fi1_norm['delta_nll'].min(), df_fi1_norm['delta_nll'].max(
 df_fi1_norm['delta_nll'] = (df_fi1_norm['delta_nll'] - min_val) / (max_val - min_val)
 ax = axes[0]
 ax.bar(df_fi1_norm['x_var'], df_fi1_norm['delta_nll'], width=bar_width, color='#0070C0')
-ax.set_title('TempLSTM1')
+ax.set_title('TempResLSTM')
 ax.set_xlabel('Features')
 ax.set_ylabel('Normalized Delta NLL')
 ax.tick_params(axis='x', rotation=0)
@@ -118,7 +118,7 @@ min_val, max_val = df_fi2_norm['delta_nll'].min(), df_fi2_norm['delta_nll'].max(
 df_fi2_norm['delta_nll'] = (df_fi2_norm['delta_nll'] - min_val) / (max_val - min_val)
 ax = axes[1]
 ax.bar(df_fi2_norm['x_var'], df_fi2_norm['delta_nll'], width=bar_width, color='#B31B1B')
-ax.set_title('TempLSTM2')
+ax.set_title('TempTribLSTM')
 ax.set_xlabel('Features')
 ax.tick_params(axis='x', rotation=0)
 ax.text(-0.1, 1.1, "b)", transform=ax.transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
