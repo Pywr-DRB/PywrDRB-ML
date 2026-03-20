@@ -178,7 +178,7 @@ df = df.loc[f"{year}-01-01":f"{year}-12-31", :]
 ax.plot(df["obs"], ls='None', marker='o', color="k", alpha=0.2, ms=3, label="obs")
 ax.plot(df["sim"], color='salmon', lw=1, label="sim")
 ax.grid(True, axis='y', lw=0.3, ls="--")
-ax.legend(frameon=False)
+ax.legend(frameon=False, loc="upper left")
 custom_ticks = pd.to_datetime([f"{year}-01-01", f"{year}-04-01", f"{year}-07-01", f"{year}-10-01", f"{year}-12-31"])
 ax.set_xticks(custom_ticks)
 ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])  # show only month/day

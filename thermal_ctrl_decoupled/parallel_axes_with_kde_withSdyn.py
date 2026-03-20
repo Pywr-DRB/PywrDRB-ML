@@ -527,6 +527,8 @@ yr = 2020
 mgd2m3 = 378541/10**6
 df_ = df_res.loc[f"{yr}-5-30":f"{yr}-9-01", :]
 
+df_bank_use_ratio = df_.sum()/1620
+
 colors = {
     'No control': 'k',
     "Fixed-release\n(baseline)": '#E41A1C',
@@ -582,7 +584,7 @@ for i, release_name in enumerate(release_names):
         if not x_vals.empty:
             markerline, stemlines, baseline = ax.stem(
                 x_vals, y_vals*mgd2m3,
-                linefmt="k-", markerfmt="ko", basefmt=" ", label="Obs"
+                linefmt="k-", markerfmt="ko", basefmt=" ", label="Obs"+f"\n[{round(df_bank_use_ratio['historic'], 2)}]"
             )
             markerline.set_color(colors['historic'])
             stemlines.set_color(colors['historic'])
@@ -593,7 +595,7 @@ for i, release_name in enumerate(release_names):
         else:
             ax.plot([], [], marker='o', color='k', linestyle='None', label="historic")
     else:
-        ax.bar(df_.index, df_[release_name]*mgd2m3, width=1.0, color=colors[release_name], label=release_name, alpha=0.6, zorder=4)
+        ax.bar(df_.index, df_[release_name]*mgd2m3, width=1.0, color=colors[release_name], label=release_name+f"\n[{round(df_bank_use_ratio[release_name], 2)}]", alpha=0.6, zorder=4)
     ax.grid(True, axis='y', lw=0.3, ls="--")
     #ax.set_ylabel(f"{release_name}\nThermal release (mgd)")
     ax.set_ylim([0, 200*mgd2m3])
