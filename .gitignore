@@ -1,3 +1,12 @@
+# Local agent / editor configs
+.claude/
+
+# Local analysis scratch
+compare_unmanaged_natural_saltfront_locations/
+
+# Backup files
+*.bak_pre1945
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
