@@ -441,6 +441,27 @@ class bmi_lstm(Bmi):
             # start of the simulation time
             self.t = self._start_time
 
+    def set_n_scenarios(self, n_scenarios: int):
+        """Expand the model's hidden/cell state to support `n_scenarios` independent
+        scenarios in a single batched forward pass.
+
+        Tiles the loaded ``(n_segs_current, hidden_units)`` state to
+        ``(n_scenarios, hidden_units)`` so that each row evolves independently
+        with its own per-scenario inputs. Idempotent if already at the target
+        size.
+        """
+        n_scenarios = int(n_scenarios)
+        if n_scenarios < 1:
+            raise ValueError(f"n_scenarios must be >= 1, got {n_scenarios}")
+        if self.n_segs == n_scenarios:
+            return
+        # Tile from the first row so every scenario starts from the same loaded state.
+        base_h = self.h_t[:1].clone()
+        base_c = self.c_t[:1].clone()
+        self.h_t = base_h.expand(n_scenarios, -1).contiguous().clone()
+        self.c_t = base_c.expand(n_scenarios, -1).contiguous().clone()
+        self.n_segs = n_scenarios
+
     def update(self):
         """Update the LSTM model for a single time step.
 
@@ -477,15 +498,24 @@ class bmi_lstm(Bmi):
             else:
                 self.preds = self.samples
 
-        # We make it flexible to update whatever the length of the input data is given
-        # Assuming users understand that it is based on the current step
+        # Output tensors have shape (n_segs, n_time, 1). For backward compatibility
+        # with single-scenario callers we squeeze the n_segs axis when n_segs == 1
+        # (returning shape (n_time,)); for multi-scenario callers we drop only the
+        # trailing length-1 feature axis (returning shape (n_segs, n_time)).
+        mu_full = self.lstm_output['mu'].detach().numpy()[..., 0]
+        sd_full = self.lstm_output['sigma'].detach().numpy()[..., 0]
+        if self.n_segs == 1:
+            mu_out = mu_full[0]
+            sd_out = sd_full[0]
+        else:
+            mu_out = mu_full
+            sd_out = sd_full
 
-        setattr(self, 'channel_water_surface_water__mu_max_of_temperature',
-                self.lstm_output['mu'].detach().numpy()[0,:,0])
-        setattr(self, 'channel_water_surface_water__sd_max_of_temperature',
-                self.lstm_output['sigma'].detach().numpy()[0,:,0])
+        setattr(self, 'channel_water_surface_water__mu_max_of_temperature', mu_out)
+        setattr(self, 'channel_water_surface_water__sd_max_of_temperature', sd_out)
 
-        forward_steps = len(self.lstm_output['mu'].detach().numpy()[0,:,0])
+        # Time advances by the number of input timesteps regardless of scenario count.
+        forward_steps = self.lstm_output['mu'].shape[1]
 
         self.t += self.get_time_step()*forward_steps
 
@@ -1170,6 +1200,20 @@ class bmi_lstm(Bmi):
             if self.delta_temp_layer:
                 self.input_delta_array_scaled = ((self.input_delta_array - self.input_delta_mean[:,np.newaxis]) / (self.input_delta_std[:,np.newaxis] + 1e-10))[np.newaxis,:,:]
                 self.input_delta_array_scaled = np.moveaxis(self.input_delta_array_scaled, 2, 1)
+        elif self.input_array.ndim == 3:
+            # Multi-scenario batched path: input_array shape is
+            # (n_feat, n_scenarios, n_time). Reshape to torch's
+            # (n_scenarios, n_time, n_feat) ordering.
+            n_time = self.input_array.shape[2]
+            mean = self.input_mean[:, np.newaxis, np.newaxis]
+            std = self.input_std[:, np.newaxis, np.newaxis] + 1e-10
+            scaled = (self.input_array - mean) / std  # (n_feat, n_scenarios, n_time)
+            self.input_array_scaled = np.transpose(scaled, (1, 2, 0))  # (n_scenarios, n_time, n_feat)
+            if self.delta_temp_layer:
+                d_mean = self.input_delta_mean[:, np.newaxis, np.newaxis]
+                d_std = self.input_delta_std[:, np.newaxis, np.newaxis] + 1e-10
+                d_scaled = (self.input_delta_array - d_mean) / d_std
+                self.input_delta_array_scaled = np.transpose(d_scaled, (1, 2, 0))
         if (DEBUG):
             print('### input_list =', self.input_list)
             print('### input_array =', self.input_array)
@@ -1245,8 +1289,40 @@ class bmi_lstm(Bmi):
         #--------------------------------------------------------
         # W/o setting dtype here, it was "object_", and crashed
         #--------------------------------------------------------
-        ## self.input_array = np.array( self.input_list )
-        self.input_array = np.array( self.input_list, dtype='float64' )
+        # In multi-scenario mode each x_var attribute may be 2D
+        # (n_scenarios, n_time); broadcast scalars / 1D entries up to that
+        # shape so np.array stacks cleanly into (n_feat, n_scenarios, n_time).
+        if self.n_segs > 1:
+            shapes = [
+                v.shape for v in self.input_list
+                if isinstance(v, np.ndarray) and v.ndim == 2
+            ]
+            if shapes:
+                target_shape = shapes[0]
+                normalized = []
+                for v in self.input_list:
+                    arr = np.asarray(v, dtype='float64')
+                    if arr.ndim == 0:
+                        normalized.append(np.broadcast_to(arr, target_shape).copy())
+                    elif arr.ndim == 1:
+                        # 1D entries map to per-time values shared across scenarios.
+                        if arr.shape[0] != target_shape[1]:
+                            raise ValueError(
+                                f"Mixed-shape inputs in multi-scenario mode: "
+                                f"got 1D length {arr.shape[0]}, expected {target_shape[1]}"
+                            )
+                        normalized.append(np.broadcast_to(arr[np.newaxis, :], target_shape).copy())
+                    elif arr.shape == target_shape:
+                        normalized.append(arr)
+                    else:
+                        raise ValueError(
+                            f"Mixed-shape inputs in multi-scenario mode: got {arr.shape}, expected {target_shape}"
+                        )
+                self.input_array = np.stack(normalized, axis=0)
+            else:
+                self.input_array = np.array(self.input_list, dtype='float64')
+        else:
+            self.input_array = np.array( self.input_list, dtype='float64' )
         if self.delta_temp_layer:
             self.input_delta_array = np.array(self.input_delta_list, dtype='float64')
 

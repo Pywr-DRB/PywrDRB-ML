@@ -15,7 +15,7 @@ y_vars_src: [saltfront_src]
 delta_temp_layer: false
 delta_temp_vars: []
 lag_days: 1
-min_date: '1979-01-01'
+min_date: '1945-01-01'
 max_date: '2023-12-31'
 start_date_train: '1979-01-01'
 end_date_train: '2023-12-31'

@@ -1,23 +1,37 @@
 #%%
+import os
 import pandas as pd
 import numpy as np
 import pathnavigator
-if pathnavigator.os_name == 'Windows':
-    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
-elif pathnavigator.os_name == 'Darwin':
-    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
-else:
-    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
+
+# Repo root resolution. Honors PYWRDRB_ML_DIR env var first so the script can
+# be run on hosts where the working copy isn't at the platform-default location
+# (e.g. HPC scratch). Same convention as src/lstm_model.py. Falls back to the
+# original platform-specific defaults.
+root_dir = os.environ.get("PYWRDRB_ML_DIR")
+if not root_dir:
+    if pathnavigator.os_name == 'Windows':
+        root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
+    elif pathnavigator.os_name == 'Darwin':
+        root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
+    else:
+        root_dir = os.path.expanduser("~/Github/PywrDRB-ML")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
 pn.data.mkdir("database")
 
 
-def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filename="SalinityLSTM_database.csv"):
+def create_SalinityLSTM_database(
+    pn,
+    start="1945-01-01",
+    end="2024-12-31",
+    filename="SalinityLSTM_database.csv",
+    flow_input_filename="pywrdrb_pub_nhmv10_BC_withObsScaled_flow_and_storage_1945.csv",
+):
     # Load saltfront and flow
     # 01463500 = delTrenton
     # 01474500 = outletSchuylkill
-    df_salinity_flow_bc = pd.read_csv(pn.data.raw.get() / "pywrdrb_pub_nhmv10_BC_withObsScaled_flow_and_storage.csv", parse_dates=True, index_col=["date"])[start:end][["flow_delTrenton", "flow_outletSchuylkill"]]
+    df_salinity_flow_bc = pd.read_csv(pn.data.raw.get() / flow_input_filename, parse_dates=True, index_col=["date"])[start:end][["flow_delTrenton", "flow_outletSchuylkill"]]
     df_salinity_flow_bc.columns = ["Q_Trenton_bc", "Q_Schuylkill_bc"]
     df_salinity_flow_bc["Q_Trenton_bc_7d_avg"] = df_salinity_flow_bc["Q_Trenton_bc"].rolling(window=7, min_periods=1).mean()
     df_salinity_flow_bc["Q_Schuylkill_bc_7d_avg"] = df_salinity_flow_bc["Q_Schuylkill_bc"].rolling(window=7, min_periods=1).mean()
@@ -102,4 +116,4 @@ def create_SalinityLSTM_database(pn, start="1963-10-01", end="2024-12-31", filen
 
     return df_all, input_vars, unit_map
 
-df_all, input_vars, unit_map = create_SalinityLSTM_database(pn=pn, start="1963-10-01", end="2024-12-31")
+df_all, input_vars, unit_map = create_SalinityLSTM_database(pn=pn, start="1945-01-01", end="2024-12-31")

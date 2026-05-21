@@ -1,17 +1,25 @@
 import numpy as np
 import pandas as pd
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 import joblib
 from tqdm import tqdm
 import pathnavigator
 
-if pathnavigator.os_name == 'Windows':
-    root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
-elif pathnavigator.os_name == 'Darwin':
-    root_dir = rf"/Users/{pathnavigator.user}/Documents/GitHub/PywrDRB-ML"
-else:
-    root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
+# Resolve the PywrDRB-ML root portably:
+#   1. PYWRDRB_ML_DIR env var wins (set by callers like NYCOptimization).
+#   2. Otherwise default to the directory two levels above this file
+#      (src/lstm_model.py -> src/ -> PywrDRB-ML/), which is correct for
+#      any clone location.
+# Replaces earlier hardcoded developer paths (~/Github/PywrDRB-ML and
+# Documents/GitHub/PywrDRB-ML) and pathnavigator.expanduser (removed in
+# pathnavigator >= 0.6). See
+# NYCOptimization/local_notes/configuration/pywrdrb_ml_setup.md.
+root_dir = os.environ.get(
+    "PYWRDRB_ML_DIR",
+    str(Path(__file__).resolve().parent.parent),
+)
 
 global pn
 pn = pathnavigator.create(root_dir)
@@ -612,7 +620,8 @@ class SalinityLSTMModel():
                  Q_Trenton_lstm_var_name="Q_Trenton_bc",
                  Q_Schuylkill_lstm_var_name="Q_Schuylkill_bc",
                  debug=False,
-                 disable_tqdm=True
+                 disable_tqdm=True,
+                 n_scenarios: int = 1,
                  ):
         """
         Initialize the Water Temperature LSTM Model.
@@ -648,6 +657,10 @@ class SalinityLSTMModel():
         lstm.initialize(config_file=model_salinity, train=False, root_dir=pn.get(), disable_tqdm=disable_tqdm)
         lstm.mc_dropout = mc_dropout
         self.lstm = lstm
+
+        self.n_scenarios = int(n_scenarios)
+        if self.n_scenarios > 1:
+            lstm.set_n_scenarios(self.n_scenarios)
 
 
         ##### Dates and lengths
@@ -688,9 +701,22 @@ class SalinityLSTMModel():
         # Input data
         self.X = np.nan
 
-        # Current predictions
-        self.sf_mu = np.nan
-        self.sf_sd = np.nan
+        # Current predictions (per-scenario; shape (n_scenarios,) at all times)
+        self.sf_mu = np.full(self.n_scenarios, np.nan)
+        self.sf_sd = np.full(self.n_scenarios, np.nan)
+
+        # Per-scenario 7-day rolling-average state for the recurrence
+        # (Q_7d[t] = (Q_7d[t-1] * 6 + Q[t]) / 7). Initialized lazily on the
+        # first call to update() from the historical X column.
+        self._Q_Trenton_7d_prev = np.full(self.n_scenarios, np.nan)
+        self._Q_Schuylkill_7d_prev = np.full(self.n_scenarios, np.nan)
+
+        # Per-step, per-scenario overrides for flow-driven input columns.
+        # Keys are x_var names; values are 2D arrays of shape (length, n_scenarios).
+        # Populated by update()/forecast() and consumed by update_until().
+        # Only used when n_scenarios > 1; single-scenario path writes directly
+        # to self.X for backward compatibility.
+        self._scenario_X_overrides = {}
 
         # Forecast predictions
         self.forecast_sf_mu_arr = np.nan
@@ -704,16 +730,17 @@ class SalinityLSTMModel():
         self.debug = debug
         length = self.length
         if debug:
+            n_scen = self.n_scenarios
             self.records = {
-                "sf_mu": [np.nan] * length,
-                "sf_sd": [np.nan] * length,
-                "adj_ratio_Trenton": [np.nan] * length,
-                "adj_ratio_Montague": [np.nan] * length,
-                "drought_idx": [np.nan] * length,
+                "sf_mu": np.full((length, n_scen), np.nan),
+                "sf_sd": np.full((length, n_scen), np.nan),
+                "adj_ratio_Trenton": np.full((length, n_scen), np.nan),
+                "adj_ratio_Montague": np.full((length, n_scen), np.nan),
+                "drought_idx": np.full((length, n_scen), np.nan),
             }
             self.forecast_records = {
-                "sf_mu": [np.nan] * length,
-                "sf_sd": [np.nan] * length
+                "sf_mu": np.full((length, n_scen), np.nan),
+                "sf_sd": np.full((length, n_scen), np.nan),
             }
 
     def load_data(self):
@@ -761,19 +788,55 @@ class SalinityLSTMModel():
         X = self.X[t:t+length, :]
 
         lstm = self.lstm
-        for i, var in enumerate(self.x_vars):
-            lstm.set_value(var, X[:, i])
-        sf_mu, sf_sd = lstm.update()
-        if length == 1:
-            sf_mu, sf_sd = np.array([sf_mu]), np.array([sf_sd])
+        n_scen = self.n_scenarios
+
+        if n_scen == 1:
+            for i, var in enumerate(self.x_vars):
+                lstm.set_value(var, X[:, i])
+            sf_mu, sf_sd = lstm.update()
+            if length == 1:
+                sf_mu = np.atleast_1d(sf_mu)
+                sf_sd = np.atleast_1d(sf_sd)
+            # Reshape to (length, n_scen) for record/store consistency
+            sf_mu_2d = sf_mu.reshape(length, 1)
+            sf_sd_2d = sf_sd.reshape(length, 1)
+        else:
+            # Build per-scenario input batch shape (n_scen, length, n_feat).
+            # Base values (meteorology, calendar) are scenario-independent;
+            # flow + 7d-avg columns are overwritten with per-scenario state
+            # by ``update()`` via the _scenario_X_overrides scratch dict.
+            # ``set_value`` accepts (n_scen, length) per variable.
+            for i, var in enumerate(self.x_vars):
+                base_col = X[:, i]  # shape (length,)
+                if var in self._scenario_X_overrides:
+                    # Per-scenario column for this step (length must equal 1
+                    # for the in-loop pywrdrb path; for batched advance, the
+                    # override stores shape (length, n_scen)).
+                    override = self._scenario_X_overrides[var]
+                    vals = override.T  # (n_scen, length)
+                else:
+                    vals = np.broadcast_to(
+                        base_col[np.newaxis, :], (n_scen, length)
+                    ).copy()
+                lstm.set_value(var, vals)
+            sf_mu, sf_sd = lstm.update()
+            # bmi_lstm returns (n_scen, length) when n_segs > 1.
+            if sf_mu.ndim == 1:
+                sf_mu = sf_mu[:, np.newaxis]
+                sf_sd = sf_sd[:, np.newaxis]
+            sf_mu_2d = sf_mu.T  # (length, n_scen)
+            sf_sd_2d = sf_sd.T
 
         if self.debug:
             records = self.records
-            records["sf_mu"][t:t+length] = sf_mu
-            records["sf_sd"][t:t+length] = sf_sd
+            records["sf_mu"][t:t+length, :] = sf_mu_2d
+            records["sf_sd"][t:t+length, :] = sf_sd_2d
 
-        self.sf_mu = float(sf_mu[-1])
-        self.sf_sd = float(sf_sd[-1])
+        self.sf_mu = sf_mu_2d[-1, :].astype(float)
+        self.sf_sd = sf_sd_2d[-1, :].astype(float)
+
+        # Clear per-step scenario overrides now that they've been consumed.
+        self._scenario_X_overrides = {}
 
         self.t += length
         self.current_date += np.timedelta64(length, 'D')
@@ -787,52 +850,103 @@ class SalinityLSTMModel():
         ----------
         t : int
             The time step to update the models to.
-        Q_Trenton : float
-            The Trenton flow (Q_Trenton_bc).
-        Q_Schuylkill : float
-            The Schuylkill flow (Q_Schuylkill_bc).
+        Q_Trenton : float or np.ndarray
+            The Trenton flow (Q_Trenton_bc). Scalar in single-scenario mode;
+            shape ``(n_scenarios,)`` array in multi-scenario mode.
+        Q_Schuylkill : float or np.ndarray
+            The Schuylkill flow (Q_Schuylkill_bc). Same shape rules as
+            ``Q_Trenton``.
 
         Returns
         -------
         tuple
-            The predicted T_L_mu and T_L_sd at the specified time step (t).
+            The predicted sf_mu and sf_sd at the specified time step (t),
+            each shape ``(n_scenarios,)``.
         """
         Q_Trenton_lstm_var_name = self.Q_Trenton_lstm_var_name
         Q_Schuylkill_lstm_var_name = self.Q_Schuylkill_lstm_var_name
+        n_scen = self.n_scenarios
 
-        if Q_Trenton is not None:
-            try:
-                self.X[t, self.x_vars.index(Q_Trenton_lstm_var_name)] = Q_Trenton
-            except ValueError:
-                if self.debug:
-                    print(f"Warning: '{Q_Trenton_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
-            try:
-                if self.t == 0:
-                    Q_Trenton_7d = self.X[t, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")]
-                else:
-                    Q_Trenton_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))]
-                    Q_Trenton_7d = (Q_Trenton_7d_t_1*6 + Q_Trenton) / 7
-                self.X[t, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))] = Q_Trenton_7d
-            except ValueError:
-                if self.debug:
-                    print(f"Warning: '{Q_Trenton_lstm_var_name}_7d_avg' not found in lstm2.x_vars. Skipping update.")
+        if n_scen == 1:
+            # Backward-compatible single-scenario path: write directly into
+            # self.X so all downstream slicing matches the pre-refactor numerics.
+            if Q_Trenton is not None:
+                Q_Trenton_scalar = float(np.asarray(Q_Trenton).reshape(-1)[0])
+                try:
+                    self.X[t, self.x_vars.index(Q_Trenton_lstm_var_name)] = Q_Trenton_scalar
+                except ValueError:
+                    if self.debug:
+                        print(f"Warning: '{Q_Trenton_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+                try:
+                    if self.t == 0:
+                        Q_Trenton_7d = self.X[t, self.x_vars.index(Q_Trenton_lstm_var_name+"_7d_avg")]
+                    else:
+                        Q_Trenton_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))]
+                        Q_Trenton_7d = (Q_Trenton_7d_t_1*6 + Q_Trenton_scalar) / 7
+                    self.X[t, self.x_vars.index((Q_Trenton_lstm_var_name+"_7d_avg"))] = Q_Trenton_7d
+                except ValueError:
+                    if self.debug:
+                        print(f"Warning: '{Q_Trenton_lstm_var_name}_7d_avg' not found in lstm2.x_vars. Skipping update.")
 
-        if Q_Schuylkill is not None:
-            try:
-                self.X[t, self.x_vars.index(Q_Schuylkill_lstm_var_name)] = Q_Schuylkill
-            except ValueError:
-                if self.debug:
-                    print(f"Warning: '{Q_Schuylkill_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
-            try:
-                if self.t == 0:
-                    Q_Schuylkill_7d = self.X[t, self.x_vars.index(Q_Schuylkill_lstm_var_name+"_7d_avg")]
-                else:
-                    Q_Schuylkill_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))]
-                    Q_Schuylkill_7d = (Q_Schuylkill_7d_t_1*6 + Q_Schuylkill) / 7
-                self.X[t, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))] = Q_Schuylkill_7d
-            except ValueError:
-                if self.debug:
-                    print(f"Warning: '{Q_Schuylkill_lstm_var_name}_7d_avg' not found in lstm2.x_vars. Skipping update.")
+            if Q_Schuylkill is not None:
+                Q_Schuylkill_scalar = float(np.asarray(Q_Schuylkill).reshape(-1)[0])
+                try:
+                    self.X[t, self.x_vars.index(Q_Schuylkill_lstm_var_name)] = Q_Schuylkill_scalar
+                except ValueError:
+                    if self.debug:
+                        print(f"Warning: '{Q_Schuylkill_lstm_var_name}' not found in lstm1.x_vars. Skipping update.")
+                try:
+                    if self.t == 0:
+                        Q_Schuylkill_7d = self.X[t, self.x_vars.index(Q_Schuylkill_lstm_var_name+"_7d_avg")]
+                    else:
+                        Q_Schuylkill_7d_t_1 = self.X[t-1, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))]
+                        Q_Schuylkill_7d = (Q_Schuylkill_7d_t_1*6 + Q_Schuylkill_scalar) / 7
+                    self.X[t, self.x_vars.index((Q_Schuylkill_lstm_var_name+"_7d_avg"))] = Q_Schuylkill_7d
+                except ValueError:
+                    if self.debug:
+                        print(f"Warning: '{Q_Schuylkill_lstm_var_name}_7d_avg' not found in lstm2.x_vars. Skipping update.")
+        else:
+            # Multi-scenario path: route per-scenario flow + 7d-avg through
+            # _scenario_X_overrides instead of mutating the shared self.X.
+            if asycronized_update:
+                raise NotImplementedError(
+                    "asycronized_update is not supported with n_scenarios > 1; "
+                    "use synchronous updates for multi-scenario simulations."
+                )
+            if Q_Trenton is not None:
+                Q_Trenton_arr = np.asarray(Q_Trenton, dtype=np.float64).reshape(-1)
+                if Q_Trenton_arr.size == 1:
+                    Q_Trenton_arr = np.full(n_scen, Q_Trenton_arr.item())
+                if Q_Trenton_arr.size != n_scen:
+                    raise ValueError(f"Q_Trenton must have shape ({n_scen},); got {Q_Trenton_arr.shape}")
+                if Q_Trenton_lstm_var_name in self.x_vars:
+                    self._scenario_X_overrides[Q_Trenton_lstm_var_name] = Q_Trenton_arr[np.newaxis, :].copy()
+                avg_var = Q_Trenton_lstm_var_name + "_7d_avg"
+                if avg_var in self.x_vars:
+                    if self.t == 0 or np.any(np.isnan(self._Q_Trenton_7d_prev)):
+                        seed = self.X[t, self.x_vars.index(avg_var)]
+                        Q_Trenton_7d = np.full(n_scen, float(seed))
+                    else:
+                        Q_Trenton_7d = (self._Q_Trenton_7d_prev * 6 + Q_Trenton_arr) / 7
+                    self._scenario_X_overrides[avg_var] = Q_Trenton_7d[np.newaxis, :].copy()
+                    self._Q_Trenton_7d_prev = Q_Trenton_7d
+            if Q_Schuylkill is not None:
+                Q_Schuylkill_arr = np.asarray(Q_Schuylkill, dtype=np.float64).reshape(-1)
+                if Q_Schuylkill_arr.size == 1:
+                    Q_Schuylkill_arr = np.full(n_scen, Q_Schuylkill_arr.item())
+                if Q_Schuylkill_arr.size != n_scen:
+                    raise ValueError(f"Q_Schuylkill must have shape ({n_scen},); got {Q_Schuylkill_arr.shape}")
+                if Q_Schuylkill_lstm_var_name in self.x_vars:
+                    self._scenario_X_overrides[Q_Schuylkill_lstm_var_name] = Q_Schuylkill_arr[np.newaxis, :].copy()
+                avg_var = Q_Schuylkill_lstm_var_name + "_7d_avg"
+                if avg_var in self.x_vars:
+                    if self.t == 0 or np.any(np.isnan(self._Q_Schuylkill_7d_prev)):
+                        seed = self.X[t, self.x_vars.index(avg_var)]
+                        Q_Schuylkill_7d = np.full(n_scen, float(seed))
+                    else:
+                        Q_Schuylkill_7d = (self._Q_Schuylkill_7d_prev * 6 + Q_Schuylkill_arr) / 7
+                    self._scenario_X_overrides[avg_var] = Q_Schuylkill_7d[np.newaxis, :].copy()
+                    self._Q_Schuylkill_7d_prev = Q_Schuylkill_7d
 
         if asycronized_update:
             return None
@@ -859,6 +973,11 @@ class SalinityLSTMModel():
         None
             The forecasted water temperature at Lordville is stored in the class attributes.
         """
+        if self.n_scenarios > 1:
+            raise NotImplementedError(
+                "SalinityLSTMModel.forecast() is not yet vectorized over scenarios; "
+                "salt-front forecasting is not on the pywrdrb-coupling code path."
+            )
         # Pandas DF takes t:t but array takes t:t+1
         X = self.X[t:t+lead_time+1, :].copy()
 
