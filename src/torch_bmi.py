@@ -246,7 +246,6 @@ class bmi_lstm(Bmi):
         'Q_Schuylkill_bc_7d_avg': ['Q_Schuylkill_bc_7d_avg', '--'],
         'doy_cos': ['doy_cos', '--'],
         'doy': ['doy', '--'],
-        'seg_id_nat': ['seg_id_nat', '--'],
         'y_src_lag_1': ['y_src_lag_1', '--'],
         'saltfront_lag_1': ['saltfront_lag_1', '--']
         }
@@ -325,7 +324,8 @@ class bmi_lstm(Bmi):
     #------------------------------------------------------------
 
     #-------------------------------------------------------------------
-    def initialize(self, config_file = None, torch_seed = None, train = False, root_dir = None, disable_tqdm = False):
+    def initialize(self, config_file = None, torch_seed = None, train = False, root_dir = None, disable_tqdm = False, 
+                   east_tributary_temperature_perturbation = 0):
         """Initialize the BMI LSTM model with BMI configuration file.
 
         This function initializes the BMI LSTM model by performing the following steps:
@@ -440,6 +440,8 @@ class bmi_lstm(Bmi):
 
             # start of the simulation time
             self.t = self._start_time
+        
+        self.east_tributary_temperature_perturbation = east_tributary_temperature_perturbation
 
     def update(self):
         """Update the LSTM model for a single time step.
@@ -489,7 +491,8 @@ class bmi_lstm(Bmi):
 
         self.t += self.get_time_step()*forward_steps
 
-        predicted_mu = getattr(self, 'channel_water_surface_water__mu_max_of_temperature', np.zeros(forward_steps))
+        predicted_mu = getattr(self, 'channel_water_surface_water__mu_max_of_temperature', np.zeros(forward_steps)) \
+            + self.east_tributary_temperature_perturbation
         predicted_sd = getattr(self, 'channel_water_surface_water__sd_max_of_temperature', np.zeros(forward_steps))
         #print(f"We are at the beginning of t = {int(self.get_current_time())}: {self.get_current_date()}")
         return predicted_mu, predicted_sd
@@ -554,7 +557,8 @@ class bmi_lstm(Bmi):
 
         mu_pred = np.zeros(length)
         sd_pred = np.zeros(length)
-        self.get_value("channel_water_surface_water__mu_max_of_temperature", mu_pred)
+        self.get_value("channel_water_surface_water__mu_max_of_temperature", mu_pred)\
+            + self.east_tributary_temperature_perturbation
         self.get_value("channel_water_surface_water__sd_max_of_temperature", sd_pred)
 
         res = pd.DataFrame()
