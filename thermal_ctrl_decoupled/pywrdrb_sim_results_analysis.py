@@ -52,7 +52,7 @@ ax.set_ylabel("Empirical CDF")
 ax.grid(True)
 ax.legend()
 plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.attemp1.get()/"coupled_pywrdrb_sols.jpg")
+clt.fig.savefig(fig, filename=pn.figures.attemp1.get()/"coupled_pywrdrb_sols.pdf")
 plt.show()
 
 #%% Load obs for plotting
@@ -247,8 +247,8 @@ ax_joint.text(57, 24.1, "24.0", rotation=0, ha='center', va='bottom', fontsize=1
 
 ax_joint.set_xlim([55, 93])
 ax_joint.set_ylim([-0.5, 30])
-#plt.tight_layout()
-#clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "tmax_and_saltfront_dynamics_RBF.jpg")
+plt.tight_layout()
+clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "tmax_and_saltfront_dynamics_RBF.pdf")
 plt.show()
 
 

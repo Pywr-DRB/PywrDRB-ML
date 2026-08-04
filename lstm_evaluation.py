@@ -140,7 +140,7 @@ ax.text(-0.1, 1.1, "c)", transform=ax.transAxes, fontsize=13, fontweight='bold',
 
 # Adjust layout to prevent overlap
 plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "feature_importance.jpg")
+clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "feature_importance.pdf")
 plt.show()
 
 #%% RSME barplot and timeseries
@@ -163,6 +163,27 @@ sim_Tavg_L_mu, obs_Tavg_L_mu = clt.dropna_any(sim_Tavg_L_mu, obs_Tavg_L_mu)
 round(clt.metrics.rmse(sim_Tavg_L_mu, obs_Tavg_L_mu), 2)
 
 clt.plots.rmse_over_obs_bins_in_barplot(ax, obs, sim, bins=(0, 30, 5), color="salmon")
+
+# Count observations in each bin
+edges = np.arange(0, 30 + 5, 5)
+counts, _ = np.histogram(obs, bins=edges)
+
+# Add counts at the bottom of each bar
+ymin, ymax = ax.get_ylim()
+y_text = ymin + 0.02 * (ymax - ymin)   # a little above the bottom
+
+for bar, n in zip(ax.patches, counts):
+    ax.text(
+        bar.get_x() + bar.get_width()/2,
+        y_text,                    # fixed y value
+        str(n),
+        ha="center",
+        va="bottom",
+        color="k",
+        fontsize=7,
+        zorder=100
+    )
+    
 ax.grid(True, axis='y', lw=0.3, ls="--")
 ax.set_ylabel(f"RMSE\n(Overall: {round(clt.metrics.rmse(sim, obs), 2)})")
 ax.set_xlabel("$T_{max}$ (°C)")
@@ -193,9 +214,31 @@ obs.loc[obs['saltfront_src'] != "obs", 'saltfront'] = np.nan
 obs = obs['saltfront'].values
 sim, obs = clt.dropna_any(sim, obs)
 clt.plots.rmse_over_obs_bins_in_barplot(ax, obs, sim, bins=(60, 90, 5), color="mediumpurple")
+
+# Count observations in each bin
+edges = np.arange(60, 90 + 5, 5)
+counts, _ = np.histogram(obs, bins=edges)
+
+# Add counts at the bottom of each bar
+ymin, ymax = ax.get_ylim()
+y_text = ymin + 0.02 * (ymax - ymin)   # a little above the bottom
+
+for bar, n in zip(ax.patches, counts):
+    ax.text(
+        bar.get_x() + bar.get_width()/2,
+        y_text,                    # fixed y value
+        str(n),
+        ha="center",
+        va="bottom",
+        color="k",
+        fontsize=7,
+        zorder=100
+    )
+
 ax.grid(True, axis='y', lw=0.3, ls="--")
 ax.set_ylabel(f"RMSE\n(Overall: {round(clt.metrics.rmse(sim, obs), 2)})")
 ax.set_xlabel("$Saltfront$ (RM)")
+
 
 # ax_inset = inset_axes(ax, width="40%", height="40%", loc='upper right')
 # clt.plots.rmse_over_obs_bins_in_barplot(ax_inset, obs, sim, bins=(80, 90, 5), color="mediumpurple")
@@ -232,7 +275,7 @@ axes[0, 1].text(-0.3, 1, "c)", transform=axes[0, 1].transAxes, fontsize=13, font
 axes[1, 1].text(-0.3, 1, "d)", transform=axes[1, 1].transAxes, fontsize=13, fontweight='bold', va='top', ha='left')
 
 plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.jpg", dpi=500)
+clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "rmse_barplot_and_ts.pdf", dpi=500)
 plt.show()
 
 #%%
@@ -344,7 +387,7 @@ axes[1].text(-0.23, 1, "b)", transform=axes[1].transAxes, fontsize=13, fontweigh
 
 plt.tight_layout()
 fig.align_ylabels(axes)
-clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "timeseries_error_plot.jpg", dpi=500)
+clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "timeseries_error_plot.pdf", dpi=500)
 plt.show()
 
 #%% Plot with historical thermal release
@@ -413,5 +456,5 @@ for yr in range(2006, 2023):
     ax2.set_ylim([0, max(df_["thermal_release"])*3])
 
     plt.tight_layout()
-    clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "compare_with_hist_tr.jpg")
+    clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "compare_with_hist_tr.pdf")
     plt.show()

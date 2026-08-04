@@ -624,7 +624,7 @@ ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
 
 plt.tight_layout()
 pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
-clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.jpg")
+clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.pdf")
 plt.show()
 
 
@@ -752,7 +752,7 @@ plot_parallel_coords_with_kde(
     )
 #ax.set_title(policy)
 plt.tight_layout()
-#clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_tradeoffs.jpg")
+#clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_tradeoffs.pdf")
 plt.show()
 
 #%% Scatter plot
@@ -1050,9 +1050,9 @@ ax.set_xticklabels([dt.strftime("%m/%d") for dt in custom_ticks])
 
 plt.tight_layout()
 pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
-clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.jpg")
-#clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_thermal_release_{yr}_with_hist.jpg")
-###clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
+clt.fig.savefig(fig, pn.figures.get("attemp1") / f"RBFs_thermal_release_{yr}.pdf")
+#clt.fig.savefig(fig, pn.figures.get(f"attemp1") / f"RBFs_thermal_release_{yr}_with_hist.pdf")
+###clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.pdf")
 plt.show()
 
 #%%
@@ -1149,7 +1149,7 @@ for yr in range(1979, 2024):
     axes[1].set_position([pos1.x0, pos1.y0 - 0.07, pos1.width, pos1.height])  # Move second subplot down for hspace
     plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for external legend
     pn.outputs.mkdir(f"dps_{policy}_{job_id}/figures/RBFs")
-    clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.jpg")
+    clt.fig.savefig(fig, pn.outputs.get(f"dps_{policy}_{job_id}/figures/RBFs") / f"RBFs_{yr}.pdf")
     plt.show()
 
 #%%
@@ -1231,7 +1231,7 @@ for rbf_name in ["RBF-1", "RBF-2", "RBF-3", "RBF-4"]:
 
         plt.tight_layout(rect=[0, 0, 0.85, 1])  # Leave space for external legend
         pn.outputs.mkdir(f"stage1_nowcast_{policy}_{job_id}/figures/{rbf_name}")
-        clt.fig.savefig(fig, pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}/figures/{rbf_name}") / f"{rbf_name}_{yr}.jpg")
+        clt.fig.savefig(fig, pn.outputs.get(f"stage1_nowcast_{policy}_{job_id}/figures/{rbf_name}") / f"{rbf_name}_{yr}.pdf")
         plt.show()
 
 #%% Analyze X
@@ -1320,5 +1320,5 @@ for yr in range(2006, 2023):
     ax2.set_ylabel("$T_{max}$ (°C)")
 
     plt.tight_layout()
-    #clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "compare_with_hist_tr.jpg")
+    #clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "compare_with_hist_tr.pdf")
     plt.show()
