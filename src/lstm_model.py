@@ -28,6 +28,7 @@ class WaterTempLSTMModel():
                  Q_i_lstm_var_name="QbcTavg_Q_i",
                  cannonsville_storage_pct_lstm_var_name="bc_cannonsville_storage_pct",
                  thermal_mitigation_bank_size=1620,  # MGD-days ~= 2500 cfs-days
+                 east_tributary_temperature_perturbation=0,
                  debug=False,
                  disable_tqdm=True
                  ):
@@ -87,7 +88,8 @@ class WaterTempLSTMModel():
 
         # Predict the water temperature for east branch (T_i)
         lstm2 = bmi_lstm()
-        lstm2.initialize(config_file=model2, train=False, root_dir=pn.get(), disable_tqdm=disable_tqdm)
+        lstm2.initialize(config_file=model2, train=False, root_dir=pn.get(), disable_tqdm=disable_tqdm,
+                         east_tributary_temperature_perturbation=east_tributary_temperature_perturbation)
         lstm2.mc_dropout = mc_dropout
         self.lstm2 = lstm2
 
