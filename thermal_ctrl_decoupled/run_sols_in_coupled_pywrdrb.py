@@ -22,7 +22,7 @@ from src.policies import GaussianRBFPolicy, RuleBasedPolicy
 
 
 # Output folder for simulation results
-output_folder = "coupled_pywrdrb_RBF_sols"
+output_folder = "coupled_pywrdrb_RBF_sols2"
 pn.outputs.mkdir(output_folder)
 #%% Simulation with control
 # General configuration

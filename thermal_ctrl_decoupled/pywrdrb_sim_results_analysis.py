@@ -28,7 +28,7 @@ temp_dict = {
     }
 
 
-#%%
+#%% Plot the cdf of salt front
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -52,9 +52,27 @@ ax.set_ylabel("Empirical CDF")
 ax.grid(True)
 ax.legend()
 plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.attemp1.get()/"coupled_pywrdrb_sols.pdf")
+#clt.fig.savefig(fig, filename=pn.figures.attemp1.get()/"coupled_pywrdrb_sols.pdf")
 plt.show()
 
+
+#%% Calculate statistics
+df_dsf = pd.DataFrame()
+
+no_control = salinity_dict["No control"]["sf_mu"]
+for i, (label, df) in enumerate(salinity_dict.items()):
+    if label != "No control":
+        df_dsf[label] = df["sf_mu"] - no_control
+
+df_dsf_60 = df_dsf.loc[no_control >= 60, :]
+df_dsf_80 = df_dsf.loc[no_control >= 80, :]
+
+stats = df_dsf.describe()
+stats_60 = df_dsf_60.describe()
+stats_80 = df_dsf_80.describe()
+
+df_dsf_60.hist()
+df_dsf_60.boxplot()
 #%% Load obs for plotting
 import matplotlib.pyplot as plt
 import numpy as np
