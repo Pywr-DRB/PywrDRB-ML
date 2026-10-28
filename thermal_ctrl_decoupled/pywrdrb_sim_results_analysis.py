@@ -16,7 +16,7 @@ salinity_dict = {
     "Standard bank,\nmin Jadd": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF2_151.csv", parse_dates=True, index_col=[0]),
     "Enlarged bank": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_RBF3_114.csv", parse_dates=True, index_col=[0]),
     "No control": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_no_ctrl.csv", parse_dates=True, index_col=[0]),
-    "Ficed-release\n(baseline)": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_rulebased.csv", parse_dates=True, index_col=[0]),
+    "Fixed-release\n(baseline)": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_salinity_rulebased.csv", parse_dates=True, index_col=[0]),
     }
 
 temp_dict = {
@@ -24,7 +24,7 @@ temp_dict = {
     "Standard bank,\nmin Jadd": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_temp_RBF2_151.csv", parse_dates=True, index_col=[0]),
     "Enlarged bank": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_temp_RBF3_114.csv", parse_dates=True, index_col=[0]),
     "No control": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_temp_no_ctrl.csv", parse_dates=True, index_col=[0]),
-    "Ficed-release\n(baseline)": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_temp_rulebased.csv", parse_dates=True, index_col=[0]),
+    "Fixed-release\n(baseline)": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_temp_rulebased.csv", parse_dates=True, index_col=[0]),
     }
 
 
@@ -64,15 +64,84 @@ for i, (label, df) in enumerate(salinity_dict.items()):
     if label != "No control":
         df_dsf[label] = df["sf_mu"] - no_control
 
-df_dsf_60 = df_dsf.loc[no_control >= 60, :]
+df_dsf_60 = df_dsf.loc[no_control >= 0, :]
 df_dsf_80 = df_dsf.loc[no_control >= 80, :]
 
 stats = df_dsf.describe()
 stats_60 = df_dsf_60.describe()
 stats_80 = df_dsf_80.describe()
 
-df_dsf_60.hist()
 df_dsf_60.boxplot()
+
+df_dsf_60.hist()
+
+#%% Plot
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+zero_tol = 0.1
+policy_order = list(df_dsf.columns)
+
+zero_pct = df_dsf.apply(
+    lambda col: 100 * (col.dropna().abs() <= zero_tol).mean()
+)
+
+nonzero = df_dsf.mask(df_dsf.abs() <= zero_tol)
+nonzero_long = (
+    nonzero.rename_axis("time")
+    .reset_index()
+    .melt(id_vars="time", var_name="Policy", value_name="Change")
+    .dropna(subset=["Change"])
+)
+
+fig, (ax1, ax2) = plt.subplots(
+    1, 2,
+    figsize=(10, 4),
+    sharey=True,
+    gridspec_kw={"width_ratios": [1, 2]},
+)
+
+# Explicit numeric positions match seaborn's categorical positions.
+positions = np.arange(len(policy_order))
+ax1.barh(positions, zero_pct.reindex(policy_order), color="steelblue")
+ax1.set_yticks(positions, labels=policy_order)
+ax1.invert_yaxis()
+ax1.set_xlabel("Changes < 0.1 RM (%)")
+ax1.set_xlim(0, 100)
+
+sns.boxplot(
+    data=nonzero_long,
+    x="Change",
+    y="Policy",
+    order=policy_order,
+    showfliers=False,
+    ax=ax2,
+)
+ax2.axvline(0, color="black", linestyle=":", linewidth=1)
+ax2.set_xlabel("Nonzero change in salt-front location")
+ax2.set_ylabel("")
+ax2.tick_params(axis="y", labelleft=False)
+
+# # Add the minimum and maximum nonzero change for each policy.
+# for y, policy in enumerate(policy_order):
+#     values = nonzero[policy].dropna()
+
+#     if not values.empty:
+#         ax2.scatter(
+#             [values.min(), values.max()],
+#             [y, y],
+#             color="black",
+#             marker="D",
+#             s=25,
+#             zorder=5,
+#             label="Minimum / maximum" if y == 0 else None,
+#         )
+
+# ax2.legend(loc="best", frameon=False)
+
+plt.tight_layout()
+plt.show()
 #%% Load obs for plotting
 import matplotlib.pyplot as plt
 import numpy as np
@@ -83,7 +152,6 @@ df_obs_salinity = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"),
 df_obs_salinity.loc[df_obs_salinity["saltfront_src"] != "obs", "saltfront"] = np.nan
 
 #%% Plot the results
-
 import clt
 import seaborn as sns
 import matplotlib.pyplot as plt
