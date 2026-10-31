@@ -120,39 +120,82 @@ mb.write_model(model_filename)
 from time import perf_counter
 # asynchronized  
 model_filename = str(pn.outputs.get(output_folder) / "asynchronized.json")
-model = pywrdrb.Model.load(str(model_filename))
+output_filename = str(pn.outputs.get(output_folder) / "asynchronized.hdf5")
+model_asynchronized = pywrdrb.Model.load(str(model_filename))
 recorder = pywrdrb.OutputRecorder(
-    model=model,
+    model=model_asynchronized,
     output_filename=output_filename,
-    parameters=[p for p in model.parameters if p.name]
+    parameters=[p for p in model_asynchronized.parameters if p.name]
 )
 start = perf_counter()
-stats = model.run()
+stats = model_asynchronized.run()
+
+ml_model_asynchronized = model_asynchronized.parameters["salinity_model"].ml_model
+ml_model_asynchronized.update_until(date="2024-01-01")
+df_salinity_asynchronized = pd.DataFrame(ml_model_asynchronized.records, index=ml_model_asynchronized.dates)
+
+ml_model_asynchronized = model_asynchronized.parameters["temperature_model"].ml_model
+ml_model_asynchronized.update_until(date="2024-01-01")
+df_temp_asynchronized = pd.DataFrame(ml_model_asynchronized.records, index=ml_model_asynchronized.dates)
+
 elapsed_asynchronized = perf_counter() - start
 print(f"Asynchronized run: {elapsed_asynchronized:.2f} seconds")
 
+df_salinity_asynchronized.to_csv(pn.outputs.get(output_folder) / "df_salinity_asynchronized.csv")
+df_temp_asynchronized.to_csv(pn.outputs.get(output_folder) / "df_temp_asynchronized.csv")
+# Asynchronized run: 99.10 seconds
+# Ignore below
+# Asynchronized run: 93.61 seconds
+# Asynchronized run: 84.89 seconds
+# Asynchronized run: 88.09 seconds
+
+
 # synchronized 
 model_filename = str(pn.outputs.get(output_folder) / "synchronized.json")
-model = pywrdrb.Model.load(str(model_filename))
+output_filename = str(pn.outputs.get(output_folder) / "synchronized.hdf5")
+model_synchronized = pywrdrb.Model.load(str(model_filename))
 recorder = pywrdrb.OutputRecorder(
-    model=model,
+    model=model_synchronized,
     output_filename=output_filename,
-    parameters=[p for p in model.parameters if p.name]
+    parameters=[p for p in model_synchronized.parameters if p.name]
 )
 start = perf_counter()
-stats = model.run()
+stats = model_synchronized.run()
+
+ml_model_synchronized = model_synchronized.parameters["salinity_model"].ml_model
+ml_model_synchronized.update_until(date="2024-01-01")
+df_salinity_synchronized = pd.DataFrame(ml_model_synchronized.records, index=ml_model_synchronized.dates)
+
+ml_model_synchronized = model_synchronized.parameters["temperature_model"].ml_model
+ml_model_synchronized.update_until(date="2024-01-01")
+df_temp_synchronized = pd.DataFrame(ml_model_synchronized.records, index=ml_model_synchronized.dates)
+
 elapsed_synchronized = perf_counter() - start
 print(f"Synchronized run: {elapsed_synchronized:.2f} seconds")
 
+df_salinity_synchronized.to_csv(pn.outputs.get(output_folder) / "df_salinity_synchronized.csv")
+df_temp_synchronized.to_csv(pn.outputs.get(output_folder) / "df_temp_synchronized.csv")
+# Synchronized run: 183.36 seconds
+# Ignore below
+# Synchronized run: 270.74 seconds
+# Synchronized run: 188.92 seconds
+# Synchronized run: 196.06 seconds
+
+data = pywrdrb.Data()
+data.load_output(output_filenames=[str(pn.outputs.get(output_folder) / "asynchronized.hdf5"), str(pn.outputs.get(output_folder) / "synchronized.hdf5")], results_sets=['major_flow'])
+data.major_flow['synchronized'][0].to_csv(pn.outputs.get(output_folder) / "df_flow_synchronized.csv")
+data.major_flow['asynchronized'][0].to_csv(pn.outputs.get(output_folder) / "df_flow_asynchronized.csv")
+# 1.85 times faster
+# Ignore below
+# 2.89 times faster 
+# 2.23 times faster
+# 2.23 times faster
 
 
-
-
-
-
-
-
-
+dff_major_flow = (data.major_flow['synchronized'][0] - data.major_flow['asynchronized'][0]).sum()/data.major_flow['asynchronized'][0].sum()
+dff_temp = (df_temp_synchronized - df_temp_asynchronized).sum()/df_temp_asynchronized.sum()
+dff_salinity = (df_salinity_synchronized - df_salinity_asynchronized).sum()/df_salinity_asynchronized.sum()
+#%%
 
 
 
