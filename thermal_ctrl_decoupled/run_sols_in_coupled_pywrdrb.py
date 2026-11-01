@@ -35,6 +35,12 @@ policy = "GaussianRBFPolicy"
 job_id = "143990"
 df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 
+# get params 
+param_names = GaussianRBFPolicy(n_dim=3, n_basis=4).param_names
+# ['weight_0', 'center_0_0', 'basis_0_0', 'center_1_0', 'basis_1_0', 'center_2_0', 'basis_2_0', 'weight_1', 'center_0_1', 'basis_0_1', 'center_1_1', 'basis_1_1', 'center_2_1', 'basis_2_1', 'weight_2', 'center_0_2', 'basis_0_2', 'center_1_2', 'basis_1_2', 'center_2_2', 'basis_2_2', 'weight_3', 'center_0_3', 'basis_0_3', 'center_1_3', 'basis_1_3', 'center_2_3', 'basis_2_3']
+df_ref_ = df_ref.iloc[[28, 151, 114], :-3]
+df_ref_.columns = param_names
+
 for i, sol_idx in enumerate([28, 151, 114]):
     scenario = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_RBF{i+1}_{sol_idx}"
     output_filename=pn.outputs.get(output_folder) / f"{scenario}.hdf5"
