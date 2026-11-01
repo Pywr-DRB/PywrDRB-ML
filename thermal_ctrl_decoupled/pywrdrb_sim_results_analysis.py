@@ -9,6 +9,7 @@ pn = pathnavigator.create(root_dir)
 pn.chdir()
 import clt
 import pandas as pd
+from src.objectives import compute_reliability, compute_max_annual_accumulated_degree_days, compute_max_thermal_bank_usage_ratio
 
 output_folder = "dps_GaussianRBFPolicy_143990"
 salinity_dict = {
@@ -26,7 +27,6 @@ temp_dict = {
     "No control": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_temp_no_ctrl.csv", parse_dates=True, index_col=[0]),
     "Fixed-release\n(baseline)": pd.read_csv(pn.outputs.get(output_folder) / "df_pywrdrb_temp_rulebased.csv", parse_dates=True, index_col=[0]),
     }
-
 
 #%% Plot the cdf of salt front
 import matplotlib.pyplot as plt
@@ -75,7 +75,7 @@ df_dsf_60.boxplot()
 
 df_dsf_60.hist()
 
-#%% Plot
+#%% Plot the change in salt front
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
