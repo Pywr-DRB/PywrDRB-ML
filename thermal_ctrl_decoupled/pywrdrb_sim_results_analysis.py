@@ -119,27 +119,37 @@ sns.boxplot(
     ax=ax2,
 )
 ax2.axvline(0, color="black", linestyle=":", linewidth=1)
-ax2.set_xlabel("Nonzero change in salt-front location")
+ax2.set_xlabel("Nonzero change in salt-front location (RM)")
 ax2.set_ylabel("")
 ax2.tick_params(axis="y", labelleft=False)
 
-# # Add the minimum and maximum nonzero change for each policy.
-# for y, policy in enumerate(policy_order):
-#     values = nonzero[policy].dropna()
+# Add the minimum and maximum nonzero change for each policy.
+for y, policy in enumerate(policy_order):
+    values = nonzero[policy].dropna()
 
-#     if not values.empty:
-#         ax2.scatter(
-#             [values.min(), values.max()],
-#             [y, y],
-#             color="black",
-#             marker="D",
-#             s=25,
-#             zorder=5,
-#             label="Minimum / maximum" if y == 0 else None,
-#         )
+    if not values.empty:
+        ax2.scatter(
+            [values.min(), values.max()],
+            [y, y],
+            color="black",
+            marker="D",
+            s=25,
+            zorder=5,
+            #label="Minimum / maximum" if y == 0 else None,
+        )
 
-# ax2.legend(loc="best", frameon=False)
+ax2.legend(loc="best", frameon=False)
 
+for ax, label in zip((ax1, ax2), ("(a)", "(b)")):
+    ax.text(
+        0.0, 1.06, label,
+        transform=ax.transAxes,
+        fontsize=11,
+        fontweight="bold",
+        va="top",
+        ha="left",
+    )
+    
 plt.tight_layout()
 plt.show()
 #%% Load obs for plotting

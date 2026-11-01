@@ -267,13 +267,30 @@ sol_114 = eval_func(*params)
 #     names[5]: "saddlebrown",
 #     names[6]: "peru"
 #     }
+
+
+# Jrel_1
+# Out[20]: 0.5913
+
+# Jrel_5
+# Out[21]: 0.8026
+
+# Jrel_10
+# Out[22]: 0.9877
+
+# Jadd
+# Out[23]: 0.7798
+
+# Jtubr
+# Out[24]: 0.2675
+
 toC = 103.16
-# "No control" = [Jrel_1, Jrel_5, Jrel_10, Jadd, Jtubr]
-# "Fixed-release\n(baseline)" = [-0.3030, -0.4762, -0.6464, 1*toC,  0]
-# "Standard bank,\nmax Jrel" = [-0.5913, -0.8026, -0.9877, 0.7798*toC, 0.2675]
-# "Standard bank,\nmin Jadd" = [-0.9981, -0.9981, -0.9981, 0.7351*toC, 0.3255]
-# "Enlarged bank" = [-0.5485, -0.6957, -0.9788, 0.7123*toC, 0.3282]
-# [-0.9989, -0.9989, -0.9989, 0.5006*toC, 0.6635]
+# Headers = [Jrel_1, Jrel_5, Jrel_10, Jadd, Jtubr]
+# "No control" = [-0.3030, -0.4762, -0.6464, 1*toC,  0]
+# "Fixed-release\n(baseline)" = [-0.5913, -0.8026, -0.9877, 0.7798*toC, 0.2675]
+# "Standard bank,\nmax Jrel" = [-0.9981, -0.9981, -0.9981, 0.7351*toC, 0.3255]
+# "Standard bank,\nmin Jadd" = [-0.5485, -0.6957, -0.9788, 0.7123*toC, 0.3282]
+# "Enlarged bank" = [-0.9989, -0.9989, -0.9989, 0.5006*toC, 0.6635]
 #%%
 import numpy as np
 import matplotlib.pyplot as plt
@@ -282,15 +299,13 @@ from matplotlib.lines import Line2D
 toC = 103.16
 
 # Replace these placeholders with your actual values if available.
-no_control = [np.nan, np.nan, np.nan, np.nan, np.nan]
 
 data = {
-    "No control": no_control,
-    "Fixed-release\n(baseline)": [-0.3030, -0.4762, -0.6464, 1.0000 * toC, 0],
-    "Standard bank,\nmax Jrel": [-0.5913, -0.8026, -0.9877, 0.7798 * toC, 0.2675],
-    "Standard bank,\nmin Jadd": [-0.9981, -0.9981, -0.9981, 0.7351 * toC, 0.3255],
-    "Enlarged bank": [-0.5485, -0.6957, -0.9788, 0.7123 * toC, 0.3282],
-    # "Additional scenario": [-0.9989, -0.9989, -0.9989, 0.5006 * toC, 0.6635],
+    "No control":  [-0.3030, -0.4762, -0.6464, 1*toC,  0*3],
+    "Fixed-release\n(baseline)": [-0.5913, -0.8026, -0.9877, 0.7798*toC, 0.2675*3],
+    "Standard bank,\nmax Jrel": [-0.9981, -0.9981, -0.9981, 0.7351*toC, 0.3255*3],
+    "Standard bank,\nmin Jadd": [-0.5485, -0.6957, -0.9788, 0.7123*toC, 0.3282*3],
+    "Enlarged bank": [-0.9989, -0.9989, -0.9989, 0.5006*toC, 0.6635*3],
 }
 
 colors = {
@@ -303,20 +318,20 @@ colors = {
 }
 
 axis_labels = [
-    r"$J_{\mathrm{rel},1}$",
-    r"$J_{\mathrm{rel},5}$",
-    r"$J_{\mathrm{rel},10}$",
+    r"$J_{\mathrm{rel},1\%}$",
+    r"$J_{\mathrm{rel},5\%}$",
+    r"$J_{\mathrm{rel},10\%}$",
     r"$J_{\mathrm{add}}$",
     r"$J_{\mathrm{tubr}}$",
 ]
 
 # Choose meaningful fixed limits for each variable.
 limits = [
-    (-1.0, 0.0),
-    (-1.0, 0.0),
-    (-1.0, 0.0),
-    (0.0, toC),
-    (0.0, 0.7),
+    (-1.0, -0.3),
+    (-1.0, -0.3),
+    (-1.0, -0.3),
+    (37.3, toC),
+    (0.0, 3),
 ]
 
 fig, ax = plt.subplots(figsize=(6, 4))
@@ -347,17 +362,40 @@ for i, (low, high) in enumerate(limits):
 
     for tick in np.linspace(0, 1, 5):
         value = low + tick * (high - low)
+
+        # Transform labels only for the three Jrel axes
+        tick_label = f"{-100 * value:.1f}%" if i < 3 else f"{value:.2f}"
+
         ax.text(
-            i - 0.04, tick, f"{value:.2f}",
+            i - 0.04, tick, tick_label,
             ha="right", va="center",
             fontsize=9, color="0.3",
         )
-
 ax.set_xticks(x)
 ax.set_xticklabels(axis_labels, fontsize=12)
 ax.set_yticks([])
 ax.set_xlim(-0.25, len(axis_labels) - 0.75)
 ax.set_ylim(-0.05, 1.05)
+
+# Downward arrow to the left of the plotting area
+ax.annotate(
+    "",
+    xy=(-0.07, 0.15),
+    xytext=(-0.07, 0.85),
+    xycoords="axes fraction",
+    arrowprops=dict(arrowstyle="-|>", color="black", linewidth=1.5),
+    annotation_clip=False,
+)
+
+ax.text(
+    -0.10, 0.5,
+    "Direction of preference",
+    transform=ax.transAxes,
+    rotation=90,
+    ha="center",
+    va="center",
+    fontsize=10,
+)
 
 for spine in ax.spines.values():
     spine.set_visible(False)
@@ -365,7 +403,7 @@ for spine in ax.spines.values():
 ax.legend(
     loc="upper center",
     bbox_to_anchor=(0.5, -0.12),
-    ncol=2,
+    ncol=3,
     frameon=False,
 )
 
