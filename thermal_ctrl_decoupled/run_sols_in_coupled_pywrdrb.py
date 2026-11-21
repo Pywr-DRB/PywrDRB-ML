@@ -38,8 +38,10 @@ df_ref = clt.borg.read_ref(pn.outputs.get(f"dps_{policy}_{job_id}/borg.ref"))
 # get params 
 param_names = GaussianRBFPolicy(n_dim=3, n_basis=4).param_names
 # ['weight_0', 'center_0_0', 'basis_0_0', 'center_1_0', 'basis_1_0', 'center_2_0', 'basis_2_0', 'weight_1', 'center_0_1', 'basis_0_1', 'center_1_1', 'basis_1_1', 'center_2_1', 'basis_2_1', 'weight_2', 'center_0_2', 'basis_0_2', 'center_1_2', 'basis_1_2', 'center_2_2', 'basis_2_2', 'weight_3', 'center_0_3', 'basis_0_3', 'center_1_3', 'basis_1_3', 'center_2_3', 'basis_2_3']
-df_ref_ = df_ref.iloc[[28, 151, 114], :-3]
+df_ref_ = df_ref.iloc[[28, 151, 114], :-3].round(3)
 df_ref_.columns = param_names
+df_ref_.index= ["Standard bank,max Jrel", "Standard bank,min Jadd", "Enlarged bank"]
+
 
 for i, sol_idx in enumerate([28, 151, 114]):
     scenario = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_RBF{i+1}_{sol_idx}"
@@ -125,9 +127,7 @@ for i, sol_idx in enumerate([28, 151, 114]):
         'mrf_targets',
         'major_flow',
         "ffmp_level_boundaries",
-        "res_level",
-        "ibt_demands",
-        "ibt_diversions"
+        "res_level"
         ]
     data.load_output(output_filenames=[str(output_filename)], results_sets=results_sets)
     df_mrf_targets = data.mrf_targets[scenario][0]
@@ -138,108 +138,6 @@ for i, sol_idx in enumerate([28, 151, 114]):
     df_ffmp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_ffmp_RBF{i+1}_{sol_idx}.csv")
     df_res_level = data.res_level[scenario][0]
     df_res_level.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_res_level_RBF{i+1}_{sol_idx}.csv")
-    df_demand_nyc = data.ibt_demands[scenario][0]
-    df_demand_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_demand_nyc_RBF{i+1}_{sol_idx}.csv")
-    df_delivery_nyc = data.ibt_diversions[scenario][0]
-    df_delivery_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_delivery_nyc_RBF{i+1}_{sol_idx}.csv")
-    
-
-#%% Rule-based
-# General configuration
-name = "coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_with_ctrl"
-pn.models.mkdir(name)
-model_filename = str(pn.models.get(name) / f"{name}.json")
-policy = "GaussianRBFPolicy"
-job_id = "143990"
-
-
-output_filename=pn.outputs.get(output_folder) / "coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_rulebased.hdf5"
-model = pywrdrb.Model.load(str(model_filename))
-recorder = pywrdrb.OutputRecorder(
-    model=model,
-    output_filename=output_filename,
-    parameters=[p for p in model.parameters if p.name]
-)
-
-# Thermal control
-plist = [p.name for p in model.parameters]
-temperature_model = model.parameters["temperature_model"]
-
-# This is copied and revised from lstm_thermal_ctrl_gaussian_rbf.py
-def return_dps_func(*params):
-    policy = RuleBasedPolicy(threshold=24, thermal_release_amount=65)
-
-    # Define the function that will be used for the control algorithm
-    def dps_func(ml_model, Q_C, Q_i, cannonsville_storage_pct, current_date):
-        if current_date.day == 1 and current_date.month == 6:
-            ml_model.remained_bank_amount = ml_model.thermal_mitigation_bank_size
-        ml_model.update_until(date=current_date)
-        
-        if current_date.month in [6, 7, 8]:
-            # Prepare the inputs
-            # Have to retrieve storage info after update until such that t have been moved forward
-            ml_model.forecast(t=ml_model.t, Q_C=Q_C, Q_i=Q_i, cannonsville_storage_pct=cannonsville_storage_pct, lead_time=0)
-            forecast_T_L_mu = ml_model.forecast_T_L_mu_arr[-1]
-            thermal_release = policy.run(X=[forecast_T_L_mu])
-            # Ensure thermal release does not exceed the bank size
-            thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
-        else:
-            thermal_release = 0
-        
-        # Manually add to records for post-processing
-        ml_model.remained_bank_amount -= thermal_release
-        ml_model.records["thermal_releases"][ml_model.t] = thermal_release
-        ml_model.records["remained_bank_amounts"][ml_model.t] = ml_model.remained_bank_amount
-
-        return thermal_release
-    return dps_func
-
-params = []
-dps_func = return_dps_func(*params)
-
-temperature_model.set_control_algorithm(dps_func)
-stats = model.run()
-
-# Asycronized update
-ml_model = model.parameters["salinity_model"].ml_model
-ml_model.update_until(date="2024-01-01")
-df_salinity = pd.DataFrame(ml_model.records, index=ml_model.dates)
-df_salinity.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_salinity_rulebased.csv")
-
-ml_model = model.parameters["temperature_model"].ml_model
-ml_model.update_until(date="2024-01-01")
-df_temp = pd.DataFrame(ml_model.records, index=ml_model.dates)
-df_temp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_temp_rulebased.csv")
-
-
-data = pywrdrb.Data()
-results_sets = [
-    'temperature',
-    'salinity',
-    'mrf_targets',
-    'major_flow',
-    "ffmp_level_boundaries",
-    "res_level",
-    "ibt_demands",
-    "ibt_diversions"
-    ]
-data.load_output(output_filenames=[str(output_filename)], results_sets=results_sets)
-scenario = 'coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_rulebased'
-df_mrf_targets = data.mrf_targets[scenario][0]
-df_mrf_targets.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_mrf_targets_rulebased.csv")
-df_major_flow = data.major_flow[scenario][0]
-df_major_flow.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_major_flow_rulebased.csv")
-df_ffmp = data.ffmp_level_boundaries[scenario][0]
-df_ffmp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_ffmp_rulebased.csv")
-df_res_level = data.res_level[scenario][0]
-df_res_level.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_res_level_rulebased.csv")
-df_demand_nyc = data.ibt_demands[scenario][0]
-df_demand_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_demand_nyc_rulebased.csv")
-df_delivery_nyc = data.ibt_diversions[scenario][0]
-df_delivery_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_delivery_nyc_rulebased.csv")
-    
-
-
 #%% No ctrl
 # General configuration
 name = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_without_ctrl"
@@ -267,80 +165,61 @@ ml_model.update_until(date="2024-01-01")
 df_temp_noCtrl = pd.DataFrame(ml_model.records, index=ml_model.dates)
 df_temp_noCtrl.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / "df_pywrdrb_temp_no_ctrl.csv")
 
-data = pywrdrb.Data()
-data.load_output(output_filenames=[str(output_filename)], results_sets=results_sets)
-scenario = 'coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_without_ctrl'
-df_demand_nyc = data.ibt_demands[scenario][0]
-df_demand_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_demand_nyc_no_ctrl.csv")
-df_delivery_nyc = data.ibt_diversions[scenario][0]
-df_delivery_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_delivery_nyc_no_ctrl.csv")
-df_major_flow = data.major_flow[scenario][0]
-df_major_flow.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_major_flow_no_ctrl.csv")
-df_res_level = data.res_level[scenario][0]
-df_res_level.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_res_level_no_ctrl.csv")
+#%% Rule-based
+name = f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_without_ctrl"
+pn.models.mkdir(name)
+model_filename = str(pn.models.get(name) / f"{name}.json")
+
+output_filename=pn.outputs.get(output_folder) / f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_rulebased.hdf5"
+model = pywrdrb.Model.load(str(model_filename))
+recorder = pywrdrb.OutputRecorder(
+    model=model,
+    output_filename=output_filename,
+    parameters=[p for p in model.parameters if p.name]
+)
+
+# Thermal control
+plist = [p.name for p in model.parameters]
+temperature_model = model.parameters["temperature_model"]
+
+# This is copied and revised from lstm_thermal_ctrl_gaussian_rbf.py
+def return_dps_func(*params):
+    # Initialize the thermal control policy with specific parameters
+    policy = RuleBasedPolicy(threshold=24, thermal_release_amount=65)
+    # Define the function that will be used for the control algorithm
+    def dps_func(model, Q_C, Q_i, cannonsville_storage_pct, current_date):
+        # Retrieve the ml_model from the model
+        ml_model = model#.ml_model      # Need .ml_model when using the coupled model.
+        # Reset the bank amount at the beginning of June
+        if current_date.day == 1 and current_date.month == 6:
+            ml_model.remained_bank_amount = ml_model.thermal_mitigation_bank_size
+        ml_model.update_until(date=current_date)
+        # Complete the preparation for thermal control
+        # Make a forecast for the current date
+        ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
+        # Make thermal release decision and record the thermal release
+        thermal_release = policy.run(X=ml_model.forecast_T_L_mu_arr)
+        thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
+        return thermal_release
+    return dps_func
 
 
-# #%% Rule-based (wrong)
-# name = "coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_with_ctrl"
-# pn.models.mkdir(name)
-# model_filename = str(pn.models.get(name) / f"{name}.json")
+params = []
+dps_func = return_dps_func(*params)
 
-# output_filename=pn.outputs.get(output_folder) / f"coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_rulebased.hdf5"
-# model = pywrdrb.Model.load(str(model_filename))
-# recorder = pywrdrb.OutputRecorder(
-#     model=model,
-#     output_filename=output_filename,
-#     parameters=[p for p in model.parameters if p.name]
-# )
+temperature_model.set_control_algorithm(dps_func)
+stats = model.run()
 
-# # Thermal control
-# plist = [p.name for p in model.parameters]
-# temperature_model = model.parameters["temperature_model"]
+# Asycronized update
+ml_model = model.parameters["salinity_model"].ml_model
+ml_model.update_until(date="2024-01-01")
+df_salinity = pd.DataFrame(ml_model.records, index=ml_model.dates)
+df_salinity.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_salinity_rulebased.csv")
 
-# # This is copied and revised from lstm_thermal_ctrl_gaussian_rbf.py
-# def return_dps_func(*params):
-#     # Initialize the thermal control policy with specific parameters
-#     policy = RuleBasedPolicy(threshold=24, thermal_release_amount=65)
-#     # Define the function that will be used for the control algorithm
-#     def dps_func(model, Q_C, Q_i, cannonsville_storage_pct, current_date):
-#         # Retrieve the ml_model from the model
-#         ml_model = model#.ml_model      # Need .ml_model when using the coupled model.
-#         # Reset the bank amount at the beginning of June
-#         if current_date.day == 1 and current_date.month == 6:
-#             ml_model.remained_bank_amount = ml_model.thermal_mitigation_bank_size
-#         ml_model.update_until(date=current_date)
-#         # Complete the preparation for thermal control
-#         # Make a forecast for the current date
-#         ml_model.forecast(t=ml_model.t, Q_C=None, Q_i=None, cannonsville_storage_pct=None, lead_time=0)
-#         # Make thermal release decision and record the thermal release
-#         thermal_release = policy.run(X=ml_model.forecast_T_L_mu_arr)
-#         thermal_release = min(thermal_release, ml_model.remained_bank_amount)  # Ensure thermal release does not exceed bank size
-#         return thermal_release
-#     return dps_func
-
-
-# params = []
-# dps_func = return_dps_func(*params)
-
-# temperature_model.set_control_algorithm(dps_func)
-# stats = model.run()
-
-# # Asycronized update
-# ml_model = model.parameters["salinity_model"].ml_model
-# ml_model.update_until(date="2024-01-01")
-# df_salinity = pd.DataFrame(ml_model.records, index=ml_model.dates)
-# df_salinity.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_salinity_rulebased.csv")
-
-# ml_model = model.parameters["temperature_model"].ml_model
-# ml_model.update_until(date="2024-01-01")
-# df_temp = pd.DataFrame(ml_model.records, index=ml_model.dates)
-# df_temp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_temp_rulebased.csv")
-
-# data.load_output(output_filenames=[str(output_filename)], results_sets=results_sets)
-# df_demand_nyc = data.ibt_demands[scenario][0]
-# df_demand_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_demand_nyc_rulebased.csv")
-# df_delivery_nyc = data.ibt_diversions[scenario][0]
-# df_delivery_nyc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_delivery_nyc_rulebased.csv")
+ml_model = model.parameters["temperature_model"].ml_model
+ml_model.update_until(date="2024-01-01")
+df_temp = pd.DataFrame(ml_model.records, index=ml_model.dates)
+df_temp.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / f"df_pywrdrb_temp_rulebased.csv")
 #%%
 Jrel = compute_reliability(df_temp, col="T_L_mu", threshold=24, quantile=0.01, only_summer_period=True, return_distribution=False)
 Jadd = compute_max_annual_accumulated_degree_days(df_temp, col='Tavg_L_mu', threshold=20, only_summer_period=True, return_distribution=False)
