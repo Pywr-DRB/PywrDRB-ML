@@ -68,6 +68,7 @@ for i, sol_idx in enumerate([28, 151, 114]):
 
 #%% plot shortage and days
 df_shortage = df_demand - df_delivery
+df_shortage = df_shortage.loc["1979":"2023", :]
 df_shortage[df_shortage<1] = 0
 
 min_duration = 3
@@ -84,7 +85,8 @@ if min_duration > 0:
 
 total_volume_mg = df_shortage.sum()        # total shortage
 shortage_days = (df_shortage > 0).sum()    # total shortage days
-
+total_volume_mg_ = total_volume_mg-122225.431097
+shortage_days_ = shortage_days - 675
 # total_volume_mg.plot(ylabel="Shortage Volumn (MG)")
 # shortage_days.plot(ylabel="Shortage Days")
 

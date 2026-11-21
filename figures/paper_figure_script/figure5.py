@@ -1,5 +1,10 @@
 import pandas as pd
+import numpy as np
 import pathnavigator
+import clt
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib import gridspec
 
 if pathnavigator.os_name == 'Windows':
     root_dir = rf"C:\Users\{pathnavigator.user}\Documents\GitHub\PywrDRB-ML"
@@ -9,88 +14,22 @@ else:
     root_dir = pathnavigator.expanduser("~/Github/PywrDRB-ML")
 pn = pathnavigator.create(root_dir)
 pn.chdir()
-pn.mkdir("outputs/coupled_pywrdrb_analysis")
-
-import pywrdrb
 
 #%% Load the output data
-# inflow_type = 'pub_nhmv10_BC_withObsScaled'
-# model_filename = str(pn.sc.wd / f"{inflow_type}.json")
-# output_filename = str(pn.sc.wd / f"{inflow_type}.hdf5")
 inflow_type = 'pub_nhmv10_BC_withObsScaled'
 name = "coupled_pywrdrb_pub_nhmv10_BC_withObsScaled_with_ctrl"
 output_filename = str(pn.outputs.coupled_pywrdrb_analysis.get() / f"{inflow_type}.hdf5")
 
-pn.models.mkdir(name)
-model_filename = str(pn.models.get(name) / f"{name}.json")
+df_temperature = pd.read_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_temperature", index_col=[0], parse_dates=[0])
+df_salinity = pd.read_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_salinity", index_col=[0], parse_dates=[0])
+df_res_level = pd.read_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_res_level", index_col=[0], parse_dates=[0])
 
-data = pywrdrb.Data()
-results_sets = [
-    'temperature',
-    'salinity',
-    'mrf_targets',
-    'major_flow',
-    "ffmp_level_boundaries",
-    "res_level"
-    ]
-data.load_output(output_filenames=[output_filename], results_sets=results_sets)
-
-df_temperature = data.temperature[inflow_type][0]
-df_salinity = data.salinity[inflow_type][0]
-
-df_mrf_targets = data.mrf_targets[inflow_type][0]
-df_major_flow = data.major_flow[inflow_type][0]
-df_ffmp = data.ffmp_level_boundaries[inflow_type][0]
-
-df_res_level = data.res_level[inflow_type][0]
-
-#%% Load obs for plotting
-import matplotlib.pyplot as plt
-import numpy as np
 df_obs_temp = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), parse_dates=True, index_col=[0])
 df_obs_temp.loc[df_obs_temp["tmmx_water_src"] != "obs", "QbcTmax_T_L"] = np.nan
 
 df_obs_salinity = pd.read_csv(pn.data.database.get("SalinityLSTM_database.csv"), parse_dates=True, index_col=[0])
 df_obs_salinity.loc[df_obs_salinity["saltfront_src"] != "obs", "saltfront"] = np.nan
-
-#%% Plot the results
-for year in range(2006, 2024):
-    start_date = f"{year}-01-01"
-    end_date = f"{year}-12-31"
-
-    fig, axs = plt.subplots(nrows=2, figsize=(8, 5), sharex=True)
-
-    ax = axs[0]
-    # ax.fill_between(
-    #     df_temperature.loc[start_date:end_date,"temperature_after_thermal_release_mu"].index,
-    #     df_temperature.loc[start_date:end_date,"temperature_after_thermal_release_mu"] - df_temperature.loc[start_date:end_date,"temperature_after_thermal_release_sd"],
-    #     df_temperature.loc[start_date:end_date,"temperature_after_thermal_release_mu"] + df_temperature.loc[start_date:end_date,"temperature_after_thermal_release_sd"],
-    #     color="royalblue", alpha=0.15, label="±1 sd")
-
-    ax.plot(df_obs_temp.loc[start_date:end_date,"QbcTmax_T_L"], label="obs", color="k")
-    ax.plot(df_temperature.loc[start_date:end_date,"temperature_after_thermal_release_mu"], label="coupled", color="royalblue", alpha=0.8)
-
-    ax.set_ylabel("Maximum water temp.\nat Lordville (°C)")
-    ax.set_ylim([-5, 30])
-    ax.legend(loc="upper left", frameon=False)
-
-    ax = axs[1]
-    ax.plot(df_obs_salinity.loc[start_date:end_date,"saltfront"], label="obs", color="k")
-    ax.plot(df_salinity.loc[start_date:end_date,"salt_front_location_mu"], label="coupled", color="r", alpha=0.8)
-
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Salt front location (RM)")
-    ax.set_ylim([40, 100])
-    ax.legend(loc="upper left", frameon=False)
-    plt.show()
-
-
-
-#%%
-import clt
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
+#%% Figure 5
 
 df = pd.DataFrame()
 df["Water Tmax (degC)"] = df_temperature.loc["1979":"2023", "temperature_after_thermal_release_mu"]
@@ -263,5 +202,5 @@ ax_joint.text(57, 24.1, "24.0", rotation=0, ha='center', va='bottom', fontsize=1
 ax_joint.set_xlim([55, 93])
 ax_joint.set_ylim([-0.5, 30])
 #plt.tight_layout()
-clt.fig.savefig(fig, filename=pn.figures.get("attemp1") / "tmax_and_saltfront_dynamics.jpg")
+clt.fig.savefig(fig, filename=pn.figures.get("paper_figure_script") / "fig5_tmax_and_saltfront_dynamics.png", dpi=500)
 plt.show()

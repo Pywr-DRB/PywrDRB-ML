@@ -21,6 +21,7 @@ disable = False  # Set to True to disable tqdm progress bar
 database = pd.read_csv(pn.data.database.get("TempLSTM_database.csv"), index_col=0, parse_dates=True)['1979-01-01': '2023-12-31']
 
 df_Sc = pd.DataFrame()
+df_Qc = pd.DataFrame()
 #%% No Control
 ml_model_noCtrl = WaterTempLSTMModel(
     model1=pn.models.get() / "TempLSTM/TempLSTM1.yml",
@@ -33,7 +34,7 @@ ml_model_noCtrl.load_data(database)
 ml_model_noCtrl.update_until(date=pd.Timestamp('2024-01-01'))  # Update until the end of 2023
 
 df_Sc['No Control'] = ml_model_noCtrl.cannonsville_storage_pct
-
+df_Qc['No Control'] = ml_model_noCtrl.Q_C
 #%% Rule-Based Control
 from src.policies import RuleBasedPolicy
 def return_dps_func(*params):
@@ -95,7 +96,7 @@ for t, date in tqdm(enumerate(dates), desc="Running thermal control policy", dis
 ml_model.update_until(date="2024-01-01")
 
 df_Sc['Fixed-release\n(baseline)'] = ml_model.cannonsville_storage_pct
-
+df_Qc['Fixed-release\n(baseline)'] = ml_model.Q_C
 
 #%% RBF Control
 import clt
@@ -181,29 +182,37 @@ def eval_func(*params):
 
     # Update the model until the end of the simulation period
     ml_model.update_until(date="2024-01-01")
-    
    
-    return ml_model.cannonsville_storage_pct
+    return (ml_model.cannonsville_storage_pct, ml_model.Q_C)
 sol_idx = 28
 params = df_ref.iloc[sol_idx, :-3].values
-df_Sc['Standard bank,\nmax Jrel'] = eval_func(*params)
+
+sol_ = eval_func(*params)
+df_Sc['Standard bank,\nmax Jrel'] = sol_[0]
+df_Qc['Standard bank,\nmax Jrel'] = sol_[1]
 
 sol_idx = 151
 params = df_ref.iloc[sol_idx, :-3].values
-df_Sc['Standard bank,\nmin Jadd'] = eval_func(*params)
+sol_ = eval_func(*params)
+df_Sc['Standard bank,\nmin Jadd'] = sol_[0]
+df_Qc['Standard bank,\nmin Jadd'] = sol_[1]
 
 sol_idx = 114
 params = df_ref.iloc[sol_idx, :-3].values
-df_Sc['Enlarged bank'] = eval_func(*params)
+sol_ = eval_func(*params)
+df_Sc['Enlarged bank'] = sol_[0]
+df_Qc['Enlarged bank'] = sol_[1]
 
 
 #%%
 df_Sc.index = pd.date_range(start="1979-01-01", end="2023-12-31", freq='D')
+df_Qc.index = pd.date_range(start="1979-01-01", end="2023-12-31", freq='D')
 
 policy = "GaussianRBFPolicy"
 job_id = "143990"
 df_Sc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / "df_Sc.csv")
-#%%
+df_Qc.to_csv(pn.outputs.get(f"dps_{policy}_{job_id}") / "df_Qc.csv")
+#%% Sc
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -286,6 +295,93 @@ plt.show()
 coverage = pd.DataFrame(summary).set_index("Scenario")
 print(f"No control training range: [{train_min:.2f}, {train_max:.2f}]")
 print(coverage)
+
+#%% Qc
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Change this if your column has a different name or capitalization
+reference = "No Control"
+
+train = df_Qc[reference].dropna()
+scenarios = [col for col in df_Qc.columns if col != reference]
+
+# Use all observations to set common bin edges
+all_values = df_Qc.to_numpy().ravel()
+all_values = all_values[np.isfinite(all_values)]
+bins = np.histogram_bin_edges(all_values, bins=50)
+
+train_min, train_max = train.min(), train.max()
+colors = plt.get_cmap("tab10").colors
+
+fig, axes = plt.subplots(
+    len(scenarios), 1,
+    figsize=(6, 1.2 * len(scenarios)),
+    sharex=True,
+    sharey=True,
+    constrained_layout=True,
+)
+axes = np.atleast_1d(axes)
+
+summary = []
+
+for i, (ax, scenario) in enumerate(zip(axes, scenarios)):
+    values = df_Qc[scenario].dropna()
+
+    # Normalize each histogram independently to proportions
+    ax.hist(
+        train, bins=bins,
+        weights=np.ones(len(train)) / len(train),
+        color="0.75", label="Training input of Qc",
+    )
+    ax.hist(
+        values, bins=bins,
+        weights=np.ones(len(values)) / len(values),
+        histtype="step",
+        linewidth=1.8,
+        color=colors[i % len(colors)],
+        label=scenario,
+    )
+
+    outside = (values < train_min) | (values > train_max)
+    summary.append({
+        "Scenario": scenario,
+        "Minimum": values.min(),
+        "Maximum": values.max(),
+        "Outside training range": outside.sum(),
+        "Outside training range (%)": 100 * outside.mean(),
+    })
+
+    ax.axvline(train_min, color="0.35", linestyle="--", linewidth=1)
+    ax.axvline(train_max, color="0.35", linestyle="--", linewidth=1)
+    ax.set_ylabel("Proportion")
+    ax.legend(
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        fontsize=8,
+        frameon=False,
+    )
+    ax.grid(axis="y", alpha=0.2)
+    
+    ax.text(
+        0.02, 0.95, f"({chr(97 + i)})",
+        transform=ax.transAxes,
+        fontsize=10,
+        fontweight="bold",
+        va="top",
+    )
+    ax.set_xlim([-2000, 17500])
+
+axes[-1].set_xlabel("Cannonsville reservoir release (MGD)")
+plt.show()
+
+coverage = pd.DataFrame(summary).set_index("Scenario")
+print(f"No control training range: [{train_min:.2f}, {train_max:.2f}]")
+print(coverage)
+
+
+
 #%%
 import matplotlib.pyplot as plt
 import seaborn as sns

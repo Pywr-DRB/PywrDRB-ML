@@ -98,6 +98,13 @@ df_ffmp = data.ffmp_level_boundaries[inflow_type][0]
 
 df_res_level = data.res_level[inflow_type][0]
 
+df_temperature.to_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_temperature")
+df_salinity.to_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_salinity")
+df_mrf_targets.to_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_mrf_targets")
+df_major_flow.to_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_major_flow")
+df_ffmp.to_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_ffmp")
+df_res_level.to_csv(pn.outputs.coupled_pywrdrb_analysis.get() / "df_res_level")
+
 #%% Load obs for plotting
 import matplotlib.pyplot as plt
 import numpy as np
