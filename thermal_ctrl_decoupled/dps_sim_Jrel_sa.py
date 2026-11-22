@@ -321,8 +321,8 @@ axis_labels = [
     r"$J_{\mathrm{rel},1\%}$",
     r"$J_{\mathrm{rel},5\%}$",
     r"$J_{\mathrm{rel},10\%}$",
-    r"$J_{\mathrm{add}}$",
-    r"$J_{\mathrm{tubr}}$",
+#    r"$J_{\mathrm{add}}$",
+#    r"$J_{\mathrm{tubr}}$",
 ]
 
 # Choose meaningful fixed limits for each variable.
@@ -330,8 +330,8 @@ limits = [
     (-1.0, -0.3),
     (-1.0, -0.3),
     (-1.0, -0.3),
-    (37.3, toC),
-    (0.0, 3),
+#    (37.3, toC),
+#    (0.0, 3),
 ]
 
 fig, ax = plt.subplots(figsize=(6, 4))

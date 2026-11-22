@@ -181,6 +181,14 @@ df_temp_synchronized.to_csv(pn.outputs.get(output_folder) / "df_temp_synchronize
 # Synchronized run: 188.92 seconds
 # Synchronized run: 196.06 seconds
 
+#%%
+
+df_salinity_synchronized = pd.read_csv(pn.outputs.get(output_folder) / "df_salinity_synchronized.csv", index_col=[0], parse_dates=[0])
+df_temp_synchronized = pd.read_csv(pn.outputs.get(output_folder) / "df_temp_synchronized.csv", index_col=[0], parse_dates=[0])
+
+df_salinity_asynchronized = pd.read_csv(pn.outputs.get(output_folder) / "df_salinity_asynchronized.csv", index_col=[0], parse_dates=[0])
+df_temp_asynchronized = pd.read_csv(pn.outputs.get(output_folder) / "df_temp_asynchronized.csv", index_col=[0], parse_dates=[0])
+
 data = pywrdrb.Data()
 data.load_output(output_filenames=[str(pn.outputs.get(output_folder) / "asynchronized.hdf5"), str(pn.outputs.get(output_folder) / "synchronized.hdf5")], results_sets=['major_flow'])
 data.major_flow['synchronized'][0].to_csv(pn.outputs.get(output_folder) / "df_flow_synchronized.csv")
